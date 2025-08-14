@@ -83,7 +83,7 @@ export default function OrdersPage() {
 
   // Filter orders
   const filteredOrders = orders.filter((order: any) => {
-    const matchesStatus = filters.status === "" || order.status === filters.status;
+  const matchesStatus = filters.status === "" || (order.status && order.status.toLowerCase() === filters.status);
     const guestName = order.guestId ? `${order.guestId.firstName} ${order.guestId.lastName}` : "";
     const matchesSearch = filters.search === "" ||
       (guestName && guestName.toLowerCase().includes(filters.search.toLowerCase())) ||
@@ -153,9 +153,9 @@ export default function OrdersPage() {
                 className="w-full border border-gray-300 rounded px-3 py-2"
               >
                 <option value="">All</option>
-                <option value="Completed">Completed</option>
-                <option value="Pending">Pending</option>
-                <option value="Cancelled">Cancelled</option>
+                <option value="completed">Completed</option>
+                <option value="pending">Pending</option>
+                <option value="cancelled">Cancelled</option>
               </select>
             </div>
           </div>
