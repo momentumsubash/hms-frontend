@@ -4,6 +4,41 @@ import { getOrders } from "@/lib/api";
 import { useEffect, useState } from "react";
 
 export default function OrdersPage() {
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [updating, setUpdating] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState("");
+  const [updateError, setUpdateError] = useState("");
+
+  const handleSelectOrder = (order: any) => {
+    setSelectedOrder(order);
+    setUpdateStatus(order.status);
+    setUpdateError("");
+  };
+
+  const handleUpdateOrderStatus = async () => {
+    if (!selectedOrder) return;
+    setUpdating(true);
+    setUpdateError("");
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api";
+      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4OWRiMjQ5N2M2NzMzMjVlODNjMzcwOSIsInJvbGUiOiJtYW5hZ2VyIiwiaWF0IjoxNzU1MTc0NTE1LCJleHAiOjE3NTUyNjA5MTV9.jCJC1S4lDBM9a_c0ocZwgMNFf2TNr2UBDvXLXxHi3R4";
+      const res = await fetch(`${apiBase}/orders/${selectedOrder._id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: updateStatus })
+      });
+      if (!res.ok) throw new Error("Failed to update order status");
+      await loadData();
+      setSelectedOrder(null);
+    } catch (e: any) {
+      setUpdateError(e.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
@@ -29,8 +64,16 @@ export default function OrdersPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await getOrders();
-      setOrders(res?.data || res || []);
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api";
+      const res = await fetch(`${apiBase}/orders?page=1&limit=10`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4OWRiMjQ5N2M2NzMzMjVlODNjMzcwOSIsInJvbGUiOiJtYW5hZ2VyIiwiaWF0IjoxNzU1MTc0NTE1LCJleHAiOjE3NTUyNjA5MTV9.jCJC1S4lDBM9a_c0ocZwgMNFf2TNr2UBDvXLXxHi3R4"
+        },
+        credentials: "include"
+      });
+      const data = await res.json();
+      setOrders(data.data || []);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -41,9 +84,10 @@ export default function OrdersPage() {
   // Filter orders
   const filteredOrders = orders.filter((order: any) => {
     const matchesStatus = filters.status === "" || order.status === filters.status;
+    const guestName = order.guestId ? `${order.guestId.firstName} ${order.guestId.lastName}` : "";
     const matchesSearch = filters.search === "" ||
-      (order.guestName && order.guestName.toLowerCase().includes(filters.search.toLowerCase())) ||
-      (order.orderNumber && order.orderNumber.toString().includes(filters.search));
+      (guestName && guestName.toLowerCase().includes(filters.search.toLowerCase())) ||
+      (order.roomNumber && order.roomNumber.toString().includes(filters.search));
     return matchesStatus && matchesSearch;
   });
 
@@ -123,26 +167,81 @@ export default function OrdersPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order #</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Extra Charges</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated At</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredOrders.map((order: any) => (
-                  <tr key={order._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">{order.orderNumber}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{order.guestName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{order.items?.map((i: any) => i.name).join(", ")}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">₹{order.total}</td>
+                  <tr key={order._id} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`} onClick={() => handleSelectOrder(order)} style={{ cursor: 'pointer' }}>
+                    <td className="px-6 py-4 whitespace-nowrap">{order._id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{order.guestId ? `${order.guestId.firstName} ${order.guestId.lastName}` : "-"}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{order.roomNumber}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {order.items?.map((i: any) => (
+                        <div key={i._id}>
+                          <span className="font-semibold">{i.name}</span> (x{i.quantity}) - ₹{i.price} [{i.itemId?.category}]
+                        </div>
+                      ))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">₹{order.totalAmount}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">₹{order.extraCharges}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{order.status}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{order.createdBy ? `${order.createdBy.firstName} ${order.createdBy.lastName}` : "-"}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{order.hotel?.name || "-"}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{new Date(order.createdAt).toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{new Date(order.updatedAt).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {selectedOrder && (
+            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+              <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+                <h2 className="text-xl font-bold mb-4">Update Order Status</h2>
+                <div className="mb-4">
+                  <div className="mb-2"><b>Order ID:</b> {selectedOrder._id}</div>
+                  <div className="mb-2"><b>Guest:</b> {selectedOrder.guestId ? `${selectedOrder.guestId.firstName} ${selectedOrder.guestId.lastName}` : "-"}</div>
+                  <div className="mb-2"><b>Current Status:</b> {selectedOrder.status}</div>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">New Status</label>
+                  <select
+                    value={updateStatus}
+                    onChange={e => setUpdateStatus(e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+                {updateError && <div className="text-red-600 mb-2">{updateError}</div>}
+                <div className="flex justify-end space-x-2">
+                  <button
+                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    onClick={() => setSelectedOrder(null)}
+                    disabled={updating}
+                  >Cancel</button>
+                  <button
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    onClick={handleUpdateOrderStatus}
+                    disabled={updating}
+                  >{updating ? 'Updating...' : 'Update'}</button>
+                </div>
+              </div>
+            </div>
+          )}
           {filteredOrders.length === 0 && (
             <div className="text-center py-12">
               <div className="text-gray-500">No orders found matching your criteria.</div>
