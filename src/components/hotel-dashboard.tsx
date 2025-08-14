@@ -28,7 +28,8 @@ export function HotelDashboard() {
 		{ label: "Rooms", href: "/rooms" },
 		{ label: "Users", href: "/users" },
 	];
-	const { user, logout, loading: authLoading } = useAuth();
+	const { logout, loading: authLoading } = useAuth();
+	const [user, setUser] = useState<any>(null);
 	const [hotel, setHotel] = useState<any>(null);
 	const [guests, setGuests] = useState<any[]>([]);
 	const [rooms, setRooms] = useState<any[]>([]);
@@ -36,6 +37,7 @@ export function HotelDashboard() {
 	const [loading, setLoading] = useState(true);
 	const [currentImageIndex, setCurrentImageIndex] = useState(0);
 	const [currentFoodIndex, setCurrentFoodIndex] = useState(0);
+	const [showUserMenu, setShowUserMenu] = useState(false);
 	const hotelImages = [
 		"/luxury-hotel-lobby.png",
 		"/elegant-hotel-room.png",
@@ -50,26 +52,47 @@ export function HotelDashboard() {
 		"/placeholder-u7zdt.png",
 	];
 
-	useEffect(() => {
-		async function fetchData() {
-			setLoading(true);
-			try {
-				const [hotelRes, guestsRes, roomsRes, ordersRes] = await Promise.all([
-					getMyHotel(),
-					getGuests(),
-					getRooms(),
-					getOrders(),
-				]);
-				setHotel(hotelRes?.data || null);
-				setGuests(guestsRes?.data || []);
-				setRooms(roomsRes?.data || []);
-				setOrders(ordersRes?.data || []);
-			} finally {
-				setLoading(false);
-			}
-		}
-		if (user) fetchData();
-	}, [user]);
+       useEffect(() => {
+	       async function fetchData() {
+		       setLoading(true);
+		       try {
+			       // Get token from localStorage
+			       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+			       let userInfo = null;
+			       if (token) {
+				       const res = await fetch("http://localhost:3000/api/users/me", {
+					       headers: { Authorization: `Bearer ${token}` },
+				       });
+				       if (res.status === 401) {
+					       localStorage.removeItem('token');
+					       window.location.href = '/login';
+					       return;
+				       }
+				       if (res.ok) {
+					       userInfo = await res.json();
+					       setUser(userInfo);
+				       } else {
+					       setUser(null);
+				       }
+			       } else {
+				       setUser(null);
+			       }
+			       const [hotelRes, guestsRes, roomsRes, ordersRes] = await Promise.all([
+				       getMyHotel(),
+				       getGuests(),
+				       getRooms(),
+				       getOrders(),
+			       ]);
+			       setHotel(hotelRes?.data || null);
+			       setGuests(guestsRes?.data || []);
+			       setRooms(roomsRes?.data || []);
+			       setOrders(ordersRes?.data || []);
+		       } finally {
+			       setLoading(false);
+		       }
+	       }
+	       fetchData();
+	}, []);
 
 	const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % hotelImages.length);
 	const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + hotelImages.length) % hotelImages.length);
@@ -93,27 +116,52 @@ export function HotelDashboard() {
 	const hotelWebsite = hotel?.website || "www.hotel.com";
 	const hotelAmenities = hotel?.amenities?.length ? hotel.amenities : ["Free WiFi", "Parking", "Restaurant", "Spa", "Pool", "Gym"];
 
-		return (
-			<div className="min-h-screen bg-slate-50">
-				{/* Navigation Bar */}
-				<nav className="bg-white shadow mb-6">
-					<div className="max-w-7xl mx-auto px-4">
-						<div className="flex h-16 items-center space-x-6">
-							<span className="font-bold text-xl text-primary">Hotel HMS</span>
-							<div className="flex space-x-4">
-								{navLinks.map((link) => (
-									<a
-										key={link.href}
-										href={link.href}
-										className="text-gray-700 hover:text-primary font-medium px-3 py-2 rounded transition-colors"
-									>
-										{link.label}
-									</a>
-								))}
-							</div>
-						</div>
-					</div>
-				</nav>
+	       return (
+		       <div className="min-h-screen bg-slate-50">
+					{/* Navigation Bar */}
+			       <nav className="bg-white shadow mb-6">
+				       <div className="max-w-7xl mx-auto px-4">
+					       <div className="flex h-16 items-center justify-between">
+						       <span className="font-bold text-xl text-primary">Hotel HMS</span>
+						       <div className="flex items-center space-x-4">
+							       {navLinks.map((link) => (
+								       <a
+									       key={link.href}
+									       href={link.href}
+									       className="text-gray-700 hover:text-primary font-medium px-3 py-2 rounded transition-colors"
+								       >
+									       {link.label}
+								       </a>
+							       ))}
+						       </div>
+						       {/* User button in nav bar, now at far right */}
+						       <div className="relative">
+							       <button
+								       className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100 border border-gray-200"
+								       onClick={() => setShowUserMenu((v) => !v)}
+							       >
+								       <span className="font-medium text-gray-700">
+									   {user?.firstName ? user.firstName : user?.email || "User"}
+								       </span>
+								       <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+							       </button>
+							       {showUserMenu && (
+								       <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow z-50">
+									       <button
+										       className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+										       onClick={async () => {
+											   setShowUserMenu(false);
+											   await logout();
+										       }}
+									       >
+										       Sign out
+									       </button>
+								       </div>
+							       )}
+						       </div>
+					       </div>
+				       </div>
+			       </nav>
 				<div className="max-w-7xl mx-auto space-y-8 p-6">
 				{/* Header */}
 				<div className="text-center space-y-4">

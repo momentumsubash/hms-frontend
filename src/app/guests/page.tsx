@@ -11,7 +11,7 @@ interface Guest {
   email: string;
   phone: string;
   address?: string;
-  roomNumber: string;
+  rooms: string[];
   checkInDate: string;
   checkOutDate?: string;
   isCheckedOut: boolean;
@@ -37,7 +37,7 @@ interface GuestForm {
   email: string;
   phone: string;
   address: string;
-  roomNumber: string;
+  rooms: string[];
   checkInDate: string;
   checkOutDate: string;
 }
@@ -65,7 +65,7 @@ export default function GuestsPage() {
     email: "",
     phone: "",
     address: "",
-    roomNumber: "",
+    rooms: [],
     checkInDate: "",
     checkOutDate: ""
   });
@@ -119,7 +119,7 @@ export default function GuestsPage() {
       email: "",
       phone: "",
       address: "",
-      roomNumber: "",
+      rooms: [],
       checkInDate: "",
       checkOutDate: ""
     });
@@ -137,13 +137,11 @@ export default function GuestsPage() {
         checkInDate: new Date(formData.checkInDate).toISOString(),
         checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined
       };
-
       if (editingGuest) {
         await updateGuest(editingGuest._id, guestData);
       } else {
         await createGuest(guestData);
       }
-      
       await loadData();
       resetForm();
     } catch (e: any) {
@@ -161,7 +159,7 @@ export default function GuestsPage() {
       email: guest.email,
       phone: guest.phone,
       address: guest.address || "",
-      roomNumber: guest.roomNumber,
+      rooms: guest.rooms || [],
       checkInDate: guest.checkInDate ? format(new Date(guest.checkInDate), "yyyy-MM-dd'T'HH:mm") : "",
       checkOutDate: guest.checkOutDate ? format(new Date(guest.checkOutDate), "yyyy-MM-dd'T'HH:mm") : ""
     });
@@ -169,21 +167,18 @@ export default function GuestsPage() {
   };
 
   // Get available rooms (not occupied)
-  const availableRooms = rooms.filter(room => !room.isOccupied || room.roomNumber === formData.roomNumber);
+  const availableRooms = rooms.filter(room => !room.isOccupied || (formData.rooms && formData.rooms.includes(room.roomNumber)));
 
   // Filter guests based on search criteria
   const filteredGuests = guests.filter(guest => {
     const matchesCheckedOut = filters.isCheckedOut === "" || 
       guest.isCheckedOut.toString() === filters.isCheckedOut;
-    
     const matchesRoom = filters.roomNumber === "" || 
-      guest.roomNumber.toLowerCase().includes(filters.roomNumber.toLowerCase());
-    
+      (guest.rooms && guest.rooms.some(r => r.toLowerCase().includes(filters.roomNumber.toLowerCase())));
     const matchesSearch = filters.search === "" || 
       `${guest.firstName} ${guest.lastName}`.toLowerCase().includes(filters.search.toLowerCase()) ||
       guest.email.toLowerCase().includes(filters.search.toLowerCase()) ||
       guest.phone.includes(filters.search);
-
     return matchesCheckedOut && matchesRoom && matchesSearch;
   });
 
@@ -376,20 +371,35 @@ export default function GuestsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Room *</label>
-                <select
-                  required
-                  value={formData.roomNumber}
-                  onChange={(e) => setFormData(prev => ({ ...prev, roomNumber: e.target.value }))}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                >
-                  <option value="">Select a room</option>
+                <label className="block text-sm font-medium mb-1">Rooms *</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded px-3 py-2">
                   {availableRooms.map(room => (
-                    <option key={room._id} value={room.roomNumber}>
-                      Room {room.roomNumber} - {room.type} (₹{room.rate}/night) - Capacity: {room.capacity}
-                    </option>
+                    <label key={room._id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        value={room.roomNumber}
+                        checked={formData.rooms.includes(room.roomNumber)}
+                        onChange={e => {
+                          const checked = e.target.checked;
+                          setFormData(prev => {
+                            let newRooms = prev.rooms || [];
+                            if (checked) {
+                              newRooms = [...newRooms, room.roomNumber];
+                            } else {
+                              newRooms = newRooms.filter(r => r !== room.roomNumber);
+                            }
+                            return { ...prev, rooms: newRooms };
+                          });
+                        }}
+                        className="form-checkbox"
+                      />
+                      <span>
+                        Room {room.roomNumber} - {room.type} (₹{room.rate}/night) - Capacity: {room.capacity}
+                      </span>
+                    </label>
                   ))}
-                </select>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">Select one or more rooms for the guest.</div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -483,9 +493,15 @@ export default function GuestsPage() {
                     <div className="text-sm text-gray-500">{guest.phone}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      Room {guest.roomNumber}
-                    </span>
+                    {guest.rooms && guest.rooms.length > 0 ? (
+                      guest.rooms.map((room, idx) => (
+                        <span key={room} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
+                          Room {room}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">No rooms</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div>

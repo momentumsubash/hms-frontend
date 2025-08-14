@@ -5,6 +5,20 @@ import { getRooms, updateRoom } from "@/lib/api";
 import { useEffect, useState } from "react";
 
 export default function RoomsPage() {
+  const [user, setUser] = useState<any>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  useEffect(() => {
+    // Fetch user info (replace with your actual user fetch logic)
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}`,
+        Accept: "application/json",
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => setUser(data.data || null))
+      .catch(() => setUser(null));
+  }, []);
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
@@ -70,7 +84,7 @@ export default function RoomsPage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex h-16 items-center space-x-6">
             <span className="font-bold text-xl text-primary">Hotel HMS</span>
-            <div className="flex space-x-4">
+            <div className="flex space-x-4 flex-1">
               {navLinks.map((link) => (
                 <a
                   key={link.href}
@@ -80,6 +94,39 @@ export default function RoomsPage() {
                   {link.label}
                 </a>
               ))}
+            </div>
+            {/* User button in nav bar */}
+            <div className="relative">
+              {user ? (
+                <button
+                  className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100 border border-gray-200"
+                  onClick={() => setShowUserMenu((v) => !v)}
+                >
+                  <span className="font-medium text-gray-700">{user.firstName} {user.lastName}</span>
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              ) : (
+                <span className="text-gray-400">Not logged in</span>
+              )}
+              {showUserMenu && user && (
+                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow z-50">
+                  <button
+                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                    onClick={async () => {
+                      setShowUserMenu(false);
+                      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/logout`, {
+                        method: "POST",
+                        headers: {
+                          Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}`
+                        }
+                      });
+                      window.location.href = "/login";
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -157,6 +204,9 @@ export default function RoomsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Phone</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Maintenance</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated At</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -180,6 +230,9 @@ export default function RoomsPage() {
                     <td className="px-4 py-4 whitespace-nowrap">{room.guestName || '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap">{room.guestPhone || '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap">₹{room.rate}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">{room.maintanenceStatus || '-'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">{room.createdAt ? new Date(room.createdAt).toLocaleString() : '-'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">{room.updatedAt ? new Date(room.updatedAt).toLocaleString() : '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <button
                         className="text-blue-600 hover:underline text-sm"

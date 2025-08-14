@@ -3,6 +3,14 @@ export async function getUsers() {
   const res = await fetch(`${API_URL}/users`, {
     headers: mergeHeaders({}, getAuthHeaders()),
   });
+  if (res.status === 401) {
+    if (!sessionStorage.getItem('redirected401')) {
+      sessionStorage.setItem('redirected401', '1');
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return;
+  }
   if (!res.ok) throw new Error("Failed to fetch users");
   return res.json();
 }
@@ -11,6 +19,11 @@ export async function getMyHotel() {
   const res = await fetch(`${API_URL}/hotels/me`, {
     headers: mergeHeaders({}, getAuthHeaders()),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to fetch hotel details");
   return res.json();
 }
@@ -59,6 +72,11 @@ export async function getMe() {
   const res = await fetch(`${API_URL}/auth/me`, {
     headers: mergeHeaders({}, getAuthHeaders()),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Not authenticated");
   return res.json();
 }
@@ -68,6 +86,11 @@ export async function getCurrentUser() {
   const res = await fetch(`${API_URL}/users/me`, {
     headers: mergeHeaders({ 'Accept': 'application/json' }, getAuthHeaders()),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Not authenticated");
   return res.json();
 }
@@ -76,6 +99,11 @@ export async function getUserById(id: string) {
   const res = await fetch(`${API_URL}/users/${id}`, {
     headers: mergeHeaders({}, getAuthHeaders()),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("User not found");
   return res.json();
 }
@@ -86,6 +114,11 @@ export async function updateUser(id: string, user: any) {
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
     body: JSON.stringify(user),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Update failed");
   return res.json();
 }
@@ -95,6 +128,11 @@ export async function deactivateUser(id: string) {
     method: "DELETE",
     headers: mergeHeaders({}, getAuthHeaders()),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Deactivation failed");
   return res.json();
 }
@@ -105,6 +143,11 @@ export async function getRooms(params: Record<string, any> = {}) {
   const res = await fetch(`${API_URL}/rooms${query ? `?${query}` : ""}`,
     { headers: mergeHeaders({}, getAuthHeaders()) }
   );
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to fetch rooms");
   return res.json();
 }
@@ -115,6 +158,11 @@ export async function addRoom(room: any) {
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
     body: JSON.stringify(room),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to add room");
   return res.json();
 }
@@ -123,6 +171,11 @@ export async function getRoom(roomNumber: string) {
   const res = await fetch(`${API_URL}/rooms/${roomNumber}`,
     { headers: mergeHeaders({}, getAuthHeaders()) }
   );
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Room not found");
   return res.json();
 }
@@ -133,6 +186,11 @@ export async function updateRoom(roomNumber: string, room: any) {
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
     body: JSON.stringify(room),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to update room");
   return res.json();
 }
@@ -142,6 +200,11 @@ export async function deleteRoom(roomNumber: string) {
     method: "DELETE",
     headers: mergeHeaders({}, getAuthHeaders()),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to delete room");
   return res.json();
 }
@@ -152,6 +215,11 @@ export async function getGuests(params: Record<string, any> = {}) {
   const res = await fetch(`${API_URL}/guests${query ? `?${query}` : ""}`,
     { headers: mergeHeaders({}, getAuthHeaders()) }
   );
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to fetch guests");
   return res.json();
 }
@@ -162,6 +230,11 @@ export async function addGuest(guest: any) {
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
     body: JSON.stringify(guest),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to add guest");
   return res.json();
 }
@@ -170,6 +243,11 @@ export async function getGuest(id: string) {
   const res = await fetch(`${API_URL}/guests/${id}`,
     { headers: mergeHeaders({}, getAuthHeaders()) }
   );
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Guest not found");
   return res.json();
 }
@@ -180,6 +258,11 @@ export async function updateGuest(id: string, guest: any) {
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
     body: JSON.stringify(guest),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to update guest");
   return res.json();
 }
@@ -190,6 +273,11 @@ export async function getOrders(params: Record<string, any> = {}) {
   const res = await fetch(`${API_URL}/orders${query ? `?${query}` : ""}`,
     { headers: mergeHeaders({}, getAuthHeaders()) }
   );
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to fetch orders");
   return res.json();
 }
@@ -200,6 +288,11 @@ export async function addOrder(order: any) {
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
     body: JSON.stringify(order),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to add order");
   return res.json();
 }
@@ -208,6 +301,11 @@ export async function getOrder(id: string) {
   const res = await fetch(`${API_URL}/orders/${id}`,
     { headers: mergeHeaders({}, getAuthHeaders()) }
   );
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Order not found");
   return res.json();
 }
@@ -218,6 +316,11 @@ export async function updateOrderStatus(id: string, status: string) {
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
     body: JSON.stringify({ status }),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to update order status");
   return res.json();
 }
@@ -228,6 +331,11 @@ export async function getCheckouts(params: Record<string, any> = {}) {
   const res = await fetch(`${API_URL}/checkouts${query ? `?${query}` : ""}`, {
     headers: mergeHeaders({}, getAuthHeaders()),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to fetch checkouts");
   return res.json();
 }
@@ -238,6 +346,11 @@ export async function createCheckout(checkout: any) {
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
     body: JSON.stringify(checkout),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to create checkout");
   return res.json();
 }
@@ -248,6 +361,11 @@ export async function completeCheckoutPayment(id: string, paymentAmount: number)
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
     body: JSON.stringify({ paymentAmount }),
   });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to complete payment");
   return res.json();
 }
