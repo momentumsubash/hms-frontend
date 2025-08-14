@@ -1,8 +1,10 @@
-
 "use client";
+
 import { getCheckouts } from "@/lib/api";
+import { updateCheckoutPayment } from "@/lib/checkoutApi";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
+
 
 export default function CheckoutsPage() {
   // Pagination state
@@ -28,6 +30,15 @@ export default function CheckoutsPage() {
     search: ""
   });
   const [pagination, setPagination] = useState({ page: 1, limit: 10, totalPages: 1, totalCount: 0 });
+  const [showEdit, setShowEdit] = useState(false);
+  const [editCheckout, setEditCheckout] = useState<any>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editStatus, setEditStatus] = useState<string>("");
+  const [showDetails, setShowDetails] = useState(false);
+  const [detailsCheckout, setDetailsCheckout] = useState<any>(null);
+  const [editVatPercent, setEditVatPercent] = useState<string>("");
+  const [editVatAmount, setEditVatAmount] = useState<string>("");
 
   useEffect(() => {
     loadData();
@@ -109,21 +120,184 @@ export default function CheckoutsPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {checkouts.map((checkout: any) => (
                       <tr key={checkout._id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>
                           {checkout.guest ? `${checkout.guest.firstName} ${checkout.guest.lastName}` : "-"}
                           <div className="text-xs text-gray-500">{checkout.guest?.email}</div>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
+                        <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>
                           {checkout.room ? `#${checkout.room.roomNumber} (${checkout.room.type})` : "-"}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap capitalize">{checkout.status}</td>
-                        <td className="px-4 py-4 whitespace-nowrap font-semibold">₹{checkout.totalBill}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-xs">{checkout.createdAt ? new Date(checkout.createdAt).toLocaleString() : ""}</td>
+                        <td className="px-4 py-4 whitespace-nowrap capitalize cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>{checkout.status}</td>
+                        <td className="px-4 py-4 whitespace-nowrap font-semibold cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>₹{checkout.totalBill}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-xs cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>{checkout.createdAt ? new Date(checkout.createdAt).toLocaleString() : ""}</td>
                         <td className="px-4 py-4 whitespace-nowrap">
-                          {/* Details button removed */}
+                          <button
+                            className="text-blue-600 hover:underline text-sm"
+                            onClick={() => {
+                              setEditCheckout(checkout);
+                              setEditStatus(checkout.status);
+                              setEditVatPercent(checkout.vatPercent?.toString() || "");
+                              setEditVatAmount(checkout.vatAmount?.toString() || "");
+                              setShowEdit(true);
+                              setEditError("");
+                            }}
+                          >Edit</button>
                         </td>
                       </tr>
                     ))}
+      {/* Edit Checkout Modal */}
+      {showEdit && editCheckout && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4">Edit Checkout</h2>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setEditLoading(true);
+                setEditError("");
+                try {
+                  await updateCheckoutPayment(editCheckout.room?.roomNumber || "", editStatus, editVatPercent, editVatAmount);
+                  setShowEdit(false);
+                  setEditCheckout(null);
+                  await loadData();
+                } catch (e: any) {
+                  setEditError(e.message || "Failed to update checkout");
+                } finally {
+                  setEditLoading(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium mb-1">Room Number</label>
+                <input
+                  type="text"
+                  value={editCheckout.room?.roomNumber || ""}
+                  disabled
+                  className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select
+                  value={editStatus}
+                  onChange={e => setEditStatus(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  disabled={editLoading}
+                >
+                  {editCheckout.status === "completed" ? (
+                    <>
+                      <option value="completed">Completed</option>
+                      <option value="pending">Pending</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="pending">Pending</option>
+                      <option value="completed">Completed</option>
+                    </>
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">VAT Percent</label>
+                <input
+                  type="number"
+                  value={editVatPercent}
+                  onChange={e => setEditVatPercent(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  min="0"
+                  step="0.01"
+                  disabled={editLoading}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">VAT Amount</label>
+                <input
+                  type="number"
+                  value={editVatAmount}
+                  onChange={e => setEditVatAmount(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  min="0"
+                  step="0.01"
+                  disabled={editLoading}
+                />
+              </div>
+              {editError && <div className="text-red-600 text-sm">{editError}</div>}
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEdit(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  disabled={editLoading}
+                >Cancel</button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  disabled={editLoading}
+                >{editLoading ? "Saving..." : "Update Checkout"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Checkout Details Modal */}
+      {showDetails && detailsCheckout && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4">Checkout Details</h2>
+            <div className="mb-4">
+              <h3 className="font-semibold mb-2">Room Info</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div><span className="font-medium">Room Number:</span> {detailsCheckout.room?.roomNumber || '-'}</div>
+                <div><span className="font-medium">Type:</span> {detailsCheckout.room?.type || '-'}</div>
+                <div><span className="font-medium">Occupied:</span> {detailsCheckout.room?.isOccupied ? 'Yes' : 'No'}</div>
+                <div><span className="font-medium">Hotel:</span> {detailsCheckout.hotel?.name || '-'}</div>
+              </div>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">Orders</h3>
+              {detailsCheckout.orders && detailsCheckout.orders.length > 0 ? (
+                <table className="min-w-full text-sm border">
+                  <thead>
+                    <tr>
+                      <th className="border px-2 py-1">Order ID</th>
+                      <th className="border px-2 py-1">Items</th>
+                      <th className="border px-2 py-1">Total</th>
+                      <th className="border px-2 py-1">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailsCheckout.orders.map((order: any) => (
+                      <tr key={order._id}>
+                        <td className="border px-2 py-1">{order._id}</td>
+                        <td className="border px-2 py-1">
+                          {order.items && order.items.length > 0 ? (
+                            <ul>
+                              {order.items.map((item: any, idx: number) => (
+                                <li key={idx}>{item.name} x{item.quantity} (₹{item.price})</li>
+                              ))}
+                            </ul>
+                          ) : '-'}
+                        </td>
+                        <td className="border px-2 py-1">₹{order.totalAmount}</td>
+                        <td className="border px-2 py-1">{order.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div>No orders found for this checkout.</div>
+              )}
+            </div>
+            <div className="flex justify-end mt-6">
+              <button
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                onClick={() => setShowDetails(false)}
+              >Close</button>
+            </div>
+          </div>
+        </div>
+      )}
                   </tbody>
                 </table>
                 {/* Pagination Controls */}

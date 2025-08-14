@@ -11,10 +11,11 @@ export default function RoomsPage() {
   const [user, setUser] = useState<any>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
   useEffect(() => {
-    // Fetch user info (replace with your actual user fetch logic)
+    // Fetch user info using token from localStorage
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
       headers: {
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}`,
+        Authorization: token ? `Bearer ${token}` : "",
         Accept: "application/json",
       },
     })
@@ -230,6 +231,7 @@ export default function RoomsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Phone</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Occupied</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Maintenance</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated At</th>
@@ -255,6 +257,13 @@ export default function RoomsPage() {
                     <td className="px-4 py-4 whitespace-nowrap">{room.guestName || '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap">{room.guestPhone || '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap">₹{room.rate}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      {room.isOccupied ? (
+                        <span className="inline-block px-2 py-0.5 rounded bg-red-100 text-red-800 text-xs">Occupied</span>
+                      ) : (
+                        <span className="inline-block px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">Available</span>
+                      )}
+                    </td>
                     <td className="px-4 py-4 whitespace-nowrap">{room.maintanenceStatus || '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap">{room.createdAt ? new Date(room.createdAt).toLocaleString() : '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap">{room.updatedAt ? new Date(room.updatedAt).toLocaleString() : '-'}</td>

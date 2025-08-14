@@ -28,7 +28,7 @@ export async function getMyHotel() {
   return res.json();
 }
 // Copied from design/hms-ui-v2/lib/api.ts
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+export const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
 
 function getToken() {
   if (typeof window === "undefined") return null;
@@ -40,7 +40,7 @@ export function getAuthHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-function mergeHeaders(base: HeadersInit, extra?: HeadersInit): HeadersInit {
+export function mergeHeaders(base: HeadersInit, extra?: HeadersInit): HeadersInit {
   if (!extra) return base;
   if (base instanceof Headers) base = Object.fromEntries(base.entries());
   if (extra instanceof Headers) extra = Object.fromEntries(extra.entries());
