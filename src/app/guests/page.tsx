@@ -43,6 +43,9 @@ interface GuestForm {
 }
 
 export default function GuestsPage() {
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const limit = 10;
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
@@ -181,6 +184,13 @@ export default function GuestsPage() {
       guest.phone.includes(filters.search);
     return matchesCheckedOut && matchesRoom && matchesSearch;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredGuests.length / limit);
+  const paginatedGuests = filteredGuests.slice((page - 1) * limit, page * limit);
+
+  // Reset page to 1 on filter change
+  useEffect(() => { setPage(1); }, [filters]);
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
@@ -476,7 +486,7 @@ export default function GuestsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredGuests.map((guest) => (
+                {paginatedGuests.map((guest) => (
                 <tr key={guest._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
@@ -542,6 +552,28 @@ export default function GuestsPage() {
             </tbody>
           </table>
         </div>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-4">
+            <button
+              className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+              onClick={() => setPage(page - 1)}
+              disabled={page === 1}
+            >Prev</button>
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i}
+                className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-blue-500 text-white' : 'bg-white'}`}
+                onClick={() => setPage(i + 1)}
+              >{i + 1}</button>
+            ))}
+            <button
+              className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+              onClick={() => setPage(page + 1)}
+              disabled={page === totalPages}
+            >Next</button>
+          </div>
+        )}
 
         {filteredGuests.length === 0 && (
           <div className="text-center py-12">

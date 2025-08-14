@@ -4,6 +4,9 @@ import { getOrders } from "@/lib/api";
 import { useEffect, useState } from "react";
 
 export default function OrdersPage() {
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const limit = 10;
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [updating, setUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
@@ -83,13 +86,20 @@ export default function OrdersPage() {
 
   // Filter orders
   const filteredOrders = orders.filter((order: any) => {
-  const matchesStatus = filters.status === "" || (order.status && order.status.toLowerCase() === filters.status);
+    const matchesStatus = filters.status === "" || (order.status && order.status.toLowerCase() === filters.status);
     const guestName = order.guestId ? `${order.guestId.firstName} ${order.guestId.lastName}` : "";
     const matchesSearch = filters.search === "" ||
       (guestName && guestName.toLowerCase().includes(filters.search.toLowerCase())) ||
       (order.roomNumber && order.roomNumber.toString().includes(filters.search));
     return matchesStatus && matchesSearch;
   });
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredOrders.length / limit);
+  const paginatedOrders = filteredOrders.slice((page - 1) * limit, page * limit);
+
+  // Reset page to 1 on filter change
+  useEffect(() => { setPage(1); }, [filters]);
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
@@ -181,7 +191,7 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredOrders.map((order: any) => (
+                {paginatedOrders.map((order: any) => (
                   <tr key={order._id} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`} onClick={() => handleSelectOrder(order)} style={{ cursor: 'pointer' }}>
                     <td className="px-6 py-4 whitespace-nowrap">{order._id}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{order.guestId ? `${order.guestId.firstName} ${order.guestId.lastName}` : "-"}</td>
@@ -205,6 +215,28 @@ export default function OrdersPage() {
               </tbody>
             </table>
           </div>
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-4">
+              <button
+                className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+                onClick={() => setPage(page - 1)}
+                disabled={page === 1}
+              >Prev</button>
+              {Array.from({ length: totalPages }, (_, i) => (
+                <button
+                  key={i}
+                  className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-blue-500 text-white' : 'bg-white'}`}
+                  onClick={() => setPage(i + 1)}
+                >{i + 1}</button>
+              ))}
+              <button
+                className="px-3 py-1 rounded border bg-white disabled:opacity-50"
+                onClick={() => setPage(page + 1)}
+                disabled={page === totalPages}
+              >Next</button>
+            </div>
+          )}
           {selectedOrder && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
               <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">

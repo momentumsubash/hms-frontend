@@ -19,15 +19,16 @@ import {
 } from "lucide-react";
 import { getMyHotel, getGuests, getRooms, getOrders } from "@/lib/api";
 export function HotelDashboard() {
-	const navLinks = [
-		{ label: "Checkouts", href: "/checkouts" },
-		{ label: "Guests", href: "/guests" },
-		{ label: "Hotels", href: "/hotels" },
-		{ label: "Items", href: "/items" },
-		{ label: "Orders", href: "/orders" },
-		{ label: "Rooms", href: "/rooms" },
-		{ label: "Users", href: "/users" },
-	];
+       const navLinks = [
+	       { label: "Checkouts", href: "/checkouts" },
+	       { label: "Guests", href: "/guests" },
+	       { label: "Hotels", href: "/hotels" },
+	       { label: "Items", href: "/items" },
+	       { label: "Orders", href: "/orders" },
+	       { label: "Rooms", href: "/rooms" },
+	       { label: "Stats", href: "/stats" },
+	       { label: "Users", href: "/users" },
+       ];
 	const { logout, loading: authLoading } = useAuth();
 	const [user, setUser] = useState<any>(null);
 	const [hotel, setHotel] = useState<any>(null);
