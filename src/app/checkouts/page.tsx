@@ -14,6 +14,7 @@ export default function CheckoutsPage() {
     { label: "Rooms", href: "/rooms" },
     { label: "Users", href: "/users" },
   ];
+
   const [checkouts, setCheckouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -74,96 +75,61 @@ export default function CheckoutsPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Checkouts Management</h1>
         </div>
-
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
             <button 
-              onClick={() => setError("")} 
+              onClick={() => setError("")}
               className="float-right text-red-700 hover:text-red-900"
             >
               ×
             </button>
           </div>
         )}
-
-        {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-semibold mb-3">Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Search (Guest, Room)</label>
-              <input
-                type="text"
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Search checkouts..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              >
-                <option value="">All</option>
-                <option value="Completed">Completed</option>
-                <option value="Pending">Pending</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Checkouts Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden mt-6">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Checkout Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredCheckouts.map((checkout: any) => (
-                  <tr key={checkout._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">{checkout.guestName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{checkout.roomNumber}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{checkout.checkoutDate ? new Date(checkout.checkoutDate).toLocaleString() : ""}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{checkout.status}</td>
+            {filteredCheckouts.length > 0 ? (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Bill</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredCheckouts.map((checkout: any) => (
+                    <tr key={checkout._id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {checkout.guest ? `${checkout.guest.firstName} ${checkout.guest.lastName}` : "-"}
+                        <div className="text-xs text-gray-500">{checkout.guest?.email}</div>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {checkout.room ? `#${checkout.room.roomNumber} (${checkout.room.type})` : "-"}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap capitalize">{checkout.status}</td>
+                      <td className="px-4 py-4 whitespace-nowrap font-semibold">₹{checkout.totalBill}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-xs">{checkout.createdAt ? new Date(checkout.createdAt).toLocaleString() : ""}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {/* Details button removed */}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-gray-500">No checkouts found matching your criteria.</div>
+              </div>
+            )}
           </div>
-          {filteredCheckouts.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-gray-500">No checkouts found matching your criteria.</div>
-            </div>
-          )}
         </div>
-
-        {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{checkouts.length}</div>
-            <div className="text-sm text-gray-600">Total Checkouts</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">{checkouts.filter((c: any) => c.status === "Completed").length}</div>
-            <div className="text-sm text-gray-600">Completed</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-yellow-600">{checkouts.filter((c: any) => c.status === "Pending").length}</div>
-            <div className="text-sm text-gray-600">Pending</div>
-          </div>
-        </div>
+  {/* Checkout Details Modal removed */}
       </div>
     </div>
   );
 }
+
