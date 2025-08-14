@@ -29,8 +29,16 @@ export default function ItemsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await getItems();
-      setItems(res?.data || res || []);
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api";
+      const res = await fetch(`${apiBase}/items?page=1&limit=10`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4OWRiMjQ5N2M2NzMzMjVlODNjMzcwOSIsInJvbGUiOiJtYW5hZ2VyIiwiaWF0IjoxNzU1MTc0NTE1LCJleHAiOjE3NTUyNjA5MTV9.jCJC1S4lDBM9a_c0ocZwgMNFf2TNr2UBDvXLXxHi3R4"
+        },
+        credentials: "include"
+      });
+      const data = await res.json();
+      setItems(data.data || []);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -120,18 +128,26 @@ export default function ItemsPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated At</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredItems.map((item: any) => (
                   <tr key={item._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">{item.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{item.description}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{item.category}</td>
                     <td className="px-6 py-4 whitespace-nowrap">₹{item.price}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{item.stock}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{item.isAvailable ? "Yes" : "No"}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{item.hotel?.name || "-"}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{new Date(item.createdAt).toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{new Date(item.updatedAt).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -145,18 +161,14 @@ export default function ItemsPage() {
         </div>
 
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-blue-600">{items.length}</div>
             <div className="text-sm text-gray-600">Total Items</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">{items.filter((i: any) => i.stock > 0).length}</div>
-            <div className="text-sm text-gray-600">In Stock</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-red-600">{items.filter((i: any) => i.stock === 0).length}</div>
-            <div className="text-sm text-gray-600">Out of Stock</div>
+            <div className="text-2xl font-bold text-green-600">{items.filter((i: any) => i.isAvailable).length}</div>
+            <div className="text-sm text-gray-600">Available</div>
           </div>
         </div>
       </div>

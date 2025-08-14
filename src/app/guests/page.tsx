@@ -228,7 +228,13 @@ export default function GuestsPage() {
                     className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
                     onClick={async () => {
                       setShowUserMenu(false);
-                      await fetch("/api/auth/logout", { method: "POST" });
+                    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api";
+                    await fetch(`${apiBase}/auth/logout`, {
+                      method: "POST",
+                      headers: {
+                        Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4OWRiMjQ5N2M2NzMzMjVlODNjMzcwOSIsInJvbGUiOiJtYW5hZ2VyIiwiaWF0IjoxNzU1MTc0NTE1LCJleHAiOjE3NTUyNjA5MTV9.jCJC1S4lDBM9a_c0ocZwgMNFf2TNr2UBDvXLXxHi3R4"
+                      }
+                    });
                       window.location.href = "/login";
                     }}
                   >

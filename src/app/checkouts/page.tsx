@@ -2,13 +2,15 @@
 "use client";
 import { getCheckouts } from "@/lib/api";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/components/ui/auth-provider";
 
 export default function CheckoutsPage() {
+  const { user, loading: userLoading } = useAuth();
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
     { label: "Guests", href: "/guests" },
-    { label: "Hotels", href: "/hotels" },
+    { label: "Hotels", href: "/hotels", superAdminOnly: true },
     { label: "Items", href: "/items" },
     { label: "Orders", href: "/orders" },
     { label: "Rooms", href: "/rooms" },
@@ -58,7 +60,7 @@ export default function CheckoutsPage() {
           <div className="flex h-16 items-center space-x-6">
             <span className="font-bold text-xl text-primary">Hotel HMS</span>
             <div className="flex space-x-4">
-              {navLinks.map((link) => (
+              {(!userLoading && user) && navLinks.filter(link => !link.superAdminOnly || user.role === "super_admin").map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
