@@ -168,7 +168,7 @@ export default function UsersPage() {
       lastName: "",
       role: "staff",
       isActive: true,
-      hotel: user?.role === 'super_admin' ? "" : user?.hotel || ""
+      hotel: ""
     });
     setShowModal(true);
   };
@@ -471,9 +471,9 @@ export default function UsersPage() {
                   {user?.role === 'super_admin' && <option value="super_admin">Super Admin</option>}
                 </select>
               </div>
-              {user?.role === 'super_admin' ? (
-                <div>
-                  <label className="block text-sm font-medium mb-1">Hotel *</label>
+              <div>
+                <label className="block text-sm font-medium mb-1">Hotel ID *</label>
+                {hotels.length > 0 ? (
                   <select
                     name="hotel"
                     value={formData.hotel}
@@ -486,8 +486,17 @@ export default function UsersPage() {
                       <option key={h._id} value={h._id}>{h.name || h._id}</option>
                     ))}
                   </select>
-                </div>
-              ) : null}
+                ) : (
+                  <input
+                    type="text"
+                    name="hotel"
+                    value={formData.hotel}
+                    onChange={handleFormChange}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    required
+                  />
+                )}
+              </div>
               <div className="flex items-center">
                 <input
                   type="checkbox"

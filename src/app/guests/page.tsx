@@ -42,6 +42,7 @@ interface GuestForm {
   rooms: string[];
   checkInDate: string;
   checkOutDate: string;
+  hotel?: string;
 }
 
 // Helper function to get current datetime in local format for datetime-local input
@@ -199,11 +200,21 @@ export default function GuestsPage() {
 
     setFormLoading(true);
     try {
-      const guestData = {
-        ...formData,
-        checkInDate: new Date(formData.checkInDate).toISOString(),
-        checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined
-      };
+      let guestData;
+      if (user?.role === 'super_admin') {
+        guestData = {
+          ...formData,
+          checkInDate: new Date(formData.checkInDate).toISOString(),
+          checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined
+        };
+      } else {
+        const { hotel, ...formDataWithoutHotel } = formData;
+        guestData = {
+          ...formDataWithoutHotel,
+          checkInDate: new Date(formData.checkInDate).toISOString(),
+          checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined
+        };
+      }
       let resp;
       if (editingGuest) {
         resp = await updateGuest(editingGuest._id, guestData);
@@ -461,6 +472,18 @@ export default function GuestsPage() {
                   rows={2}
                 />
               </div>
+              {user?.role === 'super_admin' && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Hotel ID *</label>
+                  <input
+                    type="text"
+                    value={formData.hotel || ''}
+                    onChange={e => setFormData(prev => ({ ...prev, hotel: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    required
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium mb-1">Rooms *</label>
