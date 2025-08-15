@@ -10,7 +10,6 @@ export default function UsersPage() {
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
     { label: "Guests", href: "/guests" },
-    { label: "Hotels", href: "/hotels" },
     { label: "Items", href: "/items" },
     { label: "Orders", href: "/orders" },
     { label: "Rooms", href: "/rooms" },
