@@ -155,7 +155,7 @@ export function HotelDashboard() {
 				       }
 				       if (res.ok) {
 					       userInfo = await res.json();
-					       setUser(userInfo);
+					       setUser(userInfo.data || null);
 				       } else {
 					       setUser(null);
 				       }
@@ -177,7 +177,7 @@ export function HotelDashboard() {
 		       }
 	       }
 	       fetchData();
-	}, []);
+       }, []);
 
 	const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % hotelImages.length);
 	const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + hotelImages.length) % hotelImages.length);
@@ -226,8 +226,8 @@ export function HotelDashboard() {
 								       onClick={() => setShowUserMenu((v) => !v)}
 							       >
 								       <span className="font-medium text-gray-700">
-									   {user?.firstName ? user.firstName : user?.email || "User"}
-								       </span>
+	{user?.firstName || user?.lastName ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() : user?.email || "User"}
+</span>
 								       <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
 							       </button>
 							       {showUserMenu && (
@@ -256,39 +256,55 @@ export function HotelDashboard() {
 					</p>
 				</div>
 
+				   {/* Hotel Notes Section - full width above hotel info */}
+					 <div className="bg-white rounded-lg shadow p-6 mt-8 mb-8">
+						 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+							 <span>Hotel Notes</span>
+						 </h2>
+							 <form onSubmit={handleCreateNote} className="flex flex-row gap-2 mb-4 w-full">
+								 <input
+									 type="text"
+									 className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+									 placeholder="Add a new note..."
+									 value={noteText}
+									 onChange={e => setNoteText(e.target.value)}
+									 disabled={notesLoading}
+								 />
+								 <div className="flex flex-col items-end w-36">{/* fixed width for button */}
+									 <Button
+										 type="submit"
+										 className="w-full min-w-[120px] bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded font-medium shadow-sm"
+										 disabled={notesLoading || !noteText.trim()}
+									 >
+										 Add Note
+									 </Button>
+								 </div>
+							 </form>
+						 {notesError && <div className="text-red-600 mb-2">{notesError}</div>}
+							 {notesLoading ? (
+								 <div>Loading notes...</div>
+							 ) : (
+								 <ul className="space-y-2 w-full">
+									 {notes.length === 0 && <li className="text-gray-500">No notes yet.</li>}
+											 {notes.map((note: any) => (
+												 <li key={note._id} className="flex items-center gap-2 bg-slate-100 rounded px-3 py-2 w-full">
+													 <span className="flex-1 break-words">{note.text}</span>
+																	 <Button
+																		 type="button"
+																		 size="sm"
+																		 className="w-36 min-w-[120px] bg-red-600 text-white hover:bg-red-700 px-4 py-1.5 rounded font-medium shadow-sm"
+																		 onClick={() => handleDeleteNote(note._id)}
+																		 disabled={notesLoading}
+																	 >
+																		 Delete
+																	 </Button>
+												 </li>
+											 ))}
+								 </ul>
+							 )}
+					 </div>
 				   {/* Hotel Overview Cards */}
 				   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-							 {/* Notes Section */}
-							 <div className="bg-white rounded-lg shadow p-6 mt-8">
-								 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-									 <span>Hotel Notes</span>
-								 </h2>
-								 <form onSubmit={handleCreateNote} className="flex gap-2 mb-4">
-									 <input
-										 type="text"
-										 className="flex-1 border border-gray-300 rounded px-3 py-2"
-										 placeholder="Add a new note..."
-										 value={noteText}
-										 onChange={e => setNoteText(e.target.value)}
-										 disabled={notesLoading}
-									 />
-									 <Button type="submit" disabled={notesLoading || !noteText.trim()}>Add Note</Button>
-								 </form>
-								 {notesError && <div className="text-red-600 mb-2">{notesError}</div>}
-								 {notesLoading ? (
-									 <div>Loading notes...</div>
-								 ) : (
-									 <ul className="space-y-2">
-										 {notes.length === 0 && <li className="text-gray-500">No notes yet.</li>}
-										 {notes.map((note: any) => (
-											 <li key={note._id} className="flex items-center justify-between bg-slate-100 rounded px-3 py-2">
-												 <span>{note.text}</span>
-												 <Button variant="destructive" size="sm" onClick={() => handleDeleteNote(note._id)} disabled={notesLoading}>Delete</Button>
-											 </li>
-										 ))}
-									 </ul>
-								 )}
-							 </div>
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
 							<div className="flex items-center space-x-4">
