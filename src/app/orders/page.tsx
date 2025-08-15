@@ -2,8 +2,10 @@
 "use client";
 // import { getOrders } from "@/lib/api";
 import { useEffect, useState } from "react";
+
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
+import { getItems } from "@/lib/api";
 
 export default function OrdersPage() {
   // Pagination state
@@ -13,6 +15,43 @@ export default function OrdersPage() {
   const [updating, setUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
   const [updateError, setUpdateError] = useState("");
+  // Create order modal state
+  const [showCreate, setShowCreate] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const [createForm, setCreateForm] = useState({
+    roomNumber: "",
+    itemId: ""
+  });
+  const [itemSearch, setItemSearch] = useState("");
+  const [itemList, setItemList] = useState<any[]>([]);
+  const [itemLoading, setItemLoading] = useState(false);
+  // Fetch items for modal
+  useEffect(() => {
+    if (!showCreate) return;
+    const fetchItems = async () => {
+      setItemLoading(true);
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api";
+  const params = new URLSearchParams();
+  params.set('limit', '100');
+  if (itemSearch) params.set('search', itemSearch);
+  const url = `${apiBase}/items?${params.toString()}`;
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(url, { headers });
+        if (!res.ok) throw new Error("Failed to fetch items");
+        const items = await res.json();
+        setItemList(items.data || items);
+      } catch {
+        setItemList([]);
+      } finally {
+        setItemLoading(false);
+      }
+    };
+    fetchItems();
+  }, [showCreate, itemSearch]);
 
   const handleSelectOrder = (order: any) => {
     setSelectedOrder(order);
@@ -155,7 +194,128 @@ export default function OrdersPage() {
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Orders Management</h1>
+          <button
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            onClick={() => {
+              setShowCreate(true);
+              setCreateError("");
+            }}
+          >+ New Order</button>
         </div>
+        {/* Create Order Modal */}
+        {showCreate && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-8 w-full max-w-4xl max-h-[90vh] flex gap-8 overflow-y-auto">
+              {/* Left: Form */}
+              <div className="flex-1 min-w-[320px]">
+                <h2 className="text-2xl font-bold mb-4">Create New Order</h2>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setCreateLoading(true);
+                    setCreateError("");
+                    try {
+                      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+                      if (!token) throw new Error("No token found");
+                      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api";
+                      const res = await fetch(`${apiBase}/orders`, {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                          roomNumber: createForm.roomNumber,
+                          itemId: createForm.itemId
+                        })
+                      });
+                      if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.message || "Failed to create order");
+                      }
+                      setShowCreate(false);
+                      setCreateForm({ roomNumber: "", itemId: "" });
+                      await fetchAll();
+                    } catch (err: any) {
+                      setCreateError(err.message);
+                    } finally {
+                      setCreateLoading(false);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Room Number</label>
+                    <input
+                      type="text"
+                      value={createForm.roomNumber}
+                      onChange={e => setCreateForm(f => ({ ...f, roomNumber: e.target.value }))}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Item ID</label>
+                    <input
+                      type="text"
+                      value={createForm.itemId}
+                      onChange={e => setCreateForm(f => ({ ...f, itemId: e.target.value }))}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      required
+                    />
+                  </div>
+                  {createError && <div className="text-red-600 mb-2">{createError}</div>}
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreate(false)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      disabled={createLoading}
+                    >Cancel</button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      disabled={createLoading}
+                    >{createLoading ? "Creating..." : "Create Order"}</button>
+                  </div>
+                </form>
+              </div>
+              {/* Right: Item List */}
+              <div className="flex-1 min-w-[320px] max-w-[400px]">
+                <div className="flex items-center mb-2">
+                  <input
+                    type="text"
+                    value={itemSearch}
+                    onChange={e => setItemSearch(e.target.value)}
+                    className="border border-gray-300 rounded px-3 py-2 w-full"
+                    placeholder="Search items by name..."
+                  />
+                </div>
+                <div className="border rounded h-[400px] overflow-y-auto bg-gray-50 p-2">
+                  {itemLoading ? (
+                    <div className="text-center text-gray-500 py-8">Loading...</div>
+                  ) : itemList.length === 0 ? (
+                    <div className="text-center text-gray-500 py-8">No items found.</div>
+                  ) : (
+                    <ul>
+                      {itemList.map((item: any) => (
+                        <li
+                          key={item._id}
+                          className={`p-2 rounded cursor-pointer hover:bg-blue-100 ${createForm.itemId === item._id ? 'bg-blue-200' : ''}`}
+                          onClick={() => setCreateForm(f => ({ ...f, itemId: item._id }))}
+                        >
+                          <div className="font-semibold">{item.name}</div>
+                          <div className="text-xs text-gray-500">{item.category}</div>
+                          <div className="text-xs text-gray-400">ID: {item._id}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">

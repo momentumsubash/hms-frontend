@@ -45,6 +45,15 @@ interface GuestForm {
 }
 
 export default function GuestsPage() {
+  // Notification state
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  // Hide notification after 3s
+  useEffect(() => {
+    if (notification) {
+      const t = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [notification]);
   // Pagination state
   const [page, setPage] = useState(1);
   const limit = 10;
@@ -125,22 +134,24 @@ export default function GuestsPage() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
-    
     try {
       const guestData = {
         ...formData,
         checkInDate: new Date(formData.checkInDate).toISOString(),
         checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined
       };
+      let resp;
       if (editingGuest) {
-        await updateGuest(editingGuest._id, guestData);
+        resp = await updateGuest(editingGuest._id, guestData);
       } else {
-        await createGuest(guestData);
+        resp = await createGuest(guestData);
       }
       await loadData();
       resetForm();
+      setNotification({ type: 'success', message: resp?.message || 'Operation successful' });
     } catch (e: any) {
       setError(e.message);
+      setNotification({ type: 'error', message: e.message || 'Operation failed' });
     } finally {
       setFormLoading(false);
     }
@@ -397,6 +408,13 @@ export default function GuestsPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Notification Toast */}
+      {notification && (
+        <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+          {notification.message}
         </div>
       )}
 
