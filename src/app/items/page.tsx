@@ -3,12 +3,23 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 
+interface CategoryObj {
+  _id: string;
+  name: string;
+  description?: string;
+  createdBy?: string;
+  hotel?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  __v?: number;
+}
+
 interface Item {
   _id: string;
   name: string;
   description: string;
   price: number;
-  category: string;
+  category: string | CategoryObj;
   isAvailable: boolean;
   hotel?: { name: string };
   createdAt: string;
@@ -56,123 +67,156 @@ export default function ItemsPage() {
   // Form state
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
     price: "",
     category: "",
-    isAvailable: true
+    isAvailable: true,
+    profitMarginBand: "",
+    comment: ""
   });
 
 
   // Categories state
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories, setCategories] = useState<CategoryObj[]>([]);
 
-  // Fetch categories from API
+  // Fetch /auth/me, /hotels/me, and /items on page load
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchInitialData = async () => {
+      const token = getToken();
+      if (!token) {
+        setError("No authentication token");
+        setLoading(false);
+        return;
+      }
       try {
-        const token = getToken();
-        const res = await fetch("http://localhost:3000/api/categories", {
+        // 1. Fetch /auth/me
+        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        if (!meRes.ok) throw new Error("Not authenticated");
+        const meData = await meRes.json();
+        localStorage.setItem("user", JSON.stringify(meData.data || null));
+
+        // 2. Fetch /hotels/me
+        const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        let hotelId = "";
+        if (hotelRes.ok) {
+          const hotelData = await hotelRes.json();
+          localStorage.setItem("hotel", JSON.stringify(hotelData.data || null));
+          hotelId = hotelData.data?._id;
+        }
+
+        // 3. Fetch categories for this hotel
+        if (hotelId) {
+          const catRes = await fetch(`http://localhost:3000/api/categories?hotelId=${hotelId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json"
+            }
+          });
+          if (catRes.ok) {
+            const catData = await catRes.json();
+            setCategories(catData.data || []);
+          }
+        }
+
+        // 4. Fetch items
+        const apiBase = "http://localhost:3000/api";
+        const params = new URLSearchParams({
+          page: page.toString(),
+          limit: limit.toString()
+        });
+        if (filters.isAvailable) params.append("isAvailable", filters.isAvailable);
+        if (filters.category) params.append("category", filters.category);
+        const itemsRes = await fetch(`${apiBase}/items?${params.toString()}`, {
           headers: {
             Accept: "application/json",
             Authorization: `Bearer ${token}`
           }
         });
-        if (res.status === 401) {
-          localStorage.removeItem("token");
-          window.location.href = "/login";
-          return;
+        const data = await itemsRes.json();
+        let itemsData = data.data || data || [];
+        if (filters.search) {
+          itemsData = itemsData.filter((item: Item) =>
+            item.name && item.name.toLowerCase().includes(filters.search.toLowerCase())
+          );
         }
-        if (!res.ok) throw new Error("Failed to fetch categories");
-        const data = await res.json();
-        // Support both array and {data: array}
-        setCategories(Array.isArray(data) ? data : data.data || []);
-      } catch (e) {
-        setCategories([]);
+        setItems(itemsData);
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchCategories();
+    fetchInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [page, filters]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const token = getToken();
-      const apiBase = "http://localhost:3000/api";
-      
-      // Build query parameters
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString()
-      });
-      
-      if (filters.isAvailable) params.append("isAvailable", filters.isAvailable);
-      if (filters.category) params.append("category", filters.category);
-
-      const res = await fetch(`${apiBase}/items?${params.toString()}`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (res.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-        return;
-      }
-
-      const data = await res.json();
-      let itemsData = data.data || data || [];
-      
-      // Apply client-side search filter if needed
-      if (filters.search) {
-        itemsData = itemsData.filter((item: Item) =>
-          item.name && item.name.toLowerCase().includes(filters.search.toLowerCase())
-        );
-      }
-
-      setItems(itemsData);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const createItem = async () => {
     try {
       const token = getToken();
+      // Get hotelId from localStorage
+      const hotel = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('hotel') || '{}') : {};
+      const hotelId = hotel?._id;
+      // Build payload as per new requirements
+      const payload: any = {
+        name: formData.name,
+        price: parseFloat(formData.price),
+        category: formData.category,
+        isAvailable: formData.isAvailable,
+        hotel: hotelId
+      };
+      if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
+      if (formData.comment) payload.comment = formData.comment;
       const res = await fetch("http://localhost:3000/api/items", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...formData,
-          price: parseFloat(formData.price)
-        })
+        body: JSON.stringify(payload)
       });
-
       if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login";
         return;
       }
-
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to create item");
       }
-
       setSuccess("Item created successfully!");
       setShowCreateModal(false);
       resetForm();
-      loadData();
+      // Refresh items
+      const apiBase = "http://localhost:3000/api";
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+      if (filters.isAvailable) params.append("isAvailable", filters.isAvailable);
+      if (filters.category) params.append("category", filters.category);
+      const itemsRes = await fetch(`${apiBase}/items?${params.toString()}`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await itemsRes.json();
+      let itemsData = data.data || data || [];
+      if (filters.search) {
+        itemsData = itemsData.filter((item: Item) =>
+          item.name && item.name.toLowerCase().includes(filters.search.toLowerCase())
+        );
+      }
+      setItems(itemsData);
     } catch (e: any) {
       setError(e.message);
     }
@@ -180,37 +224,64 @@ export default function ItemsPage() {
 
   const updateItem = async () => {
     if (!selectedItem) return;
-    
     try {
       const token = getToken();
+      // Get hotelId from localStorage
+      const hotel = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('hotel') || '{}') : {};
+      const hotelId = hotel?._id;
+      // Build payload as per new requirements
+      const payload: any = {
+        name: formData.name,
+        price: parseFloat(formData.price),
+        category: formData.category,
+        isAvailable: formData.isAvailable,
+        hotel: hotelId
+      };
+      if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
+      if (formData.comment) payload.comment = formData.comment;
       const res = await fetch(`http://localhost:3000/api/items/${selectedItem._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({
-          ...formData,
-          price: parseFloat(formData.price)
-        })
+        body: JSON.stringify(payload)
       });
-
       if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login";
         return;
       }
-
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to update item");
       }
-
       setSuccess("Item updated successfully!");
       setShowEditModal(false);
       setSelectedItem(null);
       resetForm();
-      loadData();
+      // Refresh items
+      const apiBase = "http://localhost:3000/api";
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+      if (filters.isAvailable) params.append("isAvailable", filters.isAvailable);
+      if (filters.category) params.append("category", filters.category);
+      const itemsRes = await fetch(`${apiBase}/items?${params.toString()}`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await itemsRes.json();
+      let itemsData = data.data || data || [];
+      if (filters.search) {
+        itemsData = itemsData.filter((item: Item) =>
+          item.name && item.name.toLowerCase().includes(filters.search.toLowerCase())
+        );
+      }
+      setItems(itemsData);
     } catch (e: any) {
       setError(e.message);
     }
@@ -218,7 +289,6 @@ export default function ItemsPage() {
 
   const deleteItem = async () => {
     if (!selectedItem) return;
-    
     try {
       const token = getToken();
       const res = await fetch(`http://localhost:3000/api/items/${selectedItem._id}`, {
@@ -227,22 +297,40 @@ export default function ItemsPage() {
           Authorization: `Bearer ${token}`
         }
       });
-
       if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login";
         return;
       }
-
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to delete item");
       }
-
       setSuccess("Item deleted successfully!");
       setShowDeleteModal(false);
       setSelectedItem(null);
-      loadData();
+      // Refresh items
+      const apiBase = "http://localhost:3000/api";
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
+      });
+      if (filters.isAvailable) params.append("isAvailable", filters.isAvailable);
+      if (filters.category) params.append("category", filters.category);
+      const itemsRes = await fetch(`${apiBase}/items?${params.toString()}`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await itemsRes.json();
+      let itemsData = data.data || data || [];
+      if (filters.search) {
+        itemsData = itemsData.filter((item: Item) =>
+          item.name && item.name.toLowerCase().includes(filters.search.toLowerCase())
+        );
+      }
+      setItems(itemsData);
     } catch (e: any) {
       setError(e.message);
     }
@@ -251,23 +339,47 @@ export default function ItemsPage() {
   const resetForm = () => {
     setFormData({
       name: "",
-      description: "",
       price: "",
       category: "",
-      isAvailable: true
+      isAvailable: true,
+      profitMarginBand: "",
+      comment: ""
     });
   };
 
-  const openEditModal = (item: Item) => {
+  const openEditModal = async (item: Item) => {
     setSelectedItem(item);
-    setFormData({
-      name: item.name,
-      description: item.description,
-      price: item.price.toString(),
-      category: item.category,
-      isAvailable: item.isAvailable
-    });
-    setShowEditModal(true);
+    const token = getToken();
+    try {
+      const res = await fetch(`http://localhost:3000/api/items/${item._id}`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!res.ok) throw new Error("Failed to fetch item details");
+      const data = await res.json();
+      const details = data.data || data;
+      setFormData({
+        name: details.name || "",
+        price: details.price?.toString() || "",
+        category: typeof details.category === 'object' && details.category !== null ? details.category._id : details.category || "",
+        isAvailable: details.isAvailable ?? true,
+        profitMarginBand: details.profitMarginBand || "",
+        comment: details.comment || ""
+      });
+      setShowEditModal(true);
+    } catch (e: any) {
+      setFormData({
+        name: item.name,
+        price: item.price.toString(),
+        category: typeof item.category === 'object' && item.category !== null ? item.category._id : item.category,
+        isAvailable: item.isAvailable,
+        profitMarginBand: (item as any).profitMarginBand || "",
+        comment: (item as any).comment || ""
+      });
+      setShowEditModal(true);
+    }
   };
 
   const openDeleteModal = (item: Item) => {
@@ -367,9 +479,10 @@ export default function ItemsPage() {
                 {categories.length === 0 ? (
                   <option disabled>Loading...</option>
                 ) : (
-                  categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))
+                  categories.map((cat, idx) => {
+                    let key = typeof cat === 'string' ? cat : JSON.stringify(cat) + '-' + idx;
+                    return <option key={key} value={typeof cat === 'string' ? cat : ''}>{typeof cat === 'string' ? cat : JSON.stringify(cat)}</option>;
+                  })
                 )}
               </select>
             </div>
@@ -404,44 +517,50 @@ export default function ItemsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {items.map((item: Item) => (
-                  <tr key={item._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">{item.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{item.description}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                        {item.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">₹{item.price}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        item.isAvailable 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {item.isAvailable ? "Available" : "Unavailable"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{item.hotel?.name || "-"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => openEditModal(item)}
-                          className="text-blue-600 hover:text-blue-800 text-sm"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(item)}
-                          className="text-red-600 hover:text-red-800 text-sm"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+                {Array.isArray(items) && items.length > 0 ? (
+                  items.map((item: Item) => (
+                    <tr key={item._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap font-medium">{item.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{item.description}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                          {typeof item.category === 'object' && item.category !== null ? item.category.name : item.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">₹{item.price}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          item.isAvailable 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {item.isAvailable ? "Available" : "Unavailable"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">{item.hotel?.name || "-"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => openEditModal(item)}
+                            className="text-blue-600 hover:text-blue-800 text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => openDeleteModal(item)}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : items && typeof items === 'object' && Object.keys(items).length > 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-red-500">Invalid items data received. Please check the API response.</td>
                   </tr>
-                ))}
+                ) : null}
               </tbody>
             </table>
           </div>
@@ -487,16 +606,7 @@ export default function ItemsPage() {
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    required
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    rows={3}
-                  />
-                </div>
+                {/* Description field removed as per requirements */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Price (₹)</label>
                   <input
@@ -518,10 +628,30 @@ export default function ItemsPage() {
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   >
                     <option value="">Select Category</option>
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    {categories.map((cat) => (
+                      <option key={cat._id} value={cat._id}>{cat.name}</option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Profit Margin Band</label>
+                  <input
+                    type="text"
+                    value={formData.profitMarginBand}
+                    onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="e.g. High, Medium, Low"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Comment</label>
+                  <input
+                    type="text"
+                    value={formData.comment}
+                    onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="Optional comment"
+                  />
                 </div>
                 <div>
                   <label className="flex items-center">
@@ -572,16 +702,7 @@ export default function ItemsPage() {
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    required
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    rows={3}
-                  />
-                </div>
+                {/* Description field removed as per requirements */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Price (₹)</label>
                   <input
@@ -603,10 +724,30 @@ export default function ItemsPage() {
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   >
                     <option value="">Select Category</option>
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    {categories.map((cat) => (
+                      <option key={cat._id} value={cat._id}>{cat.name}</option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Profit Margin Band</label>
+                  <input
+                    type="text"
+                    value={formData.profitMarginBand}
+                    onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="e.g. High, Medium, Low"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Comment</label>
+                  <input
+                    type="text"
+                    value={formData.comment}
+                    onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="Optional comment"
+                  />
                 </div>
                 <div>
                   <label className="flex items-center">

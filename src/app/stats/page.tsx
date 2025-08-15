@@ -39,13 +39,29 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Fetch item-sales and room-sales without filters on initial load
+  // Fetch /auth/me, then item-sales and room-sales without filters on initial load
   useEffect(() => {
-    const fetchInitialStats = async () => {
+    const fetchAll = async () => {
       setLoading(true);
       setError("");
       const token = getToken();
+      if (!token) {
+        setError("No authentication token");
+        setLoading(false);
+        return;
+      }
       try {
+        // 1. Fetch /auth/me
+        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        if (!meRes.ok) throw new Error("Not authenticated");
+        const meData = await meRes.json();
+        localStorage.setItem("user", JSON.stringify(meData.data || null));
+        // 2. Fetch stats
         const [itemRes, roomRes] = await Promise.all([
           fetch(`http://localhost:3000/api/stats/item-sales`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -54,15 +70,12 @@ export default function StatsPage() {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
-        
         if (itemRes.status === 401 || roomRes.status === 401) {
           localStorage.removeItem("token");
           window.location.href = "/login";
           return;
         }
-        
         if (!itemRes.ok || !roomRes.ok) throw new Error("Failed to fetch stats");
-        
         const itemJson = await itemRes.json();
         const roomJson = await roomRes.json();
         setItemStats(itemJson.data || itemJson);
@@ -73,7 +86,7 @@ export default function StatsPage() {
         setLoading(false);
       }
     };
-    fetchInitialStats();
+    fetchAll();
   }, []);
 
   // Fetch with filters only when user submits the form

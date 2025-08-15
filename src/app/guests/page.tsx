@@ -111,24 +111,40 @@ export default function GuestsPage() {
   });
 
   useEffect(() => {
-    loadData();
+    const fetchAll = async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        setError("No authentication token");
+        setLoading(false);
+        return;
+      }
+      try {
+        // 1. Fetch /auth/me
+        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        if (!meRes.ok) throw new Error("Not authenticated");
+        const meData = await meRes.json();
+        localStorage.setItem("user", JSON.stringify(meData.data || null));
+        // 2. Fetch guests and rooms
+        setLoading(true);
+        const [guestsRes, roomsRes] = await Promise.all([
+          getGuests(),
+          getRooms(),
+        ]);
+        setGuests(guestsRes?.data || guestsRes || []);
+        setRooms(roomsRes?.data || roomsRes || []);
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
   }, []);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [guestsRes, roomsRes] = await Promise.all([
-        getGuests(),
-        getRooms(),
-      ]);
-      setGuests(guestsRes?.data || guestsRes || []);
-      setRooms(roomsRes?.data || roomsRes || []);
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const resetForm = () => {
     setFormData({
@@ -221,7 +237,16 @@ export default function GuestsPage() {
       } else {
         resp = await createGuest(guestData);
       }
-      await loadData();
+      // Refresh guests and rooms
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        const [guestsRes, roomsRes] = await Promise.all([
+          getGuests(),
+          getRooms(),
+        ]);
+        setGuests(guestsRes?.data || guestsRes || []);
+        setRooms(roomsRes?.data || roomsRes || []);
+      }
       resetForm();
       setNotification({ type: 'success', message: resp?.message || 'Operation successful' });
     } catch (e: any) {

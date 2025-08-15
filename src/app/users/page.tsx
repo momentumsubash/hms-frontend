@@ -57,35 +57,62 @@ export default function UsersPage() {
   }, [user]);
 
   useEffect(() => {
-    loadData();
+    const fetchAll = async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        setError("No authentication token");
+        setLoading(false);
+        return;
+      }
+      try {
+        // 1. Fetch /auth/me
+        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        if (!meRes.ok) throw new Error("Not authenticated");
+        const meData = await meRes.json();
+        localStorage.setItem("user", JSON.stringify(meData.data || null));
+        // 2. Fetch users
+        setLoading(true);
+        const res = await getUsers();
+        setUsers(res?.data || []);
+        setPagination(res?.pagination || {
+          page: 1,
+          limit: 10,
+          total: 0,
+          pages: 1
+        });
+      } catch (e: any) {
+        setError(e.message);
+        toast.error(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
   }, [filters, pagination.page]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-  const res = await getUsers();
-      setUsers(res?.data || []);
-      setPagination(res?.pagination || {
-        page: 1,
-        limit: 10,
-        total: 0,
-        pages: 1
-      });
-    } catch (e: any) {
-      setError(e.message);
-      toast.error(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCreate = async () => {
     try {
       setLoading(true);
-  await createUser(formData);
-  toast.success("User created successfully");
-  setShowModal(false);
-  loadData();
+      await createUser(formData);
+      toast.success("User created successfully");
+      setShowModal(false);
+      // Refresh users list
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        const res = await getUsers();
+        setUsers(res?.data || []);
+        setPagination(res?.pagination || {
+          page: 1,
+          limit: 10,
+          total: 0,
+          pages: 1
+        });
+      }
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -99,7 +126,18 @@ export default function UsersPage() {
       await updateUser(currentUser._id, formData);
       toast.success("User updated successfully");
       setShowModal(false);
-      loadData();
+      // Refresh users list
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        const res = await getUsers();
+        setUsers(res?.data || []);
+        setPagination(res?.pagination || {
+          page: 1,
+          limit: 10,
+          total: 0,
+          pages: 1
+        });
+      }
     } catch (e: any) {
       toast.error(e.message);
     } finally {
@@ -111,9 +149,20 @@ export default function UsersPage() {
     if (window.confirm("Are you sure you want to delete this user?")) {
       try {
         setLoading(true);
-  await deleteUser(userId);
-  toast.success("User deleted successfully");
-  loadData();
+        await deleteUser(userId);
+        toast.success("User deleted successfully");
+        // Refresh users list
+        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+        if (token) {
+          const res = await getUsers();
+          setUsers(res?.data || []);
+          setPagination(res?.pagination || {
+            page: 1,
+            limit: 10,
+            total: 0,
+            pages: 1
+          });
+        }
       } catch (e: any) {
         toast.error(e.message);
       } finally {
@@ -127,7 +176,18 @@ export default function UsersPage() {
       setLoading(true);
       await updateUser(user._id, { isActive: !user.isActive });
       toast.success(`User ${!user.isActive ? "activated" : "deactivated"} successfully`);
-      loadData();
+      // Refresh users list
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (token) {
+        const res = await getUsers();
+        setUsers(res?.data || []);
+        setPagination(res?.pagination || {
+          page: 1,
+          limit: 10,
+          total: 0,
+          pages: 1
+        });
+      }
     } catch (e: any) {
       toast.error(e.message);
     } finally {
