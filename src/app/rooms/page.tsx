@@ -2,27 +2,65 @@
 "use client";
 
 import { getRooms, updateRoom } from "@/lib/api";
+import { useAuth } from "@/components/ui/auth-provider";
+import { NavBar } from "@/components/ui/NavBar";
 import { useEffect, useState } from "react";
 
 export default function RoomsPage() {
-  const { logout } = require("@/components/ui/auth-provider").useAuth();
+  const { logout } = useAuth();
+  const [user, setUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  const [showUserMenu, setShowUserMenu] = useState(false);
   // Pagination state
   const [page, setPage] = useState(1);
   const limit = 10;
-  const [user, setUser] = useState<any>(null);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   useEffect(() => {
-    // Fetch user info using token from localStorage
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-      headers: {
-        Authorization: token ? `Bearer ${token}` : "",
-        Accept: "application/json",
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => setUser(data.data || null))
-      .catch(() => setUser(null));
+    // 1. Fetch /auth/me, store user in localStorage
+    // 2. Fetch /hotels/me, store hotel in localStorage (if needed)
+    // 3. Fetch rooms
+    const fetchAll = async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        setUser(null);
+        return;
+      }
+      try {
+        // 1. /auth/me
+        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        if (!meRes.ok) throw new Error("Not authenticated");
+        const meData = await meRes.json();
+        setUser(meData.data || null);
+        localStorage.setItem("user", JSON.stringify(meData.data || null));
+        // 2. /hotels/me
+        const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        if (hotelRes.ok) {
+          const hotelData = await hotelRes.json();
+          localStorage.setItem("hotel", JSON.stringify(hotelData.data || null));
+        }
+        // 3. rooms
+        await loadData();
+      } catch (e: any) {
+        setUser(null);
+        localStorage.removeItem("user");
+        localStorage.removeItem("hotel");
+      }
+    };
+    fetchAll();
   }, []);
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
@@ -88,55 +126,15 @@ export default function RoomsPage() {
   useEffect(() => { setPage(1); }, [filters]);
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
-
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Navigation Bar */}
-      <nav className="bg-white shadow mb-6">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex h-16 items-center space-x-6">
-            <span className="font-bold text-xl text-primary">Hotel HMS</span>
-            <div className="flex space-x-4 flex-1">
-              {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="text-gray-700 hover:text-primary font-medium px-3 py-2 rounded transition-colors"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
-            {/* User button in nav bar */}
-            <div className="relative">
-              {user ? (
-                <button
-                  className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100 border border-gray-200"
-                  onClick={() => setShowUserMenu((v) => !v)}
-                >
-                  <span className="font-medium text-gray-700">{user.firstName} {user.lastName}</span>
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                </button>
-              ) : (
-                <span className="text-gray-400">Not logged in</span>
-              )}
-              {showUserMenu && user && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow z-50">
-                  <button
-                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-                    onClick={async () => {
-                      setShowUserMenu(false);
-                      await logout();
-                    }}
-                  >
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+      <NavBar
+        user={user}
+        showUserMenu={showUserMenu}
+        setShowUserMenu={setShowUserMenu}
+        logout={logout}
+        navLinks={navLinks}
+  />
 
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">

@@ -1,7 +1,9 @@
 
 "use client";
-import { getOrders } from "@/lib/api";
+// import { getOrders } from "@/lib/api";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/components/ui/auth-provider";
+import { NavBar } from "@/components/ui/NavBar";
 
 export default function OrdersPage() {
   // Pagination state
@@ -24,7 +26,8 @@ export default function OrdersPage() {
     setUpdateError("");
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api";
-      const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4OWRiMjQ5N2M2NzMzMjVlODNjMzcwOSIsInJvbGUiOiJtYW5hZ2VyIiwiaWF0IjoxNzU1MTc0NTE1LCJleHAiOjE3NTUyNjA5MTV9.jCJC1S4lDBM9a_c0ocZwgMNFf2TNr2UBDvXLXxHi3R4";
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) throw new Error("No token found");
       const res = await fetch(`${apiBase}/orders/${selectedOrder._id}/status`, {
         method: "PUT",
         headers: {
@@ -34,7 +37,7 @@ export default function OrdersPage() {
         body: JSON.stringify({ status: updateStatus })
       });
       if (!res.ok) throw new Error("Failed to update order status");
-      await loadData();
+      await loadData(token);
       setSelectedOrder(null);
     } catch (e: any) {
       setUpdateError(e.message);
@@ -52,6 +55,15 @@ export default function OrdersPage() {
     { label: "Rooms", href: "/rooms" },
     { label: "Users", href: "/users" },
   ];
+  const { logout } = useAuth();
+  const [user, setUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -60,18 +72,47 @@ export default function OrdersPage() {
     search: ""
   });
 
+  // Fetch /auth/me first, then orders
+  const fetchAll = async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) {
+      setUser(null);
+      setOrders([]);
+      return;
+    }
+    try {
+      const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+      if (!meRes.ok) throw new Error("Not authenticated");
+      const meData = await meRes.json();
+      setUser(meData.data || null);
+      localStorage.setItem("user", JSON.stringify(meData.data || null));
+      await loadData(token);
+    } catch (e: any) {
+      setUser(null);
+      setOrders([]);
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      setError("Authentication failed. Please login again.");
+    }
+  };
+
   useEffect(() => {
-    loadData();
+    fetchAll();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (token: string) => {
     try {
       setLoading(true);
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api";
-      const res = await fetch(`${apiBase}/orders?page=1&limit=10`, {
+      const res = await fetch(`${apiBase}/orders?page=${page}&limit=${limit}`, {
         headers: {
           Accept: "application/json",
-          Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4OWRiMjQ5N2M2NzMzMjVlODNjMzcwOSIsInJvbGUiOiJtYW5hZ2VyIiwiaWF0IjoxNzU1MTc0NTE1LCJleHAiOjE3NTUyNjA5MTV9.jCJC1S4lDBM9a_c0ocZwgMNFf2TNr2UBDvXLXxHi3R4"
+          Authorization: `Bearer ${token}`
         },
         credentials: "include"
       });
@@ -102,28 +143,15 @@ export default function OrdersPage() {
   useEffect(() => { setPage(1); }, [filters]);
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
-
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Navigation Bar */}
-      <nav className="bg-white shadow mb-6">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex h-16 items-center space-x-6">
-            <span className="font-bold text-xl text-primary">Hotel HMS</span>
-            <div className="flex space-x-4">
-              {navLinks.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="text-gray-700 hover:text-primary font-medium px-3 py-2 rounded transition-colors"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </nav>
+      <NavBar
+        user={user}
+        showUserMenu={showUserMenu}
+        setShowUserMenu={setShowUserMenu}
+        logout={logout}
+        navLinks={navLinks}
+      />
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Orders Management</h1>
@@ -298,5 +326,7 @@ export default function OrdersPage() {
         </div>
       </div>
     </div>
+
   );
 }
+

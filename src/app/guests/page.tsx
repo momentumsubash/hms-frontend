@@ -2,6 +2,8 @@
 
 import { getGuests, getRooms, updateGuest, addGuest as createGuest, getMe } from "@/lib/api";
 import { useEffect, useState, useRef } from "react";
+import { useAuth } from "@/components/ui/auth-provider";
+import { NavBar } from "@/components/ui/NavBar";
 import { format } from "date-fns";
 
 interface Guest {
@@ -72,11 +74,10 @@ export default function GuestsPage() {
     checkInDate: "",
     checkOutDate: ""
   });
-  // User info for nav bar
-  const [user, setUser] = useState<any>(null);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
   const [formLoading, setFormLoading] = useState(false);
+  // User info for nav bar
+  const { user, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Filters
   const [filters, setFilters] = useState({
@@ -88,15 +89,6 @@ export default function GuestsPage() {
 
   useEffect(() => {
     loadData();
-    getMe().then(setUser).catch(() => setUser(null));
-    // Close user menu on outside click
-    function handleClick(e: MouseEvent) {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setShowUserMenu(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
   const loadData = async () => {
@@ -104,7 +96,7 @@ export default function GuestsPage() {
       setLoading(true);
       const [guestsRes, roomsRes] = await Promise.all([
         getGuests(),
-        getRooms()
+        getRooms(),
       ]);
       setGuests(guestsRes?.data || guestsRes || []);
       setRooms(roomsRes?.data || roomsRes || []);
@@ -196,61 +188,13 @@ export default function GuestsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Navigation Bar */}
-      <nav className="bg-white shadow mb-6">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <span className="font-bold text-xl text-primary">Hotel HMS</span>
-              <div className="flex space-x-4">
-                {navLinks.map((link) => (
-                  <a
-                    key={link.href}
-                    href={link.href}
-                    className="text-gray-700 hover:text-primary font-medium px-3 py-2 rounded transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                ))}
-              </div>
-            </div>
-            {/* User info at right */}
-            <div className="relative" ref={userMenuRef}>
-              {user ? (
-                <button
-                  className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100 border border-gray-200"
-                  onClick={() => setShowUserMenu((v) => !v)}
-                >
-                  <span className="font-medium text-gray-700">{user.firstName} {user.lastName}</span>
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                </button>
-              ) : (
-                <span className="text-gray-400">Not logged in</span>
-              )}
-              {showUserMenu && user && (
-                <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow z-50">
-                  <button
-                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-                    onClick={async () => {
-                      setShowUserMenu(false);
-                    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api";
-                    await fetch(`${apiBase}/auth/logout`, {
-                      method: "POST",
-                      headers: {
-                        Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4OWRiMjQ5N2M2NzMzMjVlODNjMzcwOSIsInJvbGUiOiJtYW5hZ2VyIiwiaWF0IjoxNzU1MTc0NTE1LCJleHAiOjE3NTUyNjA5MTV9.jCJC1S4lDBM9a_c0ocZwgMNFf2TNr2UBDvXLXxHi3R4"
-                      }
-                    });
-                      window.location.href = "/login";
-                    }}
-                  >
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+      <NavBar
+        user={user}
+        showUserMenu={showUserMenu}
+        setShowUserMenu={setShowUserMenu}
+        logout={logout}
+        navLinks={navLinks}
+      />
       <div className="max-w-7xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Guests Management</h1>

@@ -105,7 +105,13 @@ export function HotelDashboard() {
 	       { label: "Users", href: "/users" },
        ];
 	const { logout, loading: authLoading } = useAuth();
-	const [user, setUser] = useState<any>(null);
+	const [user, setUser] = useState<any>(() => {
+		if (typeof window !== 'undefined') {
+			const stored = localStorage.getItem('user');
+			return stored ? JSON.parse(stored) : null;
+		}
+		return null;
+	});
 	const [hotel, setHotel] = useState<any>(null);
 	// Notes hotelId/token must be after hotel is defined
 	const hotelId = hotel?._id || "689eb71bb0c676b3fc821ae9";
@@ -137,47 +143,56 @@ export function HotelDashboard() {
 			// eslint-disable-next-line react-hooks/exhaustive-deps
 		}, [hotelId, notesToken]);
 
-       useEffect(() => {
-	       async function fetchData() {
-		       setLoading(true);
-		       try {
-			       // Get token from localStorage
-			       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-			       let userInfo = null;
-			       if (token) {
-				       const res = await fetch("http://localhost:3000/api/users/me", {
-					       headers: { Authorization: `Bearer ${token}` },
-				       });
-				       if (res.status === 401) {
-					       localStorage.removeItem('token');
-					       window.location.href = '/login';
-					       return;
-				       }
-				       if (res.ok) {
-					       userInfo = await res.json();
-					       setUser(userInfo.data || null);
-				       } else {
-					       setUser(null);
-				       }
-			       } else {
-				       setUser(null);
-			       }
-			       const [hotelRes, guestsRes, roomsRes, ordersRes] = await Promise.all([
-				       getMyHotel(),
-				       getGuests(),
-				       getRooms(),
-				       getOrders(),
-			       ]);
-			       setHotel(hotelRes?.data || null);
-			       setGuests(guestsRes?.data || []);
-			       setRooms(roomsRes?.data || []);
-			       setOrders(ordersRes?.data || []);
-		       } finally {
-			       setLoading(false);
-		       }
-	       }
-	       fetchData();
-       }, []);
+	useEffect(() => {
+		async function fetchUserAndData() {
+			setLoading(true);
+			try {
+				let userObj = null;
+				if (typeof window !== 'undefined') {
+					const stored = localStorage.getItem('user');
+					if (stored) {
+						userObj = JSON.parse(stored);
+						setUser(userObj);
+					} else {
+						const token = localStorage.getItem('token');
+						if (token) {
+							const res = await fetch("http://localhost:3000/api/users/me", {
+								headers: { Authorization: `Bearer ${token}` },
+							});
+							if (res.status === 401) {
+								localStorage.removeItem('token');
+								window.location.href = '/login';
+								return;
+							}
+							if (res.ok) {
+								const userInfo = await res.json();
+								userObj = userInfo.data || null;
+								setUser(userObj);
+								localStorage.setItem('user', JSON.stringify(userObj));
+							} else {
+								setUser(null);
+							}
+						} else {
+							setUser(null);
+						}
+					}
+				}
+				const [hotelRes, guestsRes, roomsRes, ordersRes] = await Promise.all([
+					getMyHotel(),
+					getGuests(),
+					getRooms(),
+					getOrders(),
+				]);
+				setHotel(hotelRes?.data || null);
+				setGuests(guestsRes?.data || []);
+				setRooms(roomsRes?.data || []);
+				setOrders(ordersRes?.data || []);
+			} finally {
+				setLoading(false);
+			}
+		}
+		fetchUserAndData();
+	}, []);
 
 	const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % hotelImages.length);
 	const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + hotelImages.length) % hotelImages.length);
@@ -207,7 +222,7 @@ export function HotelDashboard() {
 			       <nav className="bg-white shadow mb-6">
 				       <div className="max-w-7xl mx-auto px-4">
 					       <div className="flex h-16 items-center justify-between">
-						       <span className="font-bold text-xl text-primary">Hotel HMS</span>
+						       <span className="font-bold text-xl text-primary">HMS</span>
 						       <div className="flex items-center space-x-4">
 							       {navLinks.map((link) => (
 								       <a
@@ -226,8 +241,8 @@ export function HotelDashboard() {
 								       onClick={() => setShowUserMenu((v) => !v)}
 							       >
 								       <span className="font-medium text-gray-700">
-	{user?.firstName || user?.lastName ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() : user?.email || "User"}
-</span>
+		{user?.firstName || user?.lastName ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() : user?.email || "User"}
+	</span>
 								       <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
 							       </button>
 							       {showUserMenu && (
@@ -235,11 +250,12 @@ export function HotelDashboard() {
 									       <button
 										       className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
 										       onClick={async () => {
-											   setShowUserMenu(false);
-											   await logout();
-										       }}
+										   setShowUserMenu(false);
+										   localStorage.removeItem('user');
+										   await logout();
+									       }}
 									       >
-										       Sign out
+									       Sign out
 									       </button>
 								       </div>
 							       )}

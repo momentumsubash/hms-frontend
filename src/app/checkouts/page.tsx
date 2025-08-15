@@ -3,14 +3,17 @@
 import { getCheckouts } from "@/lib/api";
 import { updateCheckoutPayment } from "@/lib/checkoutApi";
 import { useEffect, useState } from "react";
+
 import { useAuth } from "@/components/ui/auth-provider";
+import { NavBar } from "@/components/ui/NavBar";
 
 
 export default function CheckoutsPage() {
   // Pagination state
   const [page, setPage] = useState(1);
   const limit = 10;
-  const { user, loading: userLoading } = useAuth();
+  const { user, loading: userLoading, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
@@ -68,25 +71,13 @@ export default function CheckoutsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Navigation Bar */}
-      <nav className="bg-white shadow mb-6">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex h-16 items-center space-x-6">
-            <span className="font-bold text-xl text-primary">Hotel HMS</span>
-            <div className="flex space-x-4">
-              {(!userLoading && user) && navLinks.filter(link => !link.superAdminOnly || user.role === "super_admin").map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="text-gray-700 hover:text-primary font-medium px-3 py-2 rounded transition-colors"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </nav>
+      <NavBar
+        user={user}
+        showUserMenu={showUserMenu}
+        setShowUserMenu={setShowUserMenu}
+        logout={logout}
+        navLinks={navLinks}
+      />
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Checkouts Management</h1>
