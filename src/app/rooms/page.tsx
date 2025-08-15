@@ -5,6 +5,7 @@ import { getRooms, updateRoom } from "@/lib/api";
 import { useEffect, useState } from "react";
 
 export default function RoomsPage() {
+  const { logout } = require("@/components/ui/auth-provider").useAuth();
   // Pagination state
   const [page, setPage] = useState(1);
   const limit = 10;
@@ -125,13 +126,7 @@ export default function RoomsPage() {
                     className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
                     onClick={async () => {
                       setShowUserMenu(false);
-                      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/logout`, {
-                        method: "POST",
-                        headers: {
-                          Authorization: `Bearer ${process.env.NEXT_PUBLIC_AUTH_TOKEN}`
-                        }
-                      });
-                      window.location.href = "/login";
+                      await logout();
                     }}
                   >
                     Sign out

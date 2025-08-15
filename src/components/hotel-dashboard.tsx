@@ -19,7 +19,82 @@ import {
 } from "lucide-react";
 import { getMyHotel, getGuests, getRooms, getOrders } from "@/lib/api";
 export function HotelDashboard() {
-       const navLinks = [
+	// Notes state
+	const [notes, setNotes] = useState<any[]>([]);
+	const [noteText, setNoteText] = useState("");
+	const [notesLoading, setNotesLoading] = useState(false);
+	const [notesError, setNotesError] = useState("");
+
+	// Fetch notes
+	const fetchNotes = async () => {
+		if (!hotelId || !notesToken) return;
+		setNotesLoading(true);
+		setNotesError("");
+		try {
+			const res = await fetch(`http://localhost:3000/api/hotels/${hotelId}/notes`, {
+				headers: { Authorization: `Bearer ${notesToken}` },
+			});
+			if (!res.ok) throw new Error("Failed to fetch notes");
+			const data = await res.json();
+			setNotes(data.data || []);
+		} catch (e: any) {
+			setNotesError(e.message);
+		} finally {
+			setNotesLoading(false);
+		}
+	};
+
+	// Create note
+	const handleCreateNote = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!noteText.trim()) return;
+		setNotesLoading(true);
+		setNotesError("");
+		try {
+			const res = await fetch(`http://localhost:3000/api/hotels/${hotelId}/notes`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${notesToken}`,
+				},
+				body: JSON.stringify({ text: noteText }),
+			});
+			if (!res.ok) throw new Error("Failed to create note");
+			setNoteText("");
+			await fetchNotes();
+		} catch (e: any) {
+			setNotesError(e.message);
+		} finally {
+			setNotesLoading(false);
+		}
+	};
+
+	// Delete note
+	const handleDeleteNote = async (noteId: string) => {
+		setNotesLoading(true);
+		setNotesError("");
+		try {
+			const res = await fetch(`http://localhost:3000/api/hotels/${hotelId}/notes/${noteId}`, {
+				method: "DELETE",
+				headers: { Authorization: `Bearer ${notesToken}` },
+			});
+			if (!res.ok) throw new Error("Failed to delete note");
+			await fetchNotes();
+		} catch (e: any) {
+			setNotesError(e.message);
+		} finally {
+			setNotesLoading(false);
+		}
+	};
+
+	// ...existing code...
+
+	// ...existing code...
+
+	// Fetch notes when hotel/user is loaded (must be after hotelId/notesToken are defined)
+	// This must be after hotel, hotelId, and notesToken are declared
+	// so move this useEffect below those declarations
+	const navLinks = [
 	       { label: "Checkouts", href: "/checkouts" },
 	       { label: "Guests", href: "/guests" },
 	       { label: "Hotels", href: "/hotels" },
@@ -32,6 +107,9 @@ export function HotelDashboard() {
 	const { logout, loading: authLoading } = useAuth();
 	const [user, setUser] = useState<any>(null);
 	const [hotel, setHotel] = useState<any>(null);
+	// Notes hotelId/token must be after hotel is defined
+	const hotelId = hotel?._id || "689eb71bb0c676b3fc821ae9";
+	const notesToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 	const [guests, setGuests] = useState<any[]>([]);
 	const [rooms, setRooms] = useState<any[]>([]);
 	const [orders, setOrders] = useState<any[]>([]);
@@ -52,6 +130,12 @@ export function HotelDashboard() {
 		"/placeholder-p9aiz.png",
 		"/placeholder-u7zdt.png",
 	];
+
+		// Fetch notes when hotel/user is loaded (must be after hotelId/notesToken are defined)
+		useEffect(() => {
+			if (hotelId && notesToken) fetchNotes();
+			// eslint-disable-next-line react-hooks/exhaustive-deps
+		}, [hotelId, notesToken]);
 
        useEffect(() => {
 	       async function fetchData() {
@@ -117,7 +201,7 @@ export function HotelDashboard() {
 	const hotelWebsite = hotel?.website || "www.hotel.com";
 	const hotelAmenities = hotel?.amenities?.length ? hotel.amenities : ["Free WiFi", "Parking", "Restaurant", "Spa", "Pool", "Gym"];
 
-	       return (
+			   return (
 		       <div className="min-h-screen bg-slate-50">
 					{/* Navigation Bar */}
 			       <nav className="bg-white shadow mb-6">
@@ -172,8 +256,39 @@ export function HotelDashboard() {
 					</p>
 				</div>
 
-				{/* Hotel Overview Cards */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+				   {/* Hotel Overview Cards */}
+				   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+							 {/* Notes Section */}
+							 <div className="bg-white rounded-lg shadow p-6 mt-8">
+								 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+									 <span>Hotel Notes</span>
+								 </h2>
+								 <form onSubmit={handleCreateNote} className="flex gap-2 mb-4">
+									 <input
+										 type="text"
+										 className="flex-1 border border-gray-300 rounded px-3 py-2"
+										 placeholder="Add a new note..."
+										 value={noteText}
+										 onChange={e => setNoteText(e.target.value)}
+										 disabled={notesLoading}
+									 />
+									 <Button type="submit" disabled={notesLoading || !noteText.trim()}>Add Note</Button>
+								 </form>
+								 {notesError && <div className="text-red-600 mb-2">{notesError}</div>}
+								 {notesLoading ? (
+									 <div>Loading notes...</div>
+								 ) : (
+									 <ul className="space-y-2">
+										 {notes.length === 0 && <li className="text-gray-500">No notes yet.</li>}
+										 {notes.map((note: any) => (
+											 <li key={note._id} className="flex items-center justify-between bg-slate-100 rounded px-3 py-2">
+												 <span>{note.text}</span>
+												 <Button variant="destructive" size="sm" onClick={() => handleDeleteNote(note._id)} disabled={notesLoading}>Delete</Button>
+											 </li>
+										 ))}
+									 </ul>
+								 )}
+							 </div>
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
 							<div className="flex items-center space-x-4">
