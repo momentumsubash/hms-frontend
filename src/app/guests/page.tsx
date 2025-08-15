@@ -44,6 +44,17 @@ interface GuestForm {
   checkOutDate: string;
 }
 
+// Helper function to get current datetime in local format for datetime-local input
+const getCurrentDateTimeLocal = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export default function GuestsPage() {
   // Notification state
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -88,13 +99,15 @@ export default function GuestsPage() {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
+  // Form validation errors
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
   // Filters
   const [filters, setFilters] = useState({
     isCheckedOut: "",
     roomNumber: "",
     search: ""
   });
-
 
   useEffect(() => {
     loadData();
@@ -129,10 +142,61 @@ export default function GuestsPage() {
     });
     setEditingGuest(null);
     setShowForm(false);
+    setFormErrors({});
+  };
+
+  // Validation function
+  const validateForm = () => {
+    const errors: {[key: string]: string} = {};
+    const now = new Date();
+
+    // Check if check-in date is provided and not in the past (unless editing)
+    if (!formData.checkInDate) {
+      errors.checkInDate = "Check-in date is required";
+    } else {
+      const checkInDate = new Date(formData.checkInDate);
+      if (!editingGuest && checkInDate < now) {
+        errors.checkInDate = "Check-in date cannot be in the past";
+      }
+    }
+
+    // Check if check-out date is after check-in date
+    if (formData.checkOutDate && formData.checkInDate) {
+      const checkInDate = new Date(formData.checkInDate);
+      const checkOutDate = new Date(formData.checkOutDate);
+      if (checkOutDate <= checkInDate) {
+        errors.checkOutDate = "Check-out date must be after check-in date";
+      }
+    }
+
+    // Check if at least one room is selected
+    if (!formData.rooms || formData.rooms.length === 0) {
+      errors.rooms = "At least one room must be selected";
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    // Phone validation (basic)
+    if (formData.phone.length < 10) {
+      errors.phone = "Phone number should be at least 10 digits";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      setNotification({ type: 'error', message: 'Please fix the validation errors' });
+      return;
+    }
+
     setFormLoading(true);
     try {
       const guestData = {
@@ -170,6 +234,57 @@ export default function GuestsPage() {
       checkOutDate: guest.checkOutDate ? format(new Date(guest.checkOutDate), "yyyy-MM-dd'T'HH:mm") : ""
     });
     setShowForm(true);
+    setFormErrors({});
+  };
+
+  // Handle opening new guest form
+  const handleAddNewGuest = () => {
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      address: "",
+      rooms: [],
+      checkInDate: getCurrentDateTimeLocal(), // Auto-set current date/time
+      checkOutDate: ""
+    });
+    setShowForm(true);
+    setFormErrors({});
+  };
+
+  // Handle check-in date change
+  const handleCheckInDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newCheckInDate = e.target.value;
+    setFormData(prev => ({ 
+      ...prev, 
+      checkInDate: newCheckInDate,
+      // Clear check-out date if it's now before the new check-in date
+      checkOutDate: prev.checkOutDate && new Date(prev.checkOutDate) <= new Date(newCheckInDate) ? "" : prev.checkOutDate
+    }));
+    
+    // Clear validation error when user starts typing
+    if (formErrors.checkInDate) {
+      setFormErrors(prev => ({ ...prev, checkInDate: "" }));
+    }
+  };
+
+  // Handle check-out date change
+  const handleCheckOutDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, checkOutDate: e.target.value }));
+    
+    // Clear validation error when user starts typing
+    if (formErrors.checkOutDate) {
+      setFormErrors(prev => ({ ...prev, checkOutDate: "" }));
+    }
+  };
+
+  // Get minimum datetime for check-out (should be after check-in)
+  const getMinCheckOutDateTime = () => {
+    if (!formData.checkInDate) return getCurrentDateTimeLocal();
+    const checkInDate = new Date(formData.checkInDate);
+    checkInDate.setHours(checkInDate.getHours() + 1); // Minimum 1 hour after check-in
+    return format(checkInDate, "yyyy-MM-dd'T'HH:mm");
   };
 
   // Get available rooms (not occupied)
@@ -210,7 +325,7 @@ export default function GuestsPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Guests Management</h1>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={handleAddNewGuest}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
           Add New Guest
@@ -308,9 +423,15 @@ export default function GuestsPage() {
                     type="email"
                     required
                     value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, email: e.target.value }));
+                      if (formErrors.email) {
+                        setFormErrors(prev => ({ ...prev, email: "" }));
+                      }
+                    }}
+                    className={`w-full border rounded px-3 py-2 ${formErrors.email ? 'border-red-500' : 'border-gray-300'}`}
                   />
+                  {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
                 </div>
                 
                 <div>
@@ -319,9 +440,15 @@ export default function GuestsPage() {
                     type="tel"
                     required
                     value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, phone: e.target.value }));
+                      if (formErrors.phone) {
+                        setFormErrors(prev => ({ ...prev, phone: "" }));
+                      }
+                    }}
+                    className={`w-full border rounded px-3 py-2 ${formErrors.phone ? 'border-red-500' : 'border-gray-300'}`}
                   />
+                  {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
                 </div>
               </div>
 
@@ -337,7 +464,7 @@ export default function GuestsPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-1">Rooms *</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded px-3 py-2">
+                <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded px-3 py-2 ${formErrors.rooms ? 'border-red-500' : 'border-gray-300'}`}>
                   {availableRooms.map(room => (
                     <label key={room._id} className="flex items-center space-x-2">
                       <input
@@ -355,6 +482,9 @@ export default function GuestsPage() {
                             }
                             return { ...prev, rooms: newRooms };
                           });
+                          if (formErrors.rooms) {
+                            setFormErrors(prev => ({ ...prev, rooms: "" }));
+                          }
                         }}
                         className="form-checkbox"
                       />
@@ -365,6 +495,7 @@ export default function GuestsPage() {
                   ))}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">Select one or more rooms for the guest.</div>
+                {formErrors.rooms && <p className="text-red-500 text-xs mt-1">{formErrors.rooms}</p>}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -374,9 +505,12 @@ export default function GuestsPage() {
                     type="datetime-local"
                     required
                     value={formData.checkInDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, checkInDate: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    onChange={handleCheckInDateChange}
+                    min={editingGuest ? undefined : getCurrentDateTimeLocal()}
+                    className={`w-full border rounded px-3 py-2 ${formErrors.checkInDate ? 'border-red-500' : 'border-gray-300'}`}
                   />
+                  {formErrors.checkInDate && <p className="text-red-500 text-xs mt-1">{formErrors.checkInDate}</p>}
+                  {!editingGuest && <p className="text-xs text-gray-500 mt-1">Defaults to current date and time</p>}
                 </div>
                 
                 <div>
@@ -384,9 +518,12 @@ export default function GuestsPage() {
                   <input
                     type="datetime-local"
                     value={formData.checkOutDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, checkOutDate: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    onChange={handleCheckOutDateChange}
+                    min={getMinCheckOutDateTime()}
+                    className={`w-full border rounded px-3 py-2 ${formErrors.checkOutDate ? 'border-red-500' : 'border-gray-300'}`}
                   />
+                  {formErrors.checkOutDate && <p className="text-red-500 text-xs mt-1">{formErrors.checkOutDate}</p>}
+                  <p className="text-xs text-gray-500 mt-1">Must be after check-in date</p>
                 </div>
               </div>
 

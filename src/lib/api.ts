@@ -1,3 +1,33 @@
+// Create a new user
+export async function createUser(user: any) {
+  const res = await fetch(`${API_URL}/users`, {
+    method: "POST",
+    headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
+    body: JSON.stringify(user),
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error("Failed to create user");
+  return res.json();
+}
+
+// Delete a user
+export async function deleteUser(id: string) {
+  const res = await fetch(`${API_URL}/users/${id}`, {
+    method: "DELETE",
+    headers: mergeHeaders({}, getAuthHeaders()),
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error("Failed to delete user");
+  return res.json();
+}
 // List all users
 export async function getUsers() {
   const res = await fetch(`${API_URL}/users`, {

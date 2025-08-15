@@ -1,11 +1,13 @@
 
 "use client";
-// import { getOrders } from "@/lib/api";
-import { useEffect, useState } from "react";
 
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 import { getItems } from "@/lib/api";
+
+// Notification state for bottom-right toast
+// (must be inside the component, so move this logic below)
 
 export default function OrdersPage() {
   // Pagination state
@@ -26,6 +28,14 @@ export default function OrdersPage() {
   const [itemSearch, setItemSearch] = useState("");
   const [itemList, setItemList] = useState<any[]>([]);
   const [itemLoading, setItemLoading] = useState(false);
+  // Notification state for bottom-right toast
+  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  useEffect(() => {
+    if (notification) {
+      const t = setTimeout(() => setNotification(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [notification]);
   // Fetch items for modal
   useEffect(() => {
     if (!showCreate) return;
@@ -229,10 +239,12 @@ export default function OrdersPage() {
                           itemId: createForm.itemId
                         })
                       });
+                      const data = await res.json().catch(() => ({}));
                       if (!res.ok) {
-                        const err = await res.json().catch(() => ({}));
-                        throw new Error(err.message || "Failed to create order");
+                        setNotification({ type: 'error', message: data?.message || 'Failed to create order' });
+                        throw new Error(data?.message || "Failed to create order");
                       }
+                      setNotification({ type: 'success', message: data?.message || 'Order created successfully' });
                       setShowCreate(false);
                       setCreateForm({ roomNumber: "", itemId: "" });
                       await fetchAll();
@@ -244,6 +256,12 @@ export default function OrdersPage() {
                   }}
                   className="space-y-4"
                 >
+        {/* Notification Toast */}
+        {notification && (
+          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+            {notification.message}
+          </div>
+        )}
                   <div>
                     <label className="block text-sm font-medium mb-1">Room Number</label>
                     <input

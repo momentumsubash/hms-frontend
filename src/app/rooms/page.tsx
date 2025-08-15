@@ -1,4 +1,3 @@
-
 "use client";
 
 import { getRooms, updateRoom } from "@/lib/api";
@@ -16,13 +15,28 @@ export default function RoomsPage() {
     return null;
   });
   const [showUserMenu, setShowUserMenu] = useState(false);
-  // Pagination state
+  
+  // Pagination and filter state
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalRooms, setTotalRooms] = useState(0);
+  
+  const [filters, setFilters] = useState({
+    type: "",
+    isOccupied: "",
+    roomNumber: "",
+    guestName: "",
+    advancedSearch: "" // For any other filters not in main UI
+  });
+
+  // Debounce search inputs
+  const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
+  
   useEffect(() => {
     // 1. Fetch /auth/me, store user in localStorage
     // 2. Fetch /hotels/me, store hotel in localStorage (if needed)
-    // 3. Fetch rooms
+    // 3. Fetch rooms with filters
     const fetchAll = async () => {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) {
@@ -41,6 +55,7 @@ export default function RoomsPage() {
         const meData = await meRes.json();
         setUser(meData.data || null);
         localStorage.setItem("user", JSON.stringify(meData.data || null));
+        
         // 2. /hotels/me
         const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, {
           headers: {
@@ -52,7 +67,8 @@ export default function RoomsPage() {
           const hotelData = await hotelRes.json();
           localStorage.setItem("hotel", JSON.stringify(hotelData.data || null));
         }
-        // 3. rooms
+        
+        // 3. Load rooms with initial filters
         await loadData();
       } catch (e: any) {
         setUser(null);
@@ -62,6 +78,7 @@ export default function RoomsPage() {
     };
     fetchAll();
   }, []);
+  
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
@@ -72,14 +89,12 @@ export default function RoomsPage() {
     { label: "Rooms", href: "/rooms" },
     { label: "Users", href: "/users" },
   ];
+  
   const [rooms, setRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filters, setFilters] = useState({
-    type: "",
-    occupied: "",
-    search: ""
-  });
+  const [toast, setToast] = useState<{message: string, type: 'error' | 'success'} | null>(null);
+  
   // Edit modal state
   const [showEdit, setShowEdit] = useState(false);
   const [editRoom, setEditRoom] = useState<any>(null);
@@ -93,39 +108,184 @@ export default function RoomsPage() {
   });
   const [editLoading, setEditLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Add room modal state
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState<any>({
+    roomNumber: "",
+    type: "",
+    rate: 0,
+    description: "",
+    amenities: [],
+    isOccupied: false,
+    capacity: 1,
+  });
+  const [addLoading, setAddLoading] = useState(false);
 
-  const loadData = async () => {
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState<any>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Load data with server-side filtering and pagination
+  const loadData = async (resetPage = false) => {
     try {
       setLoading(true);
-      const res = await getRooms();
-      setRooms(res?.data || res || []);
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) throw new Error("No authentication token");
+
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      queryParams.append('page', resetPage ? '1' : page.toString());
+      queryParams.append('limit', limit.toString());
+      
+      // Add filters if they exist
+      if (filters.type) queryParams.append('type', filters.type);
+      if (filters.isOccupied !== "") queryParams.append('isOccupied', filters.isOccupied);
+      if (filters.roomNumber) queryParams.append('roomNumber', filters.roomNumber);
+      if (filters.guestName) queryParams.append('guestName', filters.guestName);
+      if (filters.advancedSearch) queryParams.append('search', filters.advancedSearch);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch rooms');
+      }
+
+      const data = await response.json();
+      
+      // Handle different response structures
+      if (data.data) {
+        setRooms(data.data.rooms || data.data || []);
+        setTotalPages(data.data.totalPages || Math.ceil((data.data.total || 0) / limit));
+        setTotalRooms(data.data.total || data.data.length || 0);
+      } else {
+        // Fallback for simple array response
+        setRooms(data || []);
+        setTotalPages(1);
+        setTotalRooms(data?.length || 0);
+      }
+
+      if (resetPage) {
+        setPage(1);
+      }
     } catch (e: any) {
       setError(e.message);
+      setRooms([]);
+      setTotalPages(0);
+      setTotalRooms(0);
     } finally {
       setLoading(false);
     }
   };
 
-  // Filter rooms
-  const filteredRooms = rooms.filter((room: any) => {
-    const matchesType = filters.type === "" || room.type === filters.type;
-    const matchesOccupied = filters.occupied === "" || (filters.occupied === "true" ? room.isOccupied : !room.isOccupied);
-    const matchesSearch = filters.search === "" ||
-      (room.roomNumber && room.roomNumber.toLowerCase().includes(filters.search.toLowerCase()));
-    return matchesType && matchesOccupied && matchesSearch;
-  });
+  // Handle filter changes with debouncing for search inputs
+  const handleFilterChange = (filterKey: string, value: string) => {
+    setFilters(prev => ({ ...prev, [filterKey]: value }));
+    
+    // Clear existing timeout
+    if (searchDebounce) {
+      clearTimeout(searchDebounce);
+    }
+    
+    // For search-like filters, debounce the API call
+    if (['roomNumber', 'guestName', 'advancedSearch'].includes(filterKey)) {
+      const timeout = setTimeout(() => {
+        loadData(true); // Reset to page 1 when filtering
+      }, 500); // 500ms debounce
+      setSearchDebounce(timeout);
+    } else {
+      // For dropdowns, apply filter immediately
+      setTimeout(() => loadData(true), 0);
+    }
+  };
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredRooms.length / limit);
-  const paginatedRooms = filteredRooms.slice((page - 1) * limit, page * limit);
+  // Load data when page changes
+  useEffect(() => {
+    if (page > 1) { // Avoid double loading on initial mount
+      loadData();
+    }
+  }, [page]);
 
-  // Reset page to 1 on filter change
-  useEffect(() => { setPage(1); }, [filters]);
+  // Clean up debounce timeout
+  useEffect(() => {
+    return () => {
+      if (searchDebounce) {
+        clearTimeout(searchDebounce);
+      }
+    };
+  }, [searchDebounce]);
 
-  if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
+  const showToast = (message: string, type: 'error' | 'success' = 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 5000);
+  };
+
+  // Create room function
+  const createRoom = async (roomData: any) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) throw new Error("No authentication token");
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(roomData),
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      const errorMessage = responseData?.message || 'Failed to create room';
+      throw new Error(errorMessage);
+    }
+
+    return responseData;
+  };
+
+  // Delete room function
+  const deleteRoom = async (roomNumber: string) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) throw new Error("No authentication token");
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/${roomNumber}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const responseData = await response.json();
+      const errorMessage = responseData?.message || 'Failed to delete room';
+      throw new Error(errorMessage);
+    }
+
+    return await response.json();
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({
+      type: "",
+      isOccupied: "",
+      roomNumber: "",
+      guestName: "",
+      advancedSearch: ""
+    });
+    setTimeout(() => loadData(true), 0);
+  };
+
+  if (loading && rooms.length === 0) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
+  
   return (
     <div className="min-h-screen bg-slate-50">
       <NavBar
@@ -134,26 +294,43 @@ export default function RoomsPage() {
         setShowUserMenu={setShowUserMenu}
         logout={logout}
         navLinks={navLinks}
-  />
+      />
 
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Rooms Management</h1>
+          <button
+            onClick={() => {
+              setAddForm({
+                roomNumber: "",
+                type: "",
+                rate: 0,
+                description: "",
+                amenities: [],
+                isOccupied: false,
+                capacity: 1,
+              });
+              setShowAdd(true);
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Add New Room
+          </button>
         </div>
 
         {/* Summary Section */}
         <div className="flex gap-8 mb-6">
           <div className="bg-blue-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-blue-700 text-sm font-semibold">Total Rooms</div>
-            <div className="text-2xl font-bold text-blue-900">{rooms.length}</div>
+            <div className="text-blue-700 text-sm font-semibold">Total Found</div>
+            <div className="text-2xl font-bold text-blue-900">{totalRooms}</div>
           </div>
           <div className="bg-green-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-green-700 text-sm font-semibold">Available</div>
-            <div className="text-2xl font-bold text-green-900">{rooms.filter((r) => !r.isOccupied).length}</div>
+            <div className="text-green-700 text-sm font-semibold">Current Page</div>
+            <div className="text-2xl font-bold text-green-900">{rooms.length}</div>
           </div>
-          <div className="bg-red-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-red-700 text-sm font-semibold">Occupied</div>
-            <div className="text-2xl font-bold text-red-900">{rooms.filter((r) => r.isOccupied).length}</div>
+          <div className="bg-purple-100 rounded-lg shadow p-4 flex-1 text-center">
+            <div className="text-purple-700 text-sm font-semibold">Pages</div>
+            <div className="text-2xl font-bold text-purple-900">{totalPages}</div>
           </div>
         </div>
 
@@ -171,43 +348,87 @@ export default function RoomsPage() {
 
         {/* Filters */}
         <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-semibold mb-3">Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-semibold">Filters</h3>
+            <button
+              onClick={clearFilters}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              Clear All Filters
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Search (Room #)</label>
+              <label className="block text-sm font-medium mb-1">Room Number</label>
               <input
                 type="text"
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                value={filters.roomNumber}
+                onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Search rooms..."
+                placeholder="Search by room number..."
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Type</label>
-              <input
-                type="text"
-                value={filters.type}
-                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Filter by type..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Occupied</label>
+              <label className="block text-sm font-medium mb-1">Room Type</label>
               <select
-                value={filters.occupied}
-                onChange={(e) => setFilters(prev => ({ ...prev, occupied: e.target.value }))}
+                value={filters.type}
+                onChange={(e) => handleFilterChange('type', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
               >
-                <option value="">All</option>
+                <option value="">All Types</option>
+                <option value="single">Single</option>
+                <option value="double">Double</option>
+                <option value="suite">Suite</option>
+                <option value="deluxe">Deluxe</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Occupancy Status</label>
+              <select
+                value={filters.isOccupied}
+                onChange={(e) => handleFilterChange('isOccupied', e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              >
+                <option value="">All Rooms</option>
                 <option value="true">Occupied</option>
                 <option value="false">Available</option>
               </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Guest Name</label>
+              <input
+                type="text"
+                value={filters.guestName}
+                onChange={(e) => handleFilterChange('guestName', e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                placeholder="Search by guest name..."
+              />
+            </div>
+          </div>
+          
+          {/* Advanced Search */}
+          <div className="mt-4">
+            <label className="block text-sm font-medium mb-1">
+              Advanced Search
+              <span className="text-xs text-gray-500 ml-1">(Search across multiple fields)</span>
+            </label>
+            <input
+              type="text"
+              value={filters.advancedSearch}
+              onChange={(e) => handleFilterChange('advancedSearch', e.target.value)}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+              placeholder="Search across all fields (description, amenities, maintenance status, etc.)..."
+            />
           </div>
         </div>
 
+        {/* Loading indicator for filter changes */}
+        {loading && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4 flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
+            Loading rooms...
+          </div>
+        )}
 
         {/* Rooms Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -228,21 +449,27 @@ export default function RoomsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Maintenance</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated At</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedRooms.map((room: any) => (
+                {rooms.map((room: any) => (
                   <tr key={room._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap">{room.roomNumber}</td>
+                    <td className="px-4 py-4 whitespace-nowrap font-medium">{room.roomNumber}</td>
                     <td className="px-4 py-4 whitespace-nowrap capitalize">{room.type}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">{room.description}</td>
+                    <td className="px-4 py-4 whitespace-nowrap max-w-xs truncate" title={room.description}>
+                      {room.description || '-'}
+                    </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {room.amenities && room.amenities.length > 0 ? (
-                        <ul className="flex flex-wrap gap-1">
-                          {room.amenities.map((a: string, i: number) => (
-                            <li key={i} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">{a}</li>
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {room.amenities.slice(0, 3).map((a: string, i: number) => (
+                            <span key={i} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">{a}</span>
                           ))}
-                        </ul>
+                          {room.amenities.length > 3 && (
+                            <span className="text-gray-500 text-xs">+{room.amenities.length - 3}</span>
+                          )}
+                        </div>
                       ) : "-"}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">{room.capacity}</td>
@@ -252,35 +479,187 @@ export default function RoomsPage() {
                     <td className="px-4 py-4 whitespace-nowrap">₹{room.rate}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {room.isOccupied ? (
-                        <span className="inline-block px-2 py-0.5 rounded bg-red-100 text-red-800 text-xs">Occupied</span>
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                          Occupied
+                        </span>
                       ) : (
-                        <span className="inline-block px-2 py-0.5 rounded bg-green-100 text-green-800 text-xs">Available</span>
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                          Available
+                        </span>
                       )}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">{room.maintanenceStatus || '-'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">{room.createdAt ? new Date(room.createdAt).toLocaleString() : '-'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">{room.updatedAt ? new Date(room.updatedAt).toLocaleString() : '-'}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <button
-                        className="text-blue-600 hover:underline text-sm"
-                        onClick={() => {
-                          setEditRoom(room);
-                          setEditForm({
-                            type: room.type,
-                            rate: room.rate,
-                            description: room.description,
-                            amenities: room.amenities || [],
-                            isOccupied: room.isOccupied,
-                            capacity: room.capacity,
-                          });
-                          setShowEdit(true);
-                        }}
-                      >Edit</button>
+                      {room.maintanenceStatus ? (
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                          {room.maintanenceStatus}
+                        </span>
+                      ) : '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {room.createdAt ? new Date(room.createdAt).toLocaleDateString() : '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {room.updatedAt ? new Date(room.updatedAt).toLocaleDateString() : '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex space-x-2">
+                        <button
+                          className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                          onClick={() => {
+                            setEditRoom(room);
+                            setEditForm({
+                              type: room.type,
+                              rate: room.rate,
+                              description: room.description,
+                              amenities: room.amenities || [],
+                              isOccupied: room.isOccupied,
+                              capacity: room.capacity,
+                            });
+                            setShowEdit(true);
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="text-red-600 hover:text-red-900 text-sm font-medium"
+                          onClick={() => {
+                            setRoomToDelete(room);
+                            setShowDeleteConfirm(true);
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            {/* Add Room Modal */}
+            {showAdd && (
+              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                  <h2 className="text-2xl font-bold mb-4">Add New Room</h2>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setAddLoading(true);
+                      try {
+                        await createRoom({
+                          roomNumber: addForm.roomNumber,
+                          type: addForm.type,
+                          rate: Number(addForm.rate),
+                          description: addForm.description,
+                          amenities: Array.isArray(addForm.amenities)
+                            ? addForm.amenities.filter((a: string) => a.trim() !== "")
+                            : [],
+                          isOccupied: addForm.isOccupied,
+                          capacity: Number(addForm.capacity),
+                        });
+                        setShowAdd(false);
+                        showToast("Room created successfully!", "success");
+                        await loadData(true);
+                      } catch (e: any) {
+                        showToast(e.message, "error");
+                      } finally {
+                        setAddLoading(false);
+                      }
+                    }}
+                    className="space-y-4"
+                  >
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Room Number</label>
+                      <input
+                        type="text"
+                        value={addForm.roomNumber}
+                        onChange={e => setAddForm((f: any) => ({ ...f, roomNumber: e.target.value }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Type</label>
+                      <select
+                        value={addForm.type}
+                        onChange={e => setAddForm((f: any) => ({ ...f, type: e.target.value }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        required
+                      >
+                        <option value="">Select Type</option>
+                        <option value="single">Single</option>
+                        <option value="double">Double</option>
+                        <option value="suite">Suite</option>
+                        <option value="deluxe">Deluxe</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Rate</label>
+                      <input
+                        type="number"
+                        value={addForm.rate}
+                        onChange={e => setAddForm((f: any) => ({ ...f, rate: e.target.value }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Description</label>
+                      <textarea
+                        value={addForm.description}
+                        onChange={e => setAddForm((f: any) => ({ ...f, description: e.target.value }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        rows={2}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Amenities (comma separated)</label>
+                      <input
+                        type="text"
+                        value={Array.isArray(addForm.amenities) ? addForm.amenities.join(", ") : ""}
+                        onChange={e => setAddForm((f: any) => ({ ...f, amenities: e.target.value.split(",").map((a: string) => a.trim()) }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Occupied</label>
+                      <select
+                        value={addForm.isOccupied ? "true" : "false"}
+                        onChange={e => setAddForm((f: any) => ({ ...f, isOccupied: e.target.value === "true" }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                      >
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Capacity</label>
+                      <input
+                        type="number"
+                        value={addForm.capacity}
+                        onChange={e => setAddForm((f: any) => ({ ...f, capacity: e.target.value }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div className="flex justify-end space-x-3 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setShowAdd(false)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                        disabled={addLoading}
+                      >Cancel</button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        disabled={addLoading}
+                      >{addLoading ? "Creating..." : "Create Room"}</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
             {/* Edit Room Modal */}
             {showEdit && (
               <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -303,9 +682,10 @@ export default function RoomsPage() {
                         });
                         setShowEdit(false);
                         setEditRoom(null);
+                        showToast("Room updated successfully!", "success");
                         await loadData();
                       } catch (e: any) {
-                        setError(e.message);
+                        showToast(e.message, "error");
                       } finally {
                         setEditLoading(false);
                       }
@@ -393,59 +773,157 @@ export default function RoomsPage() {
                 </div>
               </div>
             )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirm && (
+              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                  <h2 className="text-xl font-bold mb-4">Confirm Delete</h2>
+                  <p className="mb-6">Are you sure you want to delete room {roomToDelete?.roomNumber}? This action cannot be undone.</p>
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setRoomToDelete(null);
+                      }}
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      disabled={deleteLoading}
+                    >Cancel</button>
+                    <button
+                      onClick={async () => {
+                        setDeleteLoading(true);
+                        try {
+                          await deleteRoom(roomToDelete.roomNumber);
+                          setShowDeleteConfirm(false);
+                          setRoomToDelete(null);
+                          showToast("Room deleted successfully!", "success");
+                          await loadData(true);
+                        } catch (e: any) {
+                          showToast(e.message, "error");
+                        } finally {
+                          setDeleteLoading(false);
+                        }
+                      }}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                      disabled={deleteLoading}
+                    >{deleteLoading ? "Deleting..." : "Delete"}</button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-4">
-              <button
-                className="px-3 py-1 rounded border bg-white disabled:opacity-50"
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-              >Prev</button>
-              {Array.from({ length: totalPages }, (_, i) => (
+            <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t">
+              <div className="text-sm text-gray-700">
+                Showing page {page} of {totalPages} ({totalRooms} total rooms)
+              </div>
+              <div className="flex items-center space-x-2">
                 <button
-                  key={i}
-                  className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-blue-500 text-white' : 'bg-white'}`}
-                  onClick={() => setPage(i + 1)}
-                >{i + 1}</button>
-              ))}
-              <button
-                className="px-3 py-1 rounded border bg-white disabled:opacity-50"
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-              >Next</button>
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setPage(1)}
+                  disabled={page === 1 || loading}
+                >
+                  First
+                </button>
+                <button
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 1 || loading}
+                >
+                  Previous
+                </button>
+                
+                {/* Page numbers */}
+                <div className="hidden sm:flex space-x-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (page <= 3) {
+                      pageNum = i + 1;
+                    } else if (page >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = page - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        className={`px-3 py-2 text-sm font-medium rounded-md ${
+                          page === pageNum
+                            ? 'text-white bg-blue-600 border border-blue-600'
+                            : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        onClick={() => setPage(pageNum)}
+                        disabled={loading}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setPage(page + 1)}
+                  disabled={page === totalPages || loading}
+                >
+                  Next
+                </button>
+                <button
+                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setPage(totalPages)}
+                  disabled={page === totalPages || loading}
+                >
+                  Last
+                </button>
+              </div>
             </div>
           )}
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-4">
-              <button
-                className="px-3 py-1 rounded border bg-white disabled:opacity-50"
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-              >Prev</button>
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  key={i}
-                  className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-blue-500 text-white' : 'bg-white'}`}
-                  onClick={() => setPage(i + 1)}
-                >{i + 1}</button>
-              ))}
-              <button
-                className="px-3 py-1 rounded border bg-white disabled:opacity-50"
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-              >Next</button>
-            </div>
-          )}
-          {filteredRooms.length === 0 && (
+
+          {rooms.length === 0 && !loading && (
             <div className="text-center py-12">
-              <div className="text-gray-500">No rooms found matching your criteria.</div>
+              <div className="text-gray-500 text-lg mb-2">No rooms found</div>
+              <div className="text-gray-400 text-sm">
+                {Object.values(filters).some(f => f !== "") 
+                  ? "Try adjusting your filters or clearing them to see more results."
+                  : "Get started by adding your first room."
+                }
+              </div>
+              {Object.values(filters).some(f => f !== "") && (
+                <button
+                  onClick={clearFilters}
+                  className="mt-3 px-4 py-2 text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  Clear all filters
+                </button>
+              )}
             </div>
           )}
         </div>
 
-  {/* Removed duplicate summary stats section */}
+        {/* Toast Notification */}
+        {toast && (
+          <div className={`fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
+            toast.type === 'error' 
+              ? 'bg-red-500 text-white border border-red-600' 
+              : 'bg-green-500 text-white border border-green-600'
+          }`}>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">{toast.message}</span>
+              <button
+                onClick={() => setToast(null)}
+                className="ml-3 text-white hover:text-gray-200"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
