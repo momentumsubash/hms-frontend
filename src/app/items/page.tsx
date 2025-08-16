@@ -508,7 +508,7 @@ export default function ItemsPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                  {/* Description column removed as per requirements */}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
@@ -521,7 +521,7 @@ export default function ItemsPage() {
                   items.map((item: Item) => (
                     <tr key={item._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap font-medium">{item.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{item.description}</td>
+                      {/* Description cell removed as per requirements */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                           {typeof item.category === 'object' && item.category !== null ? item.category.name : item.category}

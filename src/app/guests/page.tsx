@@ -81,6 +81,7 @@ export default function GuestsPage() {
   ];
   const [guests, setGuests] = useState<Guest[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -257,7 +258,7 @@ export default function GuestsPage() {
     }
   };
 
-  const handleEdit = (guest: Guest) => {
+  const handleEdit = async (guest: Guest) => {
     setEditingGuest(guest);
     setFormData({
       firstName: guest.firstName,
@@ -269,12 +270,28 @@ export default function GuestsPage() {
       checkInDate: guest.checkInDate ? format(new Date(guest.checkInDate), "yyyy-MM-dd'T'HH:mm") : "",
       checkOutDate: guest.checkOutDate ? format(new Date(guest.checkOutDate), "yyyy-MM-dd'T'HH:mm") : ""
     });
-    setShowForm(true);
     setFormErrors({});
+    // Fetch available rooms (isOccupied=false)
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) throw new Error("No authentication token");
+      const res = await fetch("http://localhost:3000/api/rooms?isOccupied=false", {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!res.ok) throw new Error("Failed to fetch available rooms");
+      const data = await res.json();
+      setAvailableRooms(data.data || []);
+    } catch (e) {
+      setAvailableRooms([]);
+    }
+    setShowForm(true);
   };
 
   // Handle opening new guest form
-  const handleAddNewGuest = () => {
+  const handleAddNewGuest = async () => {
     setFormData({
       firstName: "",
       lastName: "",
@@ -285,8 +302,24 @@ export default function GuestsPage() {
       checkInDate: getCurrentDateTimeLocal(), // Auto-set current date/time
       checkOutDate: ""
     });
-    setShowForm(true);
     setFormErrors({});
+    // Fetch available rooms (isOccupied=false)
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) throw new Error("No authentication token");
+      const res = await fetch("http://localhost:3000/api/rooms?isOccupied=false", {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (!res.ok) throw new Error("Failed to fetch available rooms");
+      const data = await res.json();
+      setAvailableRooms(data.data || []);
+    } catch (e) {
+      setAvailableRooms([]);
+    }
+    setShowForm(true);
   };
 
   // Handle check-in date change
@@ -323,8 +356,6 @@ export default function GuestsPage() {
     return format(checkInDate, "yyyy-MM-dd'T'HH:mm");
   };
 
-  // Get available rooms (not occupied)
-  const availableRooms = rooms.filter(room => !room.isOccupied || (formData.rooms && formData.rooms.includes(room.roomNumber)));
 
   // Filter guests based on search criteria
   const filteredGuests = guests.filter(guest => {
@@ -513,34 +544,50 @@ export default function GuestsPage() {
               <div>
                 <label className="block text-sm font-medium mb-1">Rooms *</label>
                 <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded px-3 py-2 ${formErrors.rooms ? 'border-red-500' : 'border-gray-300'}`}>
-                  {availableRooms.map(room => (
-                    <label key={room._id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        value={room.roomNumber}
-                        checked={formData.rooms.includes(room.roomNumber)}
-                        onChange={e => {
-                          const checked = e.target.checked;
-                          setFormData(prev => {
-                            let newRooms = prev.rooms || [];
-                            if (checked) {
-                              newRooms = [...newRooms, room.roomNumber];
-                            } else {
-                              newRooms = newRooms.filter(r => r !== room.roomNumber);
+                  {/* For edit, show all available rooms plus the guest's current rooms (if not already in availableRooms) */}
+                  {(() => {
+                    let roomList = availableRooms.length > 0 ? [...availableRooms] : [...rooms];
+                    // If editing, ensure current guest's rooms are included
+                    if (editingGuest && editingGuest.rooms) {
+                      editingGuest.rooms.forEach(rn => {
+                        if (!roomList.some(r => r.roomNumber === rn)) {
+                          // Try to find the room in all rooms
+                          const found = rooms.find(r => r.roomNumber === rn);
+                          if (found) roomList.push(found);
+                        }
+                      });
+                    }
+                    // Remove duplicates by roomNumber
+                    roomList = roomList.filter((r, idx, arr) => arr.findIndex(rr => rr.roomNumber === r.roomNumber) === idx);
+                    return roomList.map(room => (
+                      <label key={room._id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          value={room.roomNumber}
+                          checked={formData.rooms.includes(room.roomNumber)}
+                          onChange={e => {
+                            const checked = e.target.checked;
+                            setFormData(prev => {
+                              let newRooms = prev.rooms || [];
+                              if (checked) {
+                                newRooms = [...newRooms, room.roomNumber];
+                              } else {
+                                newRooms = newRooms.filter(r => r !== room.roomNumber);
+                              }
+                              return { ...prev, rooms: newRooms };
+                            });
+                            if (formErrors.rooms) {
+                              setFormErrors(prev => ({ ...prev, rooms: "" }));
                             }
-                            return { ...prev, rooms: newRooms };
-                          });
-                          if (formErrors.rooms) {
-                            setFormErrors(prev => ({ ...prev, rooms: "" }));
-                          }
-                        }}
-                        className="form-checkbox"
-                      />
-                      <span>
-                        Room {room.roomNumber} - {room.type} (₹{room.rate}/night) - Capacity: {room.capacity}
-                      </span>
-                    </label>
-                  ))}
+                          }}
+                          className="form-checkbox"
+                        />
+                        <span>
+                          Room {room.roomNumber} - {room.type} (₹{room.rate}/night) - Capacity: {room.capacity}
+                        </span>
+                      </label>
+                    ));
+                  })()}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">Select one or more rooms for the guest.</div>
                 {formErrors.rooms && <p className="text-red-500 text-xs mt-1">{formErrors.rooms}</p>}
