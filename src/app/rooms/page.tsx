@@ -14,6 +14,13 @@ export default function RoomsPage() {
     }
     return null;
   });
+  const [hotel, setHotel] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('hotel');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
   const [showUserMenu, setShowUserMenu] = useState(false);
   
   // Pagination and filter state
@@ -57,6 +64,7 @@ export default function RoomsPage() {
     amenities: [],
     isOccupied: false,
     capacity: 1,
+    maintanenceStatus: "",
   });
   const [editLoading, setEditLoading] = useState(false);
 
@@ -70,6 +78,7 @@ export default function RoomsPage() {
     amenities: [],
     isOccupied: false,
     capacity: 1,
+    maintanenceStatus: "",
   });
   const [addLoading, setAddLoading] = useState(false);
 
@@ -109,7 +118,8 @@ export default function RoomsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch rooms');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch rooms');
       }
 
       const data = await response.json();
@@ -186,7 +196,9 @@ export default function RoomsPage() {
         });
         if (hotelRes.ok) {
           const hotelData = await hotelRes.json();
-          localStorage.setItem("hotel", JSON.stringify(hotelData.data || null));
+          const hotelInfo = hotelData.data || null;
+          setHotel(hotelInfo);
+          localStorage.setItem("hotel", JSON.stringify(hotelInfo));
         }
         
         // 3. Load rooms with initial filters
@@ -221,10 +233,24 @@ export default function RoomsPage() {
     setTimeout(() => setToast(null), 5000);
   };
 
-  // Create room function
+  // Create room function - Updated to include hotel ID
   const createRoom = async (roomData: any) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
+
+    // Get hotel ID from localStorage or state
+    const storedHotel = typeof window !== "undefined" ? localStorage.getItem("hotel") : null;
+    const hotelData = storedHotel ? JSON.parse(storedHotel) : hotel;
+    
+    if (!hotelData || !hotelData._id) {
+      throw new Error("Hotel information not found. Please refresh the page.");
+    }
+
+    // Add hotel ID to room data
+    const roomDataWithHotel = {
+      ...roomData,
+      hotel: hotelData._id
+    };
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms`, {
       method: 'POST',
@@ -232,7 +258,7 @@ export default function RoomsPage() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(roomData),
+      body: JSON.stringify(roomDataWithHotel),
     });
 
     const responseData = await response.json();
@@ -304,6 +330,7 @@ export default function RoomsPage() {
                 amenities: [],
                 isOccupied: false,
                 capacity: 1,
+                maintanenceStatus: "",
               });
               setShowAdd(true);
             }}
@@ -484,6 +511,7 @@ export default function RoomsPage() {
                               amenities: room.amenities || [],
                               isOccupied: room.isOccupied,
                               capacity: room.capacity,
+                              maintanenceStatus: room.maintanenceStatus || "",
                             });
                             setShowEdit(true);
                           }}
@@ -599,7 +627,7 @@ export default function RoomsPage() {
           )}
         </div>
 
-        {/* Add Room Modal */}
+        {/* Add Room Modal - Updated form submission */}
         {showAdd && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -619,12 +647,15 @@ export default function RoomsPage() {
                         : [],
                       isOccupied: addForm.isOccupied,
                       capacity: Number(addForm.capacity),
+                      maintanenceStatus: addForm.maintanenceStatus || undefined,
                     });
+                    
                     setShowAdd(false);
                     showToast("Room created successfully!", "success");
                     await loadData(true);
                   } catch (e: any) {
-                    showToast(e.message, "error");
+                    const errorMessage = e.message || 'An unexpected error occurred';
+                    showToast(errorMessage, "error");
                   } finally {
                     setAddLoading(false);
                   }
@@ -705,6 +736,18 @@ export default function RoomsPage() {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Maintenance Status</label>
+                  <select
+                    value={addForm.maintanenceStatus}
+                    onChange={e => setAddForm((f: any) => ({ ...f, maintanenceStatus: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  >
+                    <option value="">No Maintenance</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
@@ -733,7 +776,7 @@ export default function RoomsPage() {
                   e.preventDefault();
                   setEditLoading(true);
                   try {
-                    await updateRoom(editRoom.roomNumber, {
+                    const response = await updateRoom(editRoom.roomNumber, {
                       type: editForm.type,
                       rate: Number(editForm.rate),
                       description: editForm.description,
@@ -742,13 +785,21 @@ export default function RoomsPage() {
                         : [],
                       isOccupied: editForm.isOccupied,
                       capacity: Number(editForm.capacity),
+                      maintanenceStatus: editForm.maintanenceStatus || undefined,
                     });
+
+                    if (!response.ok) {
+                      const errorData = await response.json();
+                      throw new Error(errorData.message || 'Failed to update room');
+                    }
+
                     setShowEdit(false);
                     setEditRoom(null);
                     showToast("Room updated successfully!", "success");
                     await loadData();
                   } catch (e: any) {
-                    showToast(e.message, "error");
+                    const errorMessage = e.response?.data?.message || e.message || 'An unexpected error occurred while updating the room';
+                    showToast(errorMessage, "error");
                   } finally {
                     setEditLoading(false);
                   }
@@ -819,6 +870,18 @@ export default function RoomsPage() {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Maintenance Status</label>
+                  <select
+                    value={editForm.maintanenceStatus}
+                    onChange={e => setEditForm((f: any) => ({ ...f, maintanenceStatus: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  >
+                    <option value="">No Maintenance</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
@@ -858,12 +921,19 @@ export default function RoomsPage() {
                     setDeleteLoading(true);
                     try {
                       await deleteRoom(roomToDelete.roomNumber);
+                      
                       setShowDeleteConfirm(false);
                       setRoomToDelete(null);
                       showToast("Room deleted successfully!", "success");
                       await loadData(true);
                     } catch (e: any) {
-                      showToast(e.message, "error");
+                      const errorMessage = e.message || 'An unexpected error occurred while deleting the room';
+                      // If room is occupied or has active checkouts, show specific error
+                      if (errorMessage.includes('occupied') || errorMessage.includes('checkout')) {
+                        showToast("Cannot delete room: Room is currently occupied or has active checkouts", "error");
+                      } else {
+                        showToast(errorMessage, "error");
+                      }
                     } finally {
                       setDeleteLoading(false);
                     }
