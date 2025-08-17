@@ -207,20 +207,14 @@ export default function RoomsPage() {
     }
   }, [page, loadData]);
 
-  // Clean up debounce timeout and polling interval
+  // Clean up debounce timeout
   useEffect(() => {
-    // Set up polling interval to refresh data every 10 seconds
-    const pollInterval = setInterval(() => {
-      loadData();
-    }, 10000); // 10 seconds
-
     return () => {
       if (searchDebounce) {
         clearTimeout(searchDebounce);
       }
-      clearInterval(pollInterval);
     };
-  }, [searchDebounce, loadData]);
+  }, [searchDebounce]);
 
   const showToast = (message: string, type: 'error' | 'success' = 'error') => {
     setToast({ message, type });
