@@ -1,10 +1,11 @@
 "use client";
 
-import { getGuests, getRooms, updateGuest, addGuest as createGuest, getMe } from "@/lib/api";
+import { getGuests, getRooms, updateGuest, addGuest as createGuest, getMe, getAvailableRooms } from "@/lib/api";
 import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 import { format } from "date-fns";
+import { isAPIResponse } from "@/types/api";
 
 interface Guest {
   _id: string;
@@ -40,8 +41,8 @@ interface GuestForm {
   phone: string;
   address: string;
   rooms: string[];
-  checkInDate: string;
-  checkOutDate: string;
+  checkInDate: string;  // Now required as per API
+  checkOutDate?: string;
   hotel?: string;
 }
 
@@ -134,10 +135,27 @@ export default function GuestsPage() {
         setLoading(true);
         const [guestsRes, roomsRes] = await Promise.all([
           getGuests(),
-          getRooms(),
+          getAvailableRooms(),
         ]);
-        setGuests(guestsRes?.data || guestsRes || []);
-        setRooms(roomsRes?.data || roomsRes || []);
+        
+        // Process guests data
+        let guestsData: Guest[] = [];
+        if (guestsRes && isAPIResponse<Guest[]>(guestsRes)) {
+          guestsData = Array.isArray(guestsRes.data) ? guestsRes.data : [];
+        } else if (Array.isArray(guestsRes)) {
+          guestsData = guestsRes;
+        }
+        
+        // Process rooms data
+        let roomsData: Room[] = [];
+        if (roomsRes && isAPIResponse<Room[]>(roomsRes)) {
+          roomsData = Array.isArray(roomsRes.data) ? roomsRes.data : [];
+        } else if (Array.isArray(roomsRes)) {
+          roomsData = roomsRes;
+        }
+        
+        setGuests(guestsData);
+        setRooms(roomsData);
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -243,10 +261,15 @@ export default function GuestsPage() {
       if (token) {
         const [guestsRes, roomsRes] = await Promise.all([
           getGuests(),
-          getRooms(),
+          getAvailableRooms(),
         ]);
-        setGuests(guestsRes?.data || guestsRes || []);
-        setRooms(roomsRes?.data || roomsRes || []);
+        
+        // Ensure we always set arrays even if the response is null/undefined
+        const guestsData = guestsRes?.data || [];
+        const roomsData = roomsRes?.data || [];
+        
+        setGuests(Array.isArray(guestsData) ? guestsData : []);
+        setRooms(Array.isArray(roomsData) ? roomsData : []);
       }
       resetForm();
       setNotification({ type: 'success', message: resp?.message || 'Operation successful' });
@@ -282,8 +305,16 @@ export default function GuestsPage() {
         }
       });
       if (!res.ok) throw new Error("Failed to fetch available rooms");
-      const data = await res.json();
-      setAvailableRooms(data.data || []);
+      const response = await res.json();
+      
+      // Process available rooms data
+      let availableRoomsData: Room[] = [];
+      if (response && isAPIResponse<Room[]>(response)) {
+        availableRoomsData = Array.isArray(response.data) ? response.data : [];
+      } else if (Array.isArray(response)) {
+        availableRoomsData = response;
+      }
+      setAvailableRooms(availableRoomsData);
     } catch (e) {
       setAvailableRooms([]);
     }
@@ -314,8 +345,16 @@ export default function GuestsPage() {
         }
       });
       if (!res.ok) throw new Error("Failed to fetch available rooms");
-      const data = await res.json();
-      setAvailableRooms(data.data || []);
+      const response = await res.json();
+      
+      // Process available rooms data
+      let availableRoomsData: Room[] = [];
+      if (response && isAPIResponse<Room[]>(response)) {
+        availableRoomsData = Array.isArray(response.data) ? response.data : [];
+      } else if (Array.isArray(response)) {
+        availableRoomsData = response;
+      }
+      setAvailableRooms(availableRoomsData);
     } catch (e) {
       setAvailableRooms([]);
     }

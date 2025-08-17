@@ -182,6 +182,19 @@ export async function getRooms(params: Record<string, any> = {}) {
   return res.json();
 }
 
+export async function getAvailableRooms() {
+  const res = await fetch(`${API_URL}/rooms/available`, {
+    headers: mergeHeaders({}, getAuthHeaders())
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error("Failed to fetch available rooms");
+  return res.json();
+}
+
 export async function addRoom(room: any) {
   const res = await fetch(`${API_URL}/rooms`, {
     method: "POST",
@@ -258,12 +271,19 @@ export async function addGuest(guest: any) {
   const res = await fetch(`${API_URL}/guests`, {
     method: "POST",
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
-    body: JSON.stringify(guest),
+    body: JSON.stringify({
+      ...guest,
+      checkInDate: guest.checkInDate || new Date().toISOString()
+    }),
   });
   if (res.status === 401) {
     localStorage.removeItem('token');
     window.location.href = '/login';
     return;
+  }
+  if (res.status === 400) {
+    const error = await res.json();
+    throw new Error(error.message || "Room is already occupied");
   }
   if (!res.ok) throw new Error("Failed to add guest");
   return res.json();
@@ -292,6 +312,10 @@ export async function updateGuest(id: string, guest: any) {
     localStorage.removeItem('token');
     window.location.href = '/login';
     return;
+  }
+  if (res.status === 400) {
+    const error = await res.json();
+    throw new Error(error.message || "Room is already occupied");
   }
   if (!res.ok) throw new Error("Failed to update guest");
   return res.json();
@@ -445,7 +469,14 @@ export async function deleteItem(id: string) {
 
 // HOTELS
 export async function getHotels() {
-  const res = await fetch(`${API_URL}/hotels`);
+  const res = await fetch(`${API_URL}/hotels`, {
+    headers: mergeHeaders({}, getAuthHeaders())
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
   if (!res.ok) throw new Error("Failed to fetch hotels");
   return res.json();
 }
@@ -456,7 +487,15 @@ export async function addHotel(hotel: any) {
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
     body: JSON.stringify(hotel),
   });
-  if (!res.ok) throw new Error("Failed to add hotel");
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Failed to add hotel");
+  }
   return res.json();
 }
 

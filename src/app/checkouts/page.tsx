@@ -116,7 +116,7 @@ export default function CheckoutsPage() {
                           <div className="text-xs text-gray-500">{checkout.guest?.email}</div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>
-                          {checkout.room ? `#${checkout.room.roomNumber} (${checkout.room.type})` : "-"}
+                          {checkout.orders && checkout.orders.length > 0 ? `#${checkout.orders[0].roomNumber}` : "-"}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap capitalize cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>{checkout.status}</td>
                         <td className="px-4 py-4 whitespace-nowrap font-semibold cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>₹{checkout.totalBill}</td>
@@ -147,7 +147,7 @@ export default function CheckoutsPage() {
                 setEditLoading(true);
                 setEditError("");
                 try {
-                  await updateCheckoutPayment(editCheckout.room?.roomNumber || "", editStatus, editVatPercent, editVatAmount);
+                  await updateCheckoutPayment(editCheckout.orders[0]?.roomNumber || "", editStatus, editVatPercent, editVatAmount);
                   setShowEdit(false);
                   setEditCheckout(null);
                   await loadData();
@@ -163,7 +163,7 @@ export default function CheckoutsPage() {
                 <label className="block text-sm font-medium mb-1">Room Number</label>
                 <input
                   type="text"
-                  value={editCheckout.room?.roomNumber || ""}
+                  value={editCheckout.orders[0]?.roomNumber || ""}
                   disabled
                   className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
                 />

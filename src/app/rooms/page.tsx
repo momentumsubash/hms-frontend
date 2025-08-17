@@ -3,7 +3,7 @@
 import { getRooms, updateRoom } from "@/lib/api";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 export default function RoomsPage() {
   const { logout } = useAuth();
@@ -25,59 +25,11 @@ export default function RoomsPage() {
   const [filters, setFilters] = useState({
     type: "",
     isOccupied: "",
-    roomNumber: "",
-    guestName: "",
-    advancedSearch: "" // For any other filters not in main UI
+    roomNumber: ""
   });
 
   // Debounce search inputs
   const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
-  
-  useEffect(() => {
-    // 1. Fetch /auth/me, store user in localStorage
-    // 2. Fetch /hotels/me, store hotel in localStorage (if needed)
-    // 3. Fetch rooms with filters
-    const fetchAll = async () => {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) {
-        setUser(null);
-        return;
-      }
-      try {
-        // 1. /auth/me
-        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
-        if (!meRes.ok) throw new Error("Not authenticated");
-        const meData = await meRes.json();
-        setUser(meData.data || null);
-        localStorage.setItem("user", JSON.stringify(meData.data || null));
-        
-        // 2. /hotels/me
-        const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
-        if (hotelRes.ok) {
-          const hotelData = await hotelRes.json();
-          localStorage.setItem("hotel", JSON.stringify(hotelData.data || null));
-        }
-        
-        // 3. Load rooms with initial filters
-        await loadData();
-      } catch (e: any) {
-        setUser(null);
-        localStorage.removeItem("user");
-        localStorage.removeItem("hotel");
-      }
-    };
-    fetchAll();
-  }, []);
   
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
@@ -127,28 +79,32 @@ export default function RoomsPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Load data with server-side filtering and pagination
-  const loadData = async (resetPage = false) => {
+  const loadData = useCallback(async (resetPage = false, customFilters?: typeof filters) => {
     try {
       setLoading(true);
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
 
+      // Use custom filters if provided, otherwise use current filters
+      const currentFilters = customFilters || filters;
+      const currentPage = resetPage ? 1 : page;
+
       // Build query parameters
       const queryParams = new URLSearchParams();
-      queryParams.append('page', resetPage ? '1' : page.toString());
+      queryParams.append('page', currentPage.toString());
       queryParams.append('limit', limit.toString());
       
       // Add filters if they exist
-      if (filters.type) queryParams.append('type', filters.type);
-      if (filters.isOccupied !== "") queryParams.append('isOccupied', filters.isOccupied);
-      if (filters.roomNumber) queryParams.append('roomNumber', filters.roomNumber);
-      if (filters.guestName) queryParams.append('guestName', filters.guestName);
-      if (filters.advancedSearch) queryParams.append('search', filters.advancedSearch);
+      if (currentFilters.type) queryParams.append('type', currentFilters.type);
+      if (currentFilters.isOccupied !== "") queryParams.append('isOccupied', currentFilters.isOccupied);
+      if (currentFilters.roomNumber) queryParams.append('roomNumber', currentFilters.roomNumber);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?${queryParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
       });
 
@@ -181,11 +137,12 @@ export default function RoomsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, page, limit]);
 
   // Handle filter changes with debouncing for search inputs
   const handleFilterChange = (filterKey: string, value: string) => {
-    setFilters(prev => ({ ...prev, [filterKey]: value }));
+    const newFilters = { ...filters, [filterKey]: value };
+    setFilters(newFilters);
     
     // Clear existing timeout
     if (searchDebounce) {
@@ -193,32 +150,77 @@ export default function RoomsPage() {
     }
     
     // For search-like filters, debounce the API call
-    if (['roomNumber', 'guestName', 'advancedSearch'].includes(filterKey)) {
-      const timeout = setTimeout(() => {
-        loadData(true); // Reset to page 1 when filtering
-      }, 500); // 500ms debounce
-      setSearchDebounce(timeout);
-    } else {
-      // For dropdowns, apply filter immediately
-      setTimeout(() => loadData(true), 0);
-    }
+    // For all filters, apply immediately with new filters
+    loadData(true, newFilters);
   };
 
-  // Load data when page changes
   useEffect(() => {
-    if (page > 1) { // Avoid double loading on initial mount
+    // 1. Fetch /auth/me, store user in localStorage
+    // 2. Fetch /hotels/me, store hotel in localStorage (if needed)
+    // 3. Fetch rooms with filters
+    const fetchAll = async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) {
+        setUser(null);
+        return;
+      }
+      try {
+        // 1. /auth/me
+        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        if (!meRes.ok) throw new Error("Not authenticated");
+        const meData = await meRes.json();
+        setUser(meData.data || null);
+        localStorage.setItem("user", JSON.stringify(meData.data || null));
+        
+        // 2. /hotels/me
+        const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        if (hotelRes.ok) {
+          const hotelData = await hotelRes.json();
+          localStorage.setItem("hotel", JSON.stringify(hotelData.data || null));
+        }
+        
+        // 3. Load rooms with initial filters
+        await loadData();
+      } catch (e: any) {
+        setUser(null);
+        localStorage.removeItem("user");
+        localStorage.removeItem("hotel");
+      }
+    };
+    fetchAll();
+  }, []);
+
+  // Load data when page changes (but not on initial mount to avoid double loading)
+  useEffect(() => {
+    if (page > 1) {
       loadData();
     }
-  }, [page]);
+  }, [page, loadData]);
 
-  // Clean up debounce timeout
+  // Clean up debounce timeout and polling interval
   useEffect(() => {
+    // Set up polling interval to refresh data every 10 seconds
+    const pollInterval = setInterval(() => {
+      loadData();
+    }, 10000); // 10 seconds
+
     return () => {
       if (searchDebounce) {
         clearTimeout(searchDebounce);
       }
+      clearInterval(pollInterval);
     };
-  }, [searchDebounce]);
+  }, [searchDebounce, loadData]);
 
   const showToast = (message: string, type: 'error' | 'success' = 'error') => {
     setToast({ message, type });
@@ -272,14 +274,13 @@ export default function RoomsPage() {
 
   // Clear all filters
   const clearFilters = () => {
-    setFilters({
+    const clearedFilters = {
       type: "",
       isOccupied: "",
-      roomNumber: "",
-      guestName: "",
-      advancedSearch: ""
-    });
-    setTimeout(() => loadData(true), 0);
+      roomNumber: ""
+    };
+    setFilters(clearedFilters);
+    loadData(true, clearedFilters);
   };
 
   if (loading && rooms.length === 0) {
@@ -394,31 +395,6 @@ export default function RoomsPage() {
                 <option value="false">Available</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Guest Name</label>
-              <input
-                type="text"
-                value={filters.guestName}
-                onChange={(e) => handleFilterChange('guestName', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Search by guest name..."
-              />
-            </div>
-          </div>
-          
-          {/* Advanced Search */}
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-1">
-              Advanced Search
-              <span className="text-xs text-gray-500 ml-1">(Search across multiple fields)</span>
-            </label>
-            <input
-              type="text"
-              value={filters.advancedSearch}
-              onChange={(e) => handleFilterChange('advancedSearch', e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2"
-              placeholder="Search across all fields (description, amenities, maintenance status, etc.)..."
-            />
           </div>
         </div>
 
@@ -535,283 +511,6 @@ export default function RoomsPage() {
                 ))}
               </tbody>
             </table>
-
-            {/* Add Room Modal */}
-            {showAdd && (
-              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                  <h2 className="text-2xl font-bold mb-4">Add New Room</h2>
-                  <form
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      setAddLoading(true);
-                      try {
-                        await createRoom({
-                          roomNumber: addForm.roomNumber,
-                          type: addForm.type,
-                          rate: Number(addForm.rate),
-                          description: addForm.description,
-                          amenities: Array.isArray(addForm.amenities)
-                            ? addForm.amenities.filter((a: string) => a.trim() !== "")
-                            : [],
-                          isOccupied: addForm.isOccupied,
-                          capacity: Number(addForm.capacity),
-                        });
-                        setShowAdd(false);
-                        showToast("Room created successfully!", "success");
-                        await loadData(true);
-                      } catch (e: any) {
-                        showToast(e.message, "error");
-                      } finally {
-                        setAddLoading(false);
-                      }
-                    }}
-                    className="space-y-4"
-                  >
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Room Number</label>
-                      <input
-                        type="text"
-                        value={addForm.roomNumber}
-                        onChange={e => setAddForm((f: any) => ({ ...f, roomNumber: e.target.value }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Type</label>
-                      <select
-                        value={addForm.type}
-                        onChange={e => setAddForm((f: any) => ({ ...f, type: e.target.value }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      >
-                        <option value="">Select Type</option>
-                        <option value="single">Single</option>
-                        <option value="double">Double</option>
-                        <option value="suite">Suite</option>
-                        <option value="deluxe">Deluxe</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Rate</label>
-                      <input
-                        type="number"
-                        value={addForm.rate}
-                        onChange={e => setAddForm((f: any) => ({ ...f, rate: e.target.value }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Description</label>
-                      <textarea
-                        value={addForm.description}
-                        onChange={e => setAddForm((f: any) => ({ ...f, description: e.target.value }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        rows={2}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Amenities (comma separated)</label>
-                      <input
-                        type="text"
-                        value={Array.isArray(addForm.amenities) ? addForm.amenities.join(", ") : ""}
-                        onChange={e => setAddForm((f: any) => ({ ...f, amenities: e.target.value.split(",").map((a: string) => a.trim()) }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Occupied</label>
-                      <select
-                        value={addForm.isOccupied ? "true" : "false"}
-                        onChange={e => setAddForm((f: any) => ({ ...f, isOccupied: e.target.value === "true" }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                      >
-                        <option value="false">No</option>
-                        <option value="true">Yes</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Capacity</label>
-                      <input
-                        type="number"
-                        value={addForm.capacity}
-                        onChange={e => setAddForm((f: any) => ({ ...f, capacity: e.target.value }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-3 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setShowAdd(false)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                        disabled={addLoading}
-                      >Cancel</button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                        disabled={addLoading}
-                      >{addLoading ? "Creating..." : "Create Room"}</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* Edit Room Modal */}
-            {showEdit && (
-              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                  <h2 className="text-2xl font-bold mb-4">Edit Room {editRoom?.roomNumber}</h2>
-                  <form
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      setEditLoading(true);
-                      try {
-                        await updateRoom(editRoom.roomNumber, {
-                          type: editForm.type,
-                          rate: Number(editForm.rate),
-                          description: editForm.description,
-                          amenities: Array.isArray(editForm.amenities)
-                            ? editForm.amenities.filter((a: string) => a.trim() !== "")
-                            : [],
-                          isOccupied: editForm.isOccupied,
-                          capacity: Number(editForm.capacity),
-                        });
-                        setShowEdit(false);
-                        setEditRoom(null);
-                        showToast("Room updated successfully!", "success");
-                        await loadData();
-                      } catch (e: any) {
-                        showToast(e.message, "error");
-                      } finally {
-                        setEditLoading(false);
-                      }
-                    }}
-                    className="space-y-4"
-                  >
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Type</label>
-                      <select
-                        value={editForm.type}
-                        onChange={e => setEditForm((f: any) => ({ ...f, type: e.target.value }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      >
-                        <option value="">Select Type</option>
-                        <option value="single">Single</option>
-                        <option value="double">Double</option>
-                        <option value="suite">Suite</option>
-                        <option value="deluxe">Deluxe</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Rate</label>
-                      <input
-                        type="number"
-                        value={editForm.rate}
-                        onChange={e => setEditForm((f: any) => ({ ...f, rate: e.target.value }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Description</label>
-                      <textarea
-                        value={editForm.description}
-                        onChange={e => setEditForm((f: any) => ({ ...f, description: e.target.value }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        rows={2}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Amenities (comma separated)</label>
-                      <input
-                        type="text"
-                        value={Array.isArray(editForm.amenities) ? editForm.amenities.join(", ") : ""}
-                        onChange={e => setEditForm((f: any) => ({ ...f, amenities: e.target.value.split(",").map((a: string) => a.trim()) }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Occupied</label>
-                      <select
-                        value={editForm.isOccupied ? "true" : "false"}
-                        onChange={e => setEditForm((f: any) => ({ ...f, isOccupied: e.target.value === "true" }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                      >
-                        <option value="false">No</option>
-                        <option value="true">Yes</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Capacity</label>
-                      <input
-                        type="number"
-                        value={editForm.capacity}
-                        onChange={e => setEditForm((f: any) => ({ ...f, capacity: e.target.value }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div className="flex justify-end space-x-3 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setShowEdit(false)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                        disabled={editLoading}
-                      >Cancel</button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                        disabled={editLoading}
-                      >{editLoading ? "Saving..." : "Update Room"}</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* Delete Confirmation Modal */}
-            {showDeleteConfirm && (
-              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                  <h2 className="text-xl font-bold mb-4">Confirm Delete</h2>
-                  <p className="mb-6">Are you sure you want to delete room {roomToDelete?.roomNumber}? This action cannot be undone.</p>
-                  <div className="flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowDeleteConfirm(false);
-                        setRoomToDelete(null);
-                      }}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                      disabled={deleteLoading}
-                    >Cancel</button>
-                    <button
-                      onClick={async () => {
-                        setDeleteLoading(true);
-                        try {
-                          await deleteRoom(roomToDelete.roomNumber);
-                          setShowDeleteConfirm(false);
-                          setRoomToDelete(null);
-                          showToast("Room deleted successfully!", "success");
-                          await loadData(true);
-                        } catch (e: any) {
-                          showToast(e.message, "error");
-                        } finally {
-                          setDeleteLoading(false);
-                        }
-                      }}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-                      disabled={deleteLoading}
-                    >{deleteLoading ? "Deleting..." : "Delete"}</button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Pagination Controls */}
@@ -906,13 +605,292 @@ export default function RoomsPage() {
           )}
         </div>
 
+        {/* Add Room Modal */}
+        {showAdd && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold mb-4">Add New Room</h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setAddLoading(true);
+                  try {
+                    await createRoom({
+                      roomNumber: addForm.roomNumber,
+                      type: addForm.type,
+                      rate: Number(addForm.rate),
+                      description: addForm.description,
+                      amenities: Array.isArray(addForm.amenities)
+                        ? addForm.amenities.filter((a: string) => a.trim() !== "")
+                        : [],
+                      isOccupied: addForm.isOccupied,
+                      capacity: Number(addForm.capacity),
+                    });
+                    setShowAdd(false);
+                    showToast("Room created successfully!", "success");
+                    await loadData(true);
+                  } catch (e: any) {
+                    showToast(e.message, "error");
+                  } finally {
+                    setAddLoading(false);
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium mb-1">Room Number</label>
+                  <input
+                    type="text"
+                    value={addForm.roomNumber}
+                    onChange={e => setAddForm((f: any) => ({ ...f, roomNumber: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Type</label>
+                  <select
+                    value={addForm.type}
+                    onChange={e => setAddForm((f: any) => ({ ...f, type: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    required
+                  >
+                    <option value="">Select Type</option>
+                    <option value="single">Single</option>
+                    <option value="double">Double</option>
+                    <option value="suite">Suite</option>
+                    <option value="deluxe">Deluxe</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Rate</label>
+                  <input
+                    type="number"
+                    value={addForm.rate}
+                    onChange={e => setAddForm((f: any) => ({ ...f, rate: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <textarea
+                    value={addForm.description}
+                    onChange={e => setAddForm((f: any) => ({ ...f, description: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Amenities (comma separated)</label>
+                  <input
+                    type="text"
+                    value={Array.isArray(addForm.amenities) ? addForm.amenities.join(", ") : ""}
+                    onChange={e => setAddForm((f: any) => ({ ...f, amenities: e.target.value.split(",").map((a: string) => a.trim()) }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Occupied</label>
+                  <select
+                    value={addForm.isOccupied ? "true" : "false"}
+                    onChange={e => setAddForm((f: any) => ({ ...f, isOccupied: e.target.value === "true" }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  >
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Capacity</label>
+                  <input
+                    type="number"
+                    value={addForm.capacity}
+                    onChange={e => setAddForm((f: any) => ({ ...f, capacity: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdd(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    disabled={addLoading}
+                  >Cancel</button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    disabled={addLoading}
+                  >{addLoading ? "Creating..." : "Create Room"}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Room Modal */}
+        {showEdit && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold mb-4">Edit Room {editRoom?.roomNumber}</h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  setEditLoading(true);
+                  try {
+                    await updateRoom(editRoom.roomNumber, {
+                      type: editForm.type,
+                      rate: Number(editForm.rate),
+                      description: editForm.description,
+                      amenities: Array.isArray(editForm.amenities)
+                        ? editForm.amenities.filter((a: string) => a.trim() !== "")
+                        : [],
+                      isOccupied: editForm.isOccupied,
+                      capacity: Number(editForm.capacity),
+                    });
+                    setShowEdit(false);
+                    setEditRoom(null);
+                    showToast("Room updated successfully!", "success");
+                    await loadData();
+                  } catch (e: any) {
+                    showToast(e.message, "error");
+                  } finally {
+                    setEditLoading(false);
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-sm font-medium mb-1">Type</label>
+                  <select
+                    value={editForm.type}
+                    onChange={e => setEditForm((f: any) => ({ ...f, type: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    required
+                  >
+                    <option value="">Select Type</option>
+                    <option value="single">Single</option>
+                    <option value="double">Double</option>
+                    <option value="suite">Suite</option>
+                    <option value="deluxe">Deluxe</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Rate</label>
+                  <input
+                    type="number"
+                    value={editForm.rate}
+                    onChange={e => setEditForm((f: any) => ({ ...f, rate: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <textarea
+                    value={editForm.description}
+                    onChange={e => setEditForm((f: any) => ({ ...f, description: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Amenities (comma separated)</label>
+                  <input
+                    type="text"
+                    value={Array.isArray(editForm.amenities) ? editForm.amenities.join(", ") : ""}
+                    onChange={e => setEditForm((f: any) => ({ ...f, amenities: e.target.value.split(",").map((a: string) => a.trim()) }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Occupied</label>
+                  <select
+                    value={editForm.isOccupied ? "true" : "false"}
+                    onChange={e => setEditForm((f: any) => ({ ...f, isOccupied: e.target.value === "true" }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  >
+                    <option value="false">No</option>
+                    <option value="true">Yes</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Capacity</label>
+                  <input
+                    type="number"
+                    value={editForm.capacity}
+                    onChange={e => setEditForm((f: any) => ({ ...f, capacity: e.target.value }))}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEdit(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    disabled={editLoading}
+                  >Cancel</button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    disabled={editLoading}
+                  >{editLoading ? "Saving..." : "Update Room"}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h2 className="text-xl font-bold mb-4">Confirm Delete</h2>
+              <p className="mb-6">Are you sure you want to delete room {roomToDelete?.roomNumber}? This action cannot be undone.</p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setRoomToDelete(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  disabled={deleteLoading}
+                >Cancel</button>
+                <button
+                  onClick={async () => {
+                    setDeleteLoading(true);
+                    try {
+                      await deleteRoom(roomToDelete.roomNumber);
+                      setShowDeleteConfirm(false);
+                      setRoomToDelete(null);
+                      showToast("Room deleted successfully!", "success");
+                      await loadData(true);
+                    } catch (e: any) {
+                      showToast(e.message, "error");
+                    } finally {
+                      setDeleteLoading(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                  disabled={deleteLoading}
+                >{deleteLoading ? "Deleting..." : "Delete"}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Toast Notification */}
         {toast && (
-          <div className={`fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
-            toast.type === 'error' 
-              ? 'bg-red-500 text-white border border-red-600' 
-              : 'bg-green-500 text-white border border-green-600'
-          }`}>
+          <div 
+            className={`fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
+              toast.type === 'error' 
+                ? 'bg-red-500 text-white border border-red-600' 
+                : 'bg-green-500 text-white border border-green-600'
+            }`}
+          >
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">{toast.message}</span>
               <button
