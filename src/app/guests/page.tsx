@@ -1,7 +1,7 @@
 "use client";
 
-import { getGuests, getRooms, updateGuest, addGuest as createGuest, getMe, getAvailableRooms } from "@/lib/api";
-import { useEffect, useState, useRef } from "react";
+import { getGuests, getRooms, updateGuest, addGuest as createGuest, getAvailableRooms } from "@/lib/api";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 import { format } from "date-fns";
@@ -14,15 +14,39 @@ interface Guest {
   email: string;
   phone: string;
   address?: string;
+  roomDiscount: number;
+  advancePaid: number;
   rooms: string[];
   checkInDate: string;
   checkOutDate?: string;
   isCheckedOut: boolean;
   totalBill: number;
-  createdBy: string;
-  hotel: string;
+  createdBy: {
+    _id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  };
+  hotel: {
+    _id: string;
+    name: string;
+  };
   createdAt: string;
   updatedAt: string;
+  checkouts?: Array<{
+    _id: string;
+    status: string;
+    rooms: Array<{
+      _id: string;
+      roomNumber: string;
+      type: string;
+      isOccupied: boolean;
+    }>;
+    totalBill: number;
+    advancePaid: number;
+    createdAt: string;
+  }>;
+  totalSpent?: number;
 }
 
 interface Room {
@@ -41,6 +65,8 @@ interface GuestForm {
   phone: string;
   address: string;
   rooms: string[];
+  roomDiscount: string; // store as string for input, convert to number on submit
+  advancePaid: string;  // store as string for input, convert to number on submit
   checkInDate: string;  // Now required as per API
   checkOutDate?: string;
   hotel?: string;
@@ -83,6 +109,7 @@ export default function GuestsPage() {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -94,6 +121,8 @@ export default function GuestsPage() {
     phone: "",
     address: "",
     rooms: [],
+    roomDiscount: "0",
+    advancePaid: "0",
     checkInDate: "",
     checkOutDate: ""
   });
@@ -146,16 +175,17 @@ export default function GuestsPage() {
           guestsData = guestsRes;
         }
         
-        // Process rooms data
+        // Process available rooms data
         let roomsData: Room[] = [];
         if (roomsRes && isAPIResponse<Room[]>(roomsRes)) {
           roomsData = Array.isArray(roomsRes.data) ? roomsRes.data : [];
         } else if (Array.isArray(roomsRes)) {
           roomsData = roomsRes;
         }
-        
+
         setGuests(guestsData);
         setRooms(roomsData);
+        setAvailableRooms(roomsData);
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -173,6 +203,8 @@ export default function GuestsPage() {
       phone: "",
       address: "",
       rooms: [],
+      roomDiscount: "0",
+      advancePaid: "0",
       checkInDate: "",
       checkOutDate: ""
     });
@@ -205,9 +237,19 @@ export default function GuestsPage() {
       }
     }
 
-    // Check if at least one room is selected
+    // Check if at least one room is selected (only show available rooms in UI)
     if (!formData.rooms || formData.rooms.length === 0) {
       errors.rooms = "At least one room must be selected";
+    }
+
+    // Validate discount and advance paid are non-negative numbers
+    const roomDiscountValue = parseFloat(formData.roomDiscount || '0');
+    const advancePaidValue = parseFloat(formData.advancePaid || '0');
+    if (isNaN(roomDiscountValue) || roomDiscountValue < 0) {
+      errors.roomDiscount = "Room discount must be a non-negative number";
+    }
+    if (isNaN(advancePaidValue) || advancePaidValue < 0) {
+      errors.advancePaid = "Advance paid must be a non-negative number";
     }
 
     // Email validation
@@ -235,26 +277,30 @@ export default function GuestsPage() {
 
     setFormLoading(true);
     try {
-      let guestData;
-      if (user?.role === 'super_admin') {
-        guestData = {
-          ...formData,
-          checkInDate: new Date(formData.checkInDate).toISOString(),
-          checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined
-        };
-      } else {
-        const { hotel, ...formDataWithoutHotel } = formData;
-        guestData = {
-          ...formDataWithoutHotel,
-          checkInDate: new Date(formData.checkInDate).toISOString(),
-          checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined
-        };
-      }
       let resp;
       if (editingGuest) {
-        resp = await updateGuest(editingGuest._id, guestData);
+        // Edit: adjust planned checkout/financials only per updated API
+        const updatePayload: any = {
+          checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
+          roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
+          advancePaid: parseFloat(formData.advancePaid || '0') || 0,
+        };
+        resp = await updateGuest(editingGuest._id, updatePayload);
       } else {
-        resp = await createGuest(guestData);
+        // Create: send rooms array; include first as roomNumber for compatibility
+        const createPayload: any = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          rooms: formData.rooms,
+          roomNumber: formData.rooms[0],
+          checkInDate: new Date(formData.checkInDate).toISOString(),
+          checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
+          roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
+          advancePaid: parseFloat(formData.advancePaid || '0') || 0,
+        };
+        resp = await createGuest(createPayload);
       }
       // Refresh guests and rooms
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -290,6 +336,8 @@ export default function GuestsPage() {
       phone: guest.phone,
       address: guest.address || "",
       rooms: guest.rooms || [],
+      roomDiscount: guest.roomDiscount?.toString() || "0",
+      advancePaid: guest.advancePaid?.toString() || "0",
       checkInDate: guest.checkInDate ? format(new Date(guest.checkInDate), "yyyy-MM-dd'T'HH:mm") : "",
       checkOutDate: guest.checkOutDate ? format(new Date(guest.checkOutDate), "yyyy-MM-dd'T'HH:mm") : ""
     });
@@ -315,7 +363,7 @@ export default function GuestsPage() {
         availableRoomsData = response;
       }
       setAvailableRooms(availableRoomsData);
-    } catch (e) {
+    } catch {
       setAvailableRooms([]);
     }
     setShowForm(true);
@@ -330,6 +378,8 @@ export default function GuestsPage() {
       phone: "",
       address: "",
       rooms: [],
+      roomDiscount: "0",
+      advancePaid: "0",
       checkInDate: getCurrentDateTimeLocal(), // Auto-set current date/time
       checkOutDate: ""
     });
@@ -355,7 +405,7 @@ export default function GuestsPage() {
         availableRoomsData = response;
       }
       setAvailableRooms(availableRoomsData);
-    } catch (e) {
+    } catch {
       setAvailableRooms([]);
     }
     setShowForm(true);
@@ -395,13 +445,25 @@ export default function GuestsPage() {
     return format(checkInDate, "yyyy-MM-dd'T'HH:mm");
   };
 
+  // Helper function to get room numbers from guest data
+  const getRoomNumbers = (guest: Guest): string[] => {
+    if (guest.checkouts && guest.checkouts.length > 0) {
+      // Get room numbers from the most recent checkout
+      const latestCheckout = guest.checkouts[guest.checkouts.length - 1];
+      return latestCheckout.rooms.map(room => room.roomNumber);
+    }
+    // Fallback to room IDs if no checkout data available
+    return guest.rooms;
+  };
+
 
   // Filter guests based on search criteria
   const filteredGuests = guests.filter(guest => {
     const matchesCheckedOut = filters.isCheckedOut === "" || 
       guest.isCheckedOut.toString() === filters.isCheckedOut;
+    const roomNumbers = getRoomNumbers(guest);
     const matchesRoom = filters.roomNumber === "" || 
-      (guest.rooms && guest.rooms.some(r => r.toLowerCase().includes(filters.roomNumber.toLowerCase())));
+      roomNumbers.some(r => r.toLowerCase().includes(filters.roomNumber.toLowerCase()));
     const matchesSearch = filters.search === "" || 
       `${guest.firstName} ${guest.lastName}`.toLowerCase().includes(filters.search.toLowerCase()) ||
       guest.email.toLowerCase().includes(filters.search.toLowerCase()) ||
@@ -581,22 +643,13 @@ export default function GuestsPage() {
               )}
 
               <div>
-                <label className="block text-sm font-medium mb-1">Rooms *</label>
+                <label className="block text-sm font-medium mb-1">Rooms (Available only) *</label>
                 <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded px-3 py-2 ${formErrors.rooms ? 'border-red-500' : 'border-gray-300'}`}>
-                  {/* For edit, show all available rooms plus the guest's current rooms (if not already in availableRooms) */}
                   {(() => {
                     let roomList = availableRooms.length > 0 ? [...availableRooms] : [...rooms];
-                    // If editing, ensure current guest's rooms are included
-                    if (editingGuest && editingGuest.rooms) {
-                      editingGuest.rooms.forEach(rn => {
-                        if (!roomList.some(r => r.roomNumber === rn)) {
-                          // Try to find the room in all rooms
-                          const found = rooms.find(r => r.roomNumber === rn);
-                          if (found) roomList.push(found);
-                        }
-                      });
-                    }
-                    // Remove duplicates by roomNumber
+                    // Show only available rooms
+                    roomList = roomList.filter(r => !r.isOccupied);
+                    // Unique by roomNumber
                     roomList = roomList.filter((r, idx, arr) => arr.findIndex(rr => rr.roomNumber === r.roomNumber) === idx);
                     return roomList.map(room => (
                       <label key={room._id} className="flex items-center space-x-2">
@@ -611,25 +664,50 @@ export default function GuestsPage() {
                               if (checked) {
                                 newRooms = [...newRooms, room.roomNumber];
                               } else {
-                                newRooms = newRooms.filter(r => r !== room.roomNumber);
+                                newRooms = newRooms.filter(rn => rn !== room.roomNumber);
                               }
                               return { ...prev, rooms: newRooms };
                             });
-                            if (formErrors.rooms) {
-                              setFormErrors(prev => ({ ...prev, rooms: "" }));
-                            }
+                            if (formErrors.rooms) setFormErrors(prev => ({ ...prev, rooms: "" }));
                           }}
                           className="form-checkbox"
                         />
                         <span>
-                          Room {room.roomNumber} - {room.type} (₹{room.rate}/night) - Capacity: {room.capacity}
+                          Room {room.roomNumber} - {room.type} (₹{room.rate}/night)
                         </span>
                       </label>
                     ));
                   })()}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">Select one or more rooms for the guest.</div>
+                <div className="text-xs text-gray-500 mt-1">Select one or more currently available rooms for the guest.</div>
                 {formErrors.rooms && <p className="text-red-500 text-xs mt-1">{formErrors.rooms}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Room Discount (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.roomDiscount}
+                    onChange={e => setFormData(prev => ({ ...prev, roomDiscount: e.target.value }))}
+                    className={`w-full border rounded px-3 py-2 ${formErrors.roomDiscount ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {formErrors.roomDiscount && <p className="text-red-500 text-xs mt-1">{formErrors.roomDiscount}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Advance Paid (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.advancePaid}
+                    onChange={e => setFormData(prev => ({ ...prev, advancePaid: e.target.value }))}
+                    className={`w-full border rounded px-3 py-2 ${formErrors.advancePaid ? 'border-red-500' : 'border-gray-300'}`}
+                  />
+                  {formErrors.advancePaid && <p className="text-red-500 text-xs mt-1">{formErrors.advancePaid}</p>}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -705,6 +783,9 @@ export default function GuestsPage() {
                   Room
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Hotel
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Stay Period
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -736,15 +817,22 @@ export default function GuestsPage() {
                     <div className="text-sm text-gray-500">{guest.phone}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {guest.rooms && guest.rooms.length > 0 ? (
-                      guest.rooms.map((room, idx) => (
-                        <span key={room} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
-                          Room {room}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">No rooms</span>
-                    )}
+                    {(() => {
+                      const roomNumbers = getRoomNumbers(guest);
+                      return roomNumbers && roomNumbers.length > 0 ? (
+                        roomNumbers.map((roomNumber) => (
+                          <span key={roomNumber} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
+                            Room {roomNumber}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">No rooms</span>
+                      );
+                    })()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{guest.hotel?.name || 'N/A'}</div>
+                    <div className="text-sm text-gray-500">By: {guest.createdBy?.firstName} {guest.createdBy?.lastName}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div>
@@ -764,7 +852,7 @@ export default function GuestsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ₹{guest.totalBill.toLocaleString()}
+                    ₹{(guest.totalSpent || guest.totalBill).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button

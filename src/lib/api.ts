@@ -238,6 +238,21 @@ export async function updateRoom(roomNumber: string, room: any) {
   return res.json();
 }
 
+export async function updateRoomMaintenance(roomNumber: string, maintenanceStatus: string) {
+  const res = await fetch(`${API_URL}/rooms/${roomNumber}/maintenance`, {
+    method: "PUT",
+    headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
+    body: JSON.stringify({ maintenanceStatus }),
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error("Failed to update maintenance status");
+  return res.json();
+}
+
 export async function deleteRoom(roomNumber: string) {
   const res = await fetch(`${API_URL}/rooms/${roomNumber}`, {
     method: "DELETE",

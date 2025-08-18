@@ -1,6 +1,6 @@
 "use client";
 
-import { getRooms, updateRoom } from "@/lib/api";
+import { getRooms, updateRoom, updateRoomMaintenance } from "@/lib/api";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 import { useEffect, useState, useCallback } from "react";
@@ -486,9 +486,9 @@ export default function RoomsPage() {
                       )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      {room.maintanenceStatus ? (
+                      {(room.maintenanceStatus || room.maintanenceStatus) ? (
                         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                          {room.maintanenceStatus}
+                          {(room.maintenanceStatus || room.maintanenceStatus)}
                         </span>
                       ) : '-'}
                     </td>
@@ -511,7 +511,7 @@ export default function RoomsPage() {
                               amenities: room.amenities || [],
                               isOccupied: room.isOccupied,
                               capacity: room.capacity,
-                              maintanenceStatus: room.maintanenceStatus || "",
+                              maintanenceStatus: (room.maintenanceStatus || room.maintanenceStatus || ""),
                             });
                             setShowEdit(true);
                           }}
@@ -647,7 +647,7 @@ export default function RoomsPage() {
                         : [],
                       isOccupied: addForm.isOccupied,
                       capacity: Number(addForm.capacity),
-                      maintanenceStatus: addForm.maintanenceStatus || undefined,
+                      maintenanceStatus: addForm.maintanenceStatus || undefined,
                     });
                     
                     setShowAdd(false);
@@ -776,21 +776,18 @@ export default function RoomsPage() {
                   e.preventDefault();
                   setEditLoading(true);
                   try {
-                    const response = await updateRoom(editRoom.roomNumber, {
+                    await updateRoom(editRoom.roomNumber, {
                       type: editForm.type,
                       rate: Number(editForm.rate),
                       description: editForm.description,
                       amenities: Array.isArray(editForm.amenities)
                         ? editForm.amenities.filter((a: string) => a.trim() !== "")
                         : [],
-                      isOccupied: editForm.isOccupied,
                       capacity: Number(editForm.capacity),
-                      maintanenceStatus: editForm.maintanenceStatus || undefined,
                     });
 
-                    if (!response.ok) {
-                      const errorData = await response.json();
-                      throw new Error(errorData.message || 'Failed to update room');
+                    if (editForm.maintanenceStatus) {
+                      await updateRoomMaintenance(editRoom.roomNumber, editForm.maintanenceStatus);
                     }
 
                     setShowEdit(false);

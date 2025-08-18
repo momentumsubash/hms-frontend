@@ -14,6 +14,7 @@ export interface Room {
   };
   guestName?: string;
   guestPhone?: string;
+  maintenanceStatus?: string;
   maintanenceStatus?: string;
   createdAt?: string;
   updatedAt?: string;

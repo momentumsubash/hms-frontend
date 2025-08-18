@@ -1,7 +1,7 @@
 "use client";
 
 import { getCheckouts } from "@/lib/api";
-import { updateCheckoutPayment } from "@/lib/checkoutApi";
+import { updateCheckoutPayment, updateCheckout } from "@/lib/checkoutApi";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/ui/auth-provider";
@@ -43,7 +43,9 @@ export default function CheckoutsPage() {
   const [editVatAmount, setEditVatAmount] = useState<string>("");
   
   // New states for enhanced edit modal
-  const [clientVatInfo, setClientVatInfo] = useState<string>("");
+  const [clientVatNumber, setClientVatNumber] = useState<string>("");
+  const [clientVatCompany, setClientVatCompany] = useState<string>("");
+  const [clientVatAddress, setClientVatAddress] = useState<string>("");
   const [advanceAmount, setAdvanceAmount] = useState<string>("");
   const [checkInDate, setCheckInDate] = useState<string>("");
   const [checkOutDate, setCheckOutDate] = useState<string>("");
@@ -74,12 +76,14 @@ export default function CheckoutsPage() {
 
   // Calculate days of stay
   const calculateDaysOfStay = (checkIn: string, checkOut: string) => {
-    if (!checkIn || !checkOut) return 1;
+    if (!checkIn) return 1;
     const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const end = checkOut ? new Date(checkOut) : new Date();
+    // If end is before start, clamp to start
+    const effectiveEnd = end < start ? start : end;
+    const diffTime = Math.abs(effectiveEnd.getTime() - start.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays || 1;
+    return Math.max(diffDays, 1);
   };
 
   // Print bill function
@@ -226,7 +230,7 @@ export default function CheckoutsPage() {
                           <div className="text-xs text-gray-500">{checkout.guest?.email}</div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>
-                          {checkout.orders && checkout.orders.length > 0 ? `#${checkout.orders[0].roomNumber}` : "-"}
+                          {checkout.rooms && checkout.rooms.length > 0 ? `#${checkout.rooms[0].roomNumber}` : "-"}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap capitalize cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>{checkout.status}</td>
                         <td className="px-4 py-4 whitespace-nowrap font-semibold cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>₹{checkout.totalBill}</td>
@@ -239,10 +243,12 @@ export default function CheckoutsPage() {
                               setEditStatus(checkout.status);
                               setEditVatPercent(checkout.vatPercent?.toString() || "");
                               setEditVatAmount(checkout.vatAmount?.toString() || "");
-                              setClientVatInfo("");
-                              setAdvanceAmount("0");
-                              setCheckInDate("");
-                              setCheckOutDate("");
+                              setClientVatNumber(checkout.clientVatInfo?.vatNumber || "");
+                              setClientVatCompany(checkout.clientVatInfo?.companyName || "");
+                              setClientVatAddress(checkout.clientVatInfo?.address || "");
+                              setAdvanceAmount(checkout.advancePaid?.toString() || "0");
+                              setCheckInDate(checkout.checkInDate ? checkout.checkInDate.slice(0, 10) : "");
+                              setCheckOutDate(checkout.checkOutDate ? checkout.checkOutDate.slice(0, 10) : "");
                               setShowEdit(true);
                               setEditError("");
                             }}
@@ -270,12 +276,30 @@ export default function CheckoutsPage() {
                                 setEditLoading(true);
                                 setEditError("");
                                 try {
-                                  await updateCheckoutPayment(
-                                    editCheckout.orders[0]?.roomNumber || "", 
-                                    editStatus, 
-                                    editVatPercent, 
-                                    editVatAmount
-                                  );
+                                  // If status remains pending, allow schedules edit without completing
+                                  if (editStatus === 'pending') {
+                                    await updateCheckout(editCheckout._id, {
+                                      checkInDate: checkInDate ? new Date(checkInDate).toISOString() : undefined,
+                                      checkOutDate: checkOutDate ? new Date(checkOutDate).toISOString() : undefined,
+                                      vatPercent: editVatPercent ? Number(editVatPercent) : undefined,
+                                    });
+                                  } else {
+                                    await updateCheckoutPayment(
+                                      editCheckout.rooms[0]?.roomNumber || "", 
+                                      editStatus, 
+                                      editVatPercent, 
+                                      editVatAmount,
+                                      {
+                                        clientVatInfo: {
+                                          vatNumber: clientVatNumber,
+                                          companyName: clientVatCompany,
+                                          address: clientVatAddress,
+                                        },
+                                        checkInDate: checkInDate ? new Date(checkInDate).toISOString() : undefined,
+                                        checkOutDate: checkOutDate ? new Date(checkOutDate).toISOString() : undefined,
+                                      }
+                                    );
+                                  }
                                   setShowEdit(false);
                                   setEditCheckout(null);
                                   await loadData();
@@ -291,7 +315,7 @@ export default function CheckoutsPage() {
                                 <label className="block text-sm font-medium mb-1">Room Number</label>
                                 <input
                                   type="text"
-                                  value={editCheckout.orders[0]?.roomNumber || ""}
+                                  value={editCheckout.rooms[0]?.roomNumber || ""}
                                   disabled
                                   className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
                                 />
@@ -346,16 +370,37 @@ export default function CheckoutsPage() {
                               </div>
 
                               {/* Additional fields for billing */}
-                              <div>
-                                <label className="block text-sm font-medium mb-1">Client VAT Information</label>
-                                <input
-                                  type="text"
-                                  value={clientVatInfo}
-                                  onChange={e => setClientVatInfo(e.target.value)}
-                                  placeholder="Enter client VAT number or info"
-                                  className="w-full border border-gray-300 rounded px-3 py-2"
-                                  disabled={editLoading}
-                                />
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Client VAT Number</label>
+                                  <input
+                                    type="text"
+                                    value={clientVatNumber}
+                                    onChange={e => setClientVatNumber(e.target.value)}
+                                    className="w-full border border-gray-300 rounded px-3 py-2"
+                                    disabled={editLoading}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Client Company</label>
+                                  <input
+                                    type="text"
+                                    value={clientVatCompany}
+                                    onChange={e => setClientVatCompany(e.target.value)}
+                                    className="w-full border border-gray-300 rounded px-3 py-2"
+                                    disabled={editLoading}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Client Address</label>
+                                  <input
+                                    type="text"
+                                    value={clientVatAddress}
+                                    onChange={e => setClientVatAddress(e.target.value)}
+                                    className="w-full border border-gray-300 rounded px-3 py-2"
+                                    disabled={editLoading}
+                                  />
+                                </div>
                               </div>
 
                               <div>
@@ -428,17 +473,24 @@ export default function CheckoutsPage() {
                               <div className="bill-header">
                                 <h1 className="text-lg font-bold">{editCheckout.hotel?.name || 'Hotel Name'}</h1>
                                 <p>Hotel Bill Receipt</p>
-                                {editCheckout.hotel?.hotel_vat && <p>Hotel VAT: {editCheckout.hotel.hotel_vat}</p>}
+                                {editCheckout.hotelVatInfo && (
+                                  <p>Hotel VAT: {editCheckout.hotelVatInfo.vatNumber} · {editCheckout.hotelVatInfo.companyName}</p>
+                                )}
                                 <p>Date: {new Date().toLocaleDateString()}</p>
                               </div>
 
                               <div className="bill-section">
                                 <h3 className="font-semibold mb-1 text-sm">Guest Information</h3>
                                 <table className="bill-table">
-                                  <tr><td><strong>Name:</strong></td><td>{editCheckout.guest?.firstName} {editCheckout.guest?.lastName}</td><td><strong>Room:</strong></td><td>#{editCheckout.orders[0]?.roomNumber}</td></tr>
+                                  <tr><td><strong>Name:</strong></td><td>{editCheckout.guest?.firstName} {editCheckout.guest?.lastName}</td><td><strong>Room:</strong></td><td>#{editCheckout.rooms[0]?.roomNumber}</td></tr>
                                   <tr><td><strong>Email:</strong></td><td>{editCheckout.guest?.email}</td><td><strong>Days:</strong></td><td>{calculateDaysOfStay(checkInDate, checkOutDate)} days</td></tr>
                                   <tr><td><strong>Check-in:</strong></td><td>{checkInDate || 'N/A'}</td><td><strong>Check-out:</strong></td><td>{checkOutDate || 'N/A'}</td></tr>
-                                  {clientVatInfo && <tr><td><strong>VAT Info:</strong></td><td colSpan="3">{clientVatInfo}</td></tr>}
+                                  {(clientVatNumber || clientVatCompany || clientVatAddress) && (
+                                    <tr>
+                                      <td><strong>Client VAT:</strong></td>
+                                      <td colSpan="3">{clientVatNumber} · {clientVatCompany} · {clientVatAddress}</td>
+                                    </tr>
+                                  )}
                                 </table>
                               </div>
 
@@ -455,7 +507,7 @@ export default function CheckoutsPage() {
                                   </thead>
                                   <tbody>
                                     <tr>
-                                      <td>Room #{editCheckout.orders[0]?.roomNumber}</td>
+                                      <td>Room #{editCheckout.rooms[0]?.roomNumber}</td>
                                       <td>{calculateDaysOfStay(checkInDate, checkOutDate)}</td>
                                       <td>₹{editCheckout.totalRoomCharge ? (editCheckout.totalRoomCharge / calculateDaysOfStay(checkInDate, checkOutDate)).toFixed(2) : '0'}</td>
                                       <td className="text-right">₹{editCheckout.totalRoomCharge || 0}</td>
@@ -484,6 +536,9 @@ export default function CheckoutsPage() {
                                     <tr><td>Extra Charges</td><td className="text-right">₹{editCheckout.totalExtraCharge}</td></tr>
                                   )}
                                   <tr><td>Subtotal</td><td className="text-right">₹{(editCheckout.totalRoomCharge || 0) + (editCheckout.totalOrderCharge || 0) + (editCheckout.totalExtraCharge || 0)}</td></tr>
+                                  {editCheckout.roomDiscount && editCheckout.roomDiscount > 0 && (
+                                    <tr><td>Room Discount</td><td className="text-right">-₹{editCheckout.roomDiscount}</td></tr>
+                                  )}
                                   {(parseFloat(editVatPercent) > 0 || parseFloat(editVatAmount) > 0) && (
                                     <tr><td>VAT ({editVatPercent}%)</td><td className="text-right">₹{editVatAmount}</td></tr>
                                   )}
@@ -523,9 +578,9 @@ export default function CheckoutsPage() {
                       <div className="mb-4">
                         <h3 className="font-semibold mb-2">Room Info</h3>
                         <div className="grid grid-cols-2 gap-4">
-                          <div><span className="font-medium">Room Number:</span> {detailsCheckout.room?.roomNumber || detailsCheckout.orders[0]?.roomNumber || '-'}</div>
-                          <div><span className="font-medium">Type:</span> {detailsCheckout.room?.type || '-'}</div>
-                          <div><span className="font-medium">Occupied:</span> {detailsCheckout.room?.isOccupied ? 'Yes' : 'No'}</div>
+                          <div><span className="font-medium">Room Number:</span> {detailsCheckout.rooms && detailsCheckout.rooms[0]?.roomNumber || '-'}</div>
+                          <div><span className="font-medium">Type:</span> {detailsCheckout.rooms && detailsCheckout.rooms[0]?.type || '-'}</div>
+                          <div><span className="font-medium">Occupied:</span> {detailsCheckout.rooms && detailsCheckout.rooms[0]?.isOccupied ? 'Yes' : 'No'}</div>
                           <div><span className="font-medium">Hotel:</span> {detailsCheckout.hotel?.name || '-'}</div>
                         </div>
                       </div>
