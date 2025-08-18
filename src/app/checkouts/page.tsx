@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 
-
 export default function CheckoutsPage() {
   // Pagination state
   const [page, setPage] = useState(1);
@@ -42,6 +41,12 @@ export default function CheckoutsPage() {
   const [detailsCheckout, setDetailsCheckout] = useState<any>(null);
   const [editVatPercent, setEditVatPercent] = useState<string>("");
   const [editVatAmount, setEditVatAmount] = useState<string>("");
+  
+  // New states for enhanced edit modal
+  const [clientVatInfo, setClientVatInfo] = useState<string>("");
+  const [advanceAmount, setAdvanceAmount] = useState<string>("");
+  const [checkInDate, setCheckInDate] = useState<string>("");
+  const [checkOutDate, setCheckOutDate] = useState<string>("");
 
   useEffect(() => {
     loadData();
@@ -66,6 +71,111 @@ export default function CheckoutsPage() {
 
   // Reset page to 1 on filter change
   useEffect(() => { setPage(1); }, [filters]);
+
+  // Calculate days of stay
+  const calculateDaysOfStay = (checkIn: string, checkOut: string) => {
+    if (!checkIn || !checkOut) return 1;
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays || 1;
+  };
+
+  // Print bill function
+  const printBill = () => {
+    const printContent = document.getElementById('bill-content');
+    if (printContent) {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Hotel Bill - ${editCheckout?.guest?.firstName} ${editCheckout?.guest?.lastName}</title>
+              <style>
+                body { 
+                  font-family: Arial, sans-serif; 
+                  margin: 15px; 
+                  font-size: 12px;
+                  line-height: 1.3;
+                }
+                .bill-header { 
+                  text-align: center; 
+                  border-bottom: 2px solid #000; 
+                  padding-bottom: 8px; 
+                  margin-bottom: 12px; 
+                }
+                .bill-header h1 { margin: 0 0 5px 0; font-size: 18px; }
+                .bill-header p { margin: 2px 0; }
+                .bill-section { 
+                  margin: 8px 0; 
+                  page-break-inside: avoid;
+                }
+                .bill-section h3 { 
+                  margin: 5px 0 3px 0; 
+                  font-size: 13px; 
+                }
+                .bill-table { 
+                  width: 100%; 
+                  border-collapse: collapse; 
+                  margin: 5px 0; 
+                  font-size: 11px;
+                }
+                .bill-table th, .bill-table td { 
+                  border: 1px solid #000; 
+                  padding: 4px 6px; 
+                  text-align: left; 
+                  vertical-align: top;
+                }
+                .bill-table th { 
+                  background-color: #f5f5f5; 
+                  font-weight: bold;
+                }
+                .total-row { 
+                  font-weight: bold; 
+                  background-color: #f0f0f0; 
+                }
+                .text-right { text-align: right; }
+                .bill-footer {
+                  margin-top: 15px;
+                  text-align: center;
+                  border-top: 1px solid #ccc;
+                  padding-top: 8px;
+                  font-size: 11px;
+                }
+                @media print {
+                  body { 
+                    margin: 10mm; 
+                    font-size: 11px;
+                  }
+                  .bill-section {
+                    page-break-inside: avoid;
+                    margin: 6px 0;
+                  }
+                  .bill-table {
+                    font-size: 10px;
+                  }
+                  .bill-table th, .bill-table td {
+                    padding: 3px 4px;
+                  }
+                  .bill-footer {
+                    margin-top: 10px;
+                    padding-top: 5px;
+                  }
+                }
+              </style>
+            </head>
+            <body>
+              ${printContent.innerHTML}
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+        printWindow.close();
+      }
+    }
+  };
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
@@ -129,6 +239,10 @@ export default function CheckoutsPage() {
                               setEditStatus(checkout.status);
                               setEditVatPercent(checkout.vatPercent?.toString() || "");
                               setEditVatAmount(checkout.vatAmount?.toString() || "");
+                              setClientVatInfo("");
+                              setAdvanceAmount("0");
+                              setCheckInDate("");
+                              setCheckOutDate("");
                               setShowEdit(true);
                               setEditError("");
                             }}
@@ -136,161 +250,330 @@ export default function CheckoutsPage() {
                         </td>
                       </tr>
                     ))}
-      {/* Edit Checkout Modal */}
-      {showEdit && editCheckout && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Edit Checkout</h2>
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setEditLoading(true);
-                setEditError("");
-                try {
-                  await updateCheckoutPayment(editCheckout.orders[0]?.roomNumber || "", editStatus, editVatPercent, editVatAmount);
-                  setShowEdit(false);
-                  setEditCheckout(null);
-                  await loadData();
-                } catch (e: any) {
-                  setEditError(e.message || "Failed to update checkout");
-                } finally {
-                  setEditLoading(false);
-                }
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="block text-sm font-medium mb-1">Room Number</label>
-                <input
-                  type="text"
-                  value={editCheckout.orders[0]?.roomNumber || ""}
-                  disabled
-                  className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Status</label>
-                <select
-                  value={editStatus}
-                  onChange={e => setEditStatus(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  disabled={editLoading}
-                >
-                  {editCheckout.status === "completed" ? (
-                    <>
-                      <option value="completed">Completed</option>
-                      <option value="pending">Pending</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="pending">Pending</option>
-                      <option value="completed">Completed</option>
-                    </>
-                  )}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">VAT Percent</label>
-                <input
-                  type="number"
-                  value={editVatPercent}
-                  onChange={e => setEditVatPercent(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  min="0"
-                  step="0.01"
-                  disabled={editLoading}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">VAT Amount</label>
-                <input
-                  type="number"
-                  value={editVatAmount}
-                  onChange={e => setEditVatAmount(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  min="0"
-                  step="0.01"
-                  disabled={editLoading}
-                />
-              </div>
-              {editError && <div className="text-red-600 text-sm">{editError}</div>}
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEdit(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                  disabled={editLoading}
-                >Cancel</button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  disabled={editLoading}
-                >{editLoading ? "Saving..." : "Update Checkout"}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* Checkout Details Modal */}
-      {showDetails && detailsCheckout && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">Checkout Details</h2>
-            <div className="mb-4">
-              <h3 className="font-semibold mb-2">Room Info</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div><span className="font-medium">Room Number:</span> {detailsCheckout.room?.roomNumber || '-'}</div>
-                <div><span className="font-medium">Type:</span> {detailsCheckout.room?.type || '-'}</div>
-                <div><span className="font-medium">Occupied:</span> {detailsCheckout.room?.isOccupied ? 'Yes' : 'No'}</div>
-                <div><span className="font-medium">Hotel:</span> {detailsCheckout.hotel?.name || '-'}</div>
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-2">Orders</h3>
-              {detailsCheckout.orders && detailsCheckout.orders.length > 0 ? (
-                <table className="min-w-full text-sm border">
-                  <thead>
-                    <tr>
-                      <th className="border px-2 py-1">Order ID</th>
-                      <th className="border px-2 py-1">Items</th>
-                      <th className="border px-2 py-1">Total</th>
-                      <th className="border px-2 py-1">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detailsCheckout.orders.map((order: any) => (
-                      <tr key={order._id}>
-                        <td className="border px-2 py-1">{order._id}</td>
-                        <td className="border px-2 py-1">
-                          {order.items && order.items.length > 0 ? (
-                            <ul>
-                              {order.items.map((item: any, idx: number) => (
-                                <li key={idx}>{item.name} x{item.quantity} (₹{item.price})</li>
+                  </tbody>
+                </table>
+
+                {/* Enhanced Edit Checkout Modal with Print Bill */}
+                {showEdit && editCheckout && (
+                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg w-full max-w-4xl max-h-[95vh] overflow-y-auto">
+                      <div className="p-6">
+                        <h2 className="text-2xl font-bold mb-4">Edit Checkout & Print Bill</h2>
+                        
+                        {/* Edit Form */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Left Column - Edit Form */}
+                          <div>
+                            <form
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                setEditLoading(true);
+                                setEditError("");
+                                try {
+                                  await updateCheckoutPayment(
+                                    editCheckout.orders[0]?.roomNumber || "", 
+                                    editStatus, 
+                                    editVatPercent, 
+                                    editVatAmount
+                                  );
+                                  setShowEdit(false);
+                                  setEditCheckout(null);
+                                  await loadData();
+                                } catch (e: any) {
+                                  setEditError(e.message || "Failed to update checkout");
+                                } finally {
+                                  setEditLoading(false);
+                                }
+                              }}
+                              className="space-y-4"
+                            >
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Room Number</label>
+                                <input
+                                  type="text"
+                                  value={editCheckout.orders[0]?.roomNumber || ""}
+                                  disabled
+                                  className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Status</label>
+                                <select
+                                  value={editStatus}
+                                  onChange={e => setEditStatus(e.target.value)}
+                                  className="w-full border border-gray-300 rounded px-3 py-2"
+                                  disabled={editLoading}
+                                >
+                                  {editCheckout.status === "completed" ? (
+                                    <>
+                                      <option value="completed">Completed</option>
+                                      <option value="pending">Pending</option>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <option value="pending">Pending</option>
+                                      <option value="completed">Completed</option>
+                                    </>
+                                  )}
+                                </select>
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium mb-1">VAT Percent (%)</label>
+                                <input
+                                  type="number"
+                                  value={editVatPercent}
+                                  onChange={e => setEditVatPercent(e.target.value)}
+                                  className="w-full border border-gray-300 rounded px-3 py-2"
+                                  min="0"
+                                  step="0.01"
+                                  disabled={editLoading}
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-medium mb-1">VAT Amount (₹)</label>
+                                <input
+                                  type="number"
+                                  value={editVatAmount}
+                                  onChange={e => setEditVatAmount(e.target.value)}
+                                  className="w-full border border-gray-300 rounded px-3 py-2"
+                                  min="0"
+                                  step="0.01"
+                                  disabled={editLoading}
+                                />
+                              </div>
+
+                              {/* Additional fields for billing */}
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Client VAT Information</label>
+                                <input
+                                  type="text"
+                                  value={clientVatInfo}
+                                  onChange={e => setClientVatInfo(e.target.value)}
+                                  placeholder="Enter client VAT number or info"
+                                  className="w-full border border-gray-300 rounded px-3 py-2"
+                                  disabled={editLoading}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium mb-1">Advance Amount (₹)</label>
+                                <input
+                                  type="number"
+                                  value={advanceAmount}
+                                  onChange={e => setAdvanceAmount(e.target.value)}
+                                  className="w-full border border-gray-300 rounded px-3 py-2"
+                                  min="0"
+                                  step="0.01"
+                                  disabled={editLoading}
+                                />
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Check-in Date</label>
+                                  <input
+                                    type="date"
+                                    value={checkInDate}
+                                    onChange={e => setCheckInDate(e.target.value)}
+                                    className="w-full border border-gray-300 rounded px-3 py-2"
+                                    disabled={editLoading}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium mb-1">Check-out Date</label>
+                                  <input
+                                    type="date"
+                                    value={checkOutDate}
+                                    onChange={e => setCheckOutDate(e.target.value)}
+                                    className="w-full border border-gray-300 rounded px-3 py-2"
+                                    disabled={editLoading}
+                                  />
+                                </div>
+                              </div>
+
+                              {editError && <div className="text-red-600 text-sm">{editError}</div>}
+                              
+                              <div className="flex justify-end space-x-3 pt-4">
+                                <button
+                                  type="button"
+                                  onClick={() => setShowEdit(false)}
+                                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                  disabled={editLoading}
+                                >Cancel</button>
+                                <button
+                                  type="submit"
+                                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                                  disabled={editLoading}
+                                >{editLoading ? "Saving..." : "Update Checkout"}</button>
+                              </div>
+                            </form>
+                          </div>
+
+                          {/* Right Column - Bill Preview */}
+                          <div className="border-l pl-6">
+                            <div className="flex justify-between items-center mb-4">
+                              <h3 className="text-lg font-semibold">Bill Preview</h3>
+                              <button
+                                type="button"
+                                onClick={printBill}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                              >Print Bill</button>
+                            </div>
+
+                            {/* Bill Content */}
+                            <div id="bill-content" className="text-sm">
+                              <div className="bill-header">
+                                <h1 className="text-lg font-bold">{editCheckout.hotel?.name || 'Hotel Name'}</h1>
+                                <p>Hotel Bill Receipt</p>
+                                {editCheckout.hotel?.hotel_vat && <p>Hotel VAT: {editCheckout.hotel.hotel_vat}</p>}
+                                <p>Date: {new Date().toLocaleDateString()}</p>
+                              </div>
+
+                              <div className="bill-section">
+                                <h3 className="font-semibold mb-1 text-sm">Guest Information</h3>
+                                <table className="bill-table">
+                                  <tr><td><strong>Name:</strong></td><td>{editCheckout.guest?.firstName} {editCheckout.guest?.lastName}</td><td><strong>Room:</strong></td><td>#{editCheckout.orders[0]?.roomNumber}</td></tr>
+                                  <tr><td><strong>Email:</strong></td><td>{editCheckout.guest?.email}</td><td><strong>Days:</strong></td><td>{calculateDaysOfStay(checkInDate, checkOutDate)} days</td></tr>
+                                  <tr><td><strong>Check-in:</strong></td><td>{checkInDate || 'N/A'}</td><td><strong>Check-out:</strong></td><td>{checkOutDate || 'N/A'}</td></tr>
+                                  {clientVatInfo && <tr><td><strong>VAT Info:</strong></td><td colSpan="3">{clientVatInfo}</td></tr>}
+                                </table>
+                              </div>
+
+                              <div className="bill-section">
+                                <h3 className="font-semibold mb-1 text-sm">Charges Breakdown</h3>
+                                <table className="bill-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Description</th>
+                                      <th>Qty/Days</th>
+                                      <th>Rate</th>
+                                      <th className="text-right">Amount</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td>Room #{editCheckout.orders[0]?.roomNumber}</td>
+                                      <td>{calculateDaysOfStay(checkInDate, checkOutDate)}</td>
+                                      <td>₹{editCheckout.totalRoomCharge ? (editCheckout.totalRoomCharge / calculateDaysOfStay(checkInDate, checkOutDate)).toFixed(2) : '0'}</td>
+                                      <td className="text-right">₹{editCheckout.totalRoomCharge || 0}</td>
+                                    </tr>
+                                      {editCheckout.orders && editCheckout.orders.length > 0 && 
+                                      editCheckout.orders.map((order: any) => 
+                                        order.items?.map((item: any, idx: number) => (
+                                          <tr key={`${order._id}-${idx}`}>
+                                            <td>{item.name}</td>
+                                            <td>{item.quantity}</td>
+                                            <td>₹{item.price}</td>
+                                            <td className="text-right">₹{item.total}</td>
+                                          </tr>
+                                        ))
+                                      )}
+                                  </tbody>
+                                </table>
+                              </div>
+
+                              <div className="bill-section">
+                                <h3 className="font-semibold mb-1 text-sm">Bill Summary</h3>
+                                <table className="bill-table">
+                                  <tr><td>Room Charges</td><td className="text-right">₹{editCheckout.totalRoomCharge || 0}</td></tr>
+                                  <tr><td>Food & Beverage</td><td className="text-right">₹{editCheckout.totalOrderCharge || 0}</td></tr>
+                                  {editCheckout.totalExtraCharge && editCheckout.totalExtraCharge > 0 && (
+                                    <tr><td>Extra Charges</td><td className="text-right">₹{editCheckout.totalExtraCharge}</td></tr>
+                                  )}
+                                  <tr><td>Subtotal</td><td className="text-right">₹{(editCheckout.totalRoomCharge || 0) + (editCheckout.totalOrderCharge || 0) + (editCheckout.totalExtraCharge || 0)}</td></tr>
+                                  {(parseFloat(editVatPercent) > 0 || parseFloat(editVatAmount) > 0) && (
+                                    <tr><td>VAT ({editVatPercent}%)</td><td className="text-right">₹{editVatAmount}</td></tr>
+                                  )}
+                                  <tr className="total-row">
+                                    <td><strong>Total Amount</strong></td>
+                                    <td className="text-right"><strong>₹{editCheckout.totalBill}</strong></td>
+                                  </tr>
+                                  {parseFloat(advanceAmount) > 0 && (
+                                    <>
+                                      <tr><td>Advance Paid</td><td className="text-right">-₹{advanceAmount}</td></tr>
+                                      <tr className="total-row">
+                                        <td><strong>Amount Due</strong></td>
+                                        <td className="text-right"><strong>₹{(editCheckout.totalBill - parseFloat(advanceAmount)).toFixed(2)}</strong></td>
+                                      </tr>
+                                    </>
+                                  )}
+                                </table>
+                              </div>
+
+                              <div className="bill-footer">
+                                <p><strong>Thank you for staying with us!</strong></p>
+                                <p>Status: <strong>{editStatus}</strong></p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Checkout Details Modal */}
+                {showDetails && detailsCheckout && (
+                  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                      <h2 className="text-2xl font-bold mb-4">Checkout Details</h2>
+                      <div className="mb-4">
+                        <h3 className="font-semibold mb-2">Room Info</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div><span className="font-medium">Room Number:</span> {detailsCheckout.room?.roomNumber || detailsCheckout.orders[0]?.roomNumber || '-'}</div>
+                          <div><span className="font-medium">Type:</span> {detailsCheckout.room?.type || '-'}</div>
+                          <div><span className="font-medium">Occupied:</span> {detailsCheckout.room?.isOccupied ? 'Yes' : 'No'}</div>
+                          <div><span className="font-medium">Hotel:</span> {detailsCheckout.hotel?.name || '-'}</div>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold mb-2">Orders</h3>
+                        {detailsCheckout.orders && detailsCheckout.orders.length > 0 ? (
+                          <table className="min-w-full text-sm border">
+                            <thead>
+                              <tr>
+                                <th className="border px-2 py-1">Order ID</th>
+                                <th className="border px-2 py-1">Items</th>
+                                <th className="border px-2 py-1">Total</th>
+                                <th className="border px-2 py-1">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {detailsCheckout.orders.map((order: any) => (
+                                <tr key={order._id}>
+                                  <td className="border px-2 py-1">{order._id}</td>
+                                  <td className="border px-2 py-1">
+                                    {order.items && order.items.length > 0 ? (
+                                      <ul>
+                                        {order.items.map((item: any, idx: number) => (
+                                          <li key={idx}>{item.name} x{item.quantity} (₹{item.price})</li>
+                                        ))}
+                                      </ul>
+                                    ) : '-'}
+                                  </td>
+                                  <td className="border px-2 py-1">₹{order.totalAmount}</td>
+                                  <td className="border px-2 py-1">{order.status}</td>
+                                </tr>
                               ))}
-                            </ul>
-                          ) : '-'}
-                        </td>
-                        <td className="border px-2 py-1">₹{order.totalAmount}</td>
-                        <td className="border px-2 py-1">{order.status}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div>No orders found for this checkout.</div>
-              )}
-            </div>
-            <div className="flex justify-end mt-6">
-              <button
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                onClick={() => setShowDetails(false)}
-              >Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-                  </tbody>
-                </table>
+                            </tbody>
+                          </table>
+                        ) : (
+                          <div>No orders found for this checkout.</div>
+                        )}
+                      </div>
+                      <div className="flex justify-end mt-6">
+                        <button
+                          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                          onClick={() => setShowDetails(false)}
+                        >Close</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Pagination Controls */}
                 {pagination.totalPages > 1 && (
                   <div className="flex justify-center items-center gap-2 mt-4">
@@ -321,9 +604,7 @@ export default function CheckoutsPage() {
             )}
           </div>
         </div>
-  {/* Checkout Details Modal removed */}
       </div>
     </div>
   );
 }
-

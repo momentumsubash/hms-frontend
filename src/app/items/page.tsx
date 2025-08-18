@@ -26,6 +26,15 @@ interface Item {
   updatedAt: string;
 }
 
+interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 function getToken() {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("token") || sessionStorage.getItem("token");
@@ -35,6 +44,15 @@ export default function ItemsPage() {
   // Pagination state
   const [page, setPage] = useState(1);
   const limit = 10;
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: limit,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
+
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
@@ -46,6 +64,7 @@ export default function ItemsPage() {
     { label: "Stats", href: "/stats" },
     { label: "Users", href: "/users" },
   ];
+
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
@@ -74,11 +93,96 @@ export default function ItemsPage() {
     comment: ""
   });
 
-
   // Categories state
   const [categories, setCategories] = useState<CategoryObj[]>([]);
 
-  // Fetch /auth/me, /hotels/me, and /items on page load
+  // Function to fetch items with pagination
+  const fetchItems = async (pageNum: number = page, filterParams = filters) => {
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      const apiBase = "http://localhost:3000/api";
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        limit: limit.toString()
+      });
+      
+      if (filterParams.isAvailable) params.append("isAvailable", filterParams.isAvailable);
+      if (filterParams.category) params.append("category", filterParams.category);
+      if (filterParams.search) params.append("search", filterParams.search);
+
+      const itemsRes = await fetch(`${apiBase}/items?${params.toString()}`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!itemsRes.ok) {
+        throw new Error("Failed to fetch items");
+      }
+
+      const data = await itemsRes.json();
+      
+      // Handle different response structures
+      let itemsData: Item[] = [];
+      let paginationData: PaginationInfo = {
+        currentPage: pageNum,
+        totalPages: 1,
+        totalItems: 0,
+        itemsPerPage: limit,
+        hasNextPage: false,
+        hasPrevPage: false,
+      };
+
+      if (data.data && Array.isArray(data.data)) {
+        itemsData = data.data;
+        // If pagination info is provided in response
+        if (data.pagination) {
+          paginationData = {
+            currentPage: data.pagination.currentPage || pageNum,
+            totalPages: data.pagination.totalPages || 1,
+            totalItems: data.pagination.totalItems || itemsData.length,
+            itemsPerPage: data.pagination.itemsPerPage || limit,
+            hasNextPage: data.pagination.hasNextPage || false,
+            hasPrevPage: data.pagination.hasPrevPage || false,
+          };
+        } else {
+          // Calculate pagination info if not provided
+          paginationData.totalItems = itemsData.length;
+          paginationData.totalPages = Math.ceil(itemsData.length / limit);
+          paginationData.hasNextPage = pageNum < paginationData.totalPages;
+          paginationData.hasPrevPage = pageNum > 1;
+        }
+      } else if (Array.isArray(data)) {
+        itemsData = data;
+        paginationData.totalItems = itemsData.length;
+        paginationData.totalPages = Math.ceil(itemsData.length / limit);
+        paginationData.hasNextPage = pageNum < paginationData.totalPages;
+        paginationData.hasPrevPage = pageNum > 1;
+      }
+
+      // Apply client-side search filter if needed (when API doesn't support search)
+      if (filterParams.search && !params.has("search")) {
+        itemsData = itemsData.filter((item: Item) =>
+          item.name && item.name.toLowerCase().includes(filterParams.search.toLowerCase())
+        );
+        // Recalculate pagination for client-side filtering
+        paginationData.totalItems = itemsData.length;
+        paginationData.totalPages = Math.ceil(itemsData.length / limit);
+        paginationData.hasNextPage = pageNum < paginationData.totalPages;
+        paginationData.hasPrevPage = pageNum > 1;
+      }
+
+      setItems(itemsData);
+      setPagination(paginationData);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  // Fetch initial data
   useEffect(() => {
     const fetchInitialData = async () => {
       const token = getToken();
@@ -87,6 +191,7 @@ export default function ItemsPage() {
         setLoading(false);
         return;
       }
+
       try {
         // 1. Fetch /auth/me
         const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
@@ -127,45 +232,46 @@ export default function ItemsPage() {
           }
         }
 
-        // 4. Fetch items
-        const apiBase = "http://localhost:3000/api";
-        const params = new URLSearchParams({
-          page: page.toString(),
-          limit: limit.toString()
-        });
-        if (filters.isAvailable) params.append("isAvailable", filters.isAvailable);
-        if (filters.category) params.append("category", filters.category);
-        const itemsRes = await fetch(`${apiBase}/items?${params.toString()}`, {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${token}`
-          }
-        });
-        const data = await itemsRes.json();
-        let itemsData = data.data || data || [];
-        if (filters.search) {
-          itemsData = itemsData.filter((item: Item) =>
-            item.name && item.name.toLowerCase().includes(filters.search.toLowerCase())
-          );
-        }
-        setItems(itemsData);
+        // 4. Fetch items with pagination
+        await fetchItems(1, filters);
       } catch (e: any) {
         setError(e.message);
       } finally {
         setLoading(false);
       }
     };
+
     fetchInitialData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Refetch items when page changes
+  useEffect(() => {
+    if (!loading) {
+      fetchItems(page, filters);
+    }
+  }, [page]);
+
+  // Reset to page 1 and refetch when filters change
+  useEffect(() => {
+    if (!loading) {
+      setPage(1);
+      fetchItems(1, filters);
+    }
+  }, [filters.category, filters.search, filters.isAvailable]);
+
+  // Pagination handlers
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages && newPage !== page) {
+      setPage(newPage);
+    }
+  };
 
   const createItem = async () => {
     try {
       const token = getToken();
-      // Get hotelId from localStorage
       const hotel = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('hotel') || '{}') : {};
       const hotelId = hotel?._id;
-      // Build payload as per new requirements
+
       const payload: any = {
         name: formData.name,
         price: parseFloat(formData.price),
@@ -175,6 +281,7 @@ export default function ItemsPage() {
       };
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
+
       const res = await fetch("http://localhost:3000/api/items", {
         method: "POST",
         headers: {
@@ -183,40 +290,23 @@ export default function ItemsPage() {
         },
         body: JSON.stringify(payload)
       });
+
       if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login";
         return;
       }
+
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to create item");
       }
+
       setSuccess("Item created successfully!");
       setShowCreateModal(false);
       resetForm();
-      // Refresh items
-      const apiBase = "http://localhost:3000/api";
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString()
-      });
-      if (filters.isAvailable) params.append("isAvailable", filters.isAvailable);
-      if (filters.category) params.append("category", filters.category);
-      const itemsRes = await fetch(`${apiBase}/items?${params.toString()}`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`
-        }
-      });
-      const data = await itemsRes.json();
-      let itemsData = data.data || data || [];
-      if (filters.search) {
-        itemsData = itemsData.filter((item: Item) =>
-          item.name && item.name.toLowerCase().includes(filters.search.toLowerCase())
-        );
-      }
-      setItems(itemsData);
+      // Refresh current page
+      await fetchItems(page, filters);
     } catch (e: any) {
       setError(e.message);
     }
@@ -226,10 +316,9 @@ export default function ItemsPage() {
     if (!selectedItem) return;
     try {
       const token = getToken();
-      // Get hotelId from localStorage
       const hotel = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('hotel') || '{}') : {};
       const hotelId = hotel?._id;
-      // Build payload as per new requirements
+
       const payload: any = {
         name: formData.name,
         price: parseFloat(formData.price),
@@ -239,6 +328,7 @@ export default function ItemsPage() {
       };
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
+
       const res = await fetch(`http://localhost:3000/api/items/${selectedItem._id}`, {
         method: "PUT",
         headers: {
@@ -247,41 +337,24 @@ export default function ItemsPage() {
         },
         body: JSON.stringify(payload)
       });
+
       if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login";
         return;
       }
+
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to update item");
       }
+
       setSuccess("Item updated successfully!");
       setShowEditModal(false);
       setSelectedItem(null);
       resetForm();
-      // Refresh items
-      const apiBase = "http://localhost:3000/api";
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString()
-      });
-      if (filters.isAvailable) params.append("isAvailable", filters.isAvailable);
-      if (filters.category) params.append("category", filters.category);
-      const itemsRes = await fetch(`${apiBase}/items?${params.toString()}`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`
-        }
-      });
-      const data = await itemsRes.json();
-      let itemsData = data.data || data || [];
-      if (filters.search) {
-        itemsData = itemsData.filter((item: Item) =>
-          item.name && item.name.toLowerCase().includes(filters.search.toLowerCase())
-        );
-      }
-      setItems(itemsData);
+      // Refresh current page
+      await fetchItems(page, filters);
     } catch (e: any) {
       setError(e.message);
     }
@@ -297,40 +370,29 @@ export default function ItemsPage() {
           Authorization: `Bearer ${token}`
         }
       });
+
       if (res.status === 401) {
         localStorage.removeItem("token");
         window.location.href = "/login";
         return;
       }
+
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.message || "Failed to delete item");
       }
+
       setSuccess("Item deleted successfully!");
       setShowDeleteModal(false);
       setSelectedItem(null);
-      // Refresh items
-      const apiBase = "http://localhost:3000/api";
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString()
-      });
-      if (filters.isAvailable) params.append("isAvailable", filters.isAvailable);
-      if (filters.category) params.append("category", filters.category);
-      const itemsRes = await fetch(`${apiBase}/items?${params.toString()}`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`
-        }
-      });
-      const data = await itemsRes.json();
-      let itemsData = data.data || data || [];
-      if (filters.search) {
-        itemsData = itemsData.filter((item: Item) =>
-          item.name && item.name.toLowerCase().includes(filters.search.toLowerCase())
-        );
+      
+      // If we're on the last page and it becomes empty, go back one page
+      if (items.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        // Refresh current page
+        await fetchItems(page, filters);
       }
-      setItems(itemsData);
     } catch (e: any) {
       setError(e.message);
     }
@@ -387,9 +449,6 @@ export default function ItemsPage() {
     setShowDeleteModal(true);
   };
 
-  // Reset page to 1 on filter change
-  useEffect(() => { setPage(1); }, [filters]);
-
   // Clear messages after 5 seconds
   useEffect(() => {
     if (error) {
@@ -404,6 +463,34 @@ export default function ItemsPage() {
       return () => clearTimeout(timer);
     }
   }, [success]);
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages: number[] = [];
+    const maxVisiblePages = 5;
+    const { currentPage, totalPages } = pagination;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 5; i++) {
+          pages.push(i);
+        }
+      } else if (currentPage >= totalPages - 2) {
+        for (let i = totalPages - 4; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        for (let i = currentPage - 2; i <= currentPage + 2; i++) {
+          pages.push(i);
+        }
+      }
+    }
+    return pages;
+  };
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
@@ -479,10 +566,9 @@ export default function ItemsPage() {
                 {categories.length === 0 ? (
                   <option disabled>Loading...</option>
                 ) : (
-                  categories.map((cat, idx) => {
-                    let key = typeof cat === 'string' ? cat : JSON.stringify(cat) + '-' + idx;
-                    return <option key={key} value={typeof cat === 'string' ? cat : ''}>{typeof cat === 'string' ? cat : JSON.stringify(cat)}</option>;
-                  })
+                  categories.map((cat) => (
+                    <option key={cat._id} value={cat._id}>{cat.name}</option>
+                  ))
                 )}
               </select>
             </div>
@@ -503,12 +589,23 @@ export default function ItemsPage() {
 
         {/* Items Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
+          {/* Pagination Info */}
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-700">
+                Showing {pagination.totalItems > 0 ? ((pagination.currentPage - 1) * pagination.itemsPerPage) + 1 : 0} to {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of {pagination.totalItems} items
+              </div>
+              <div className="text-sm text-gray-700">
+                Page {pagination.currentPage} of {pagination.totalPages}
+              </div>
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  {/* Description column removed as per requirements */}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
@@ -521,7 +618,6 @@ export default function ItemsPage() {
                   items.map((item: Item) => (
                     <tr key={item._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap font-medium">{item.name}</td>
-                      {/* Description cell removed as per requirements */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                           {typeof item.category === 'object' && item.category !== null ? item.category.name : item.category}
@@ -556,35 +652,110 @@ export default function ItemsPage() {
                       </td>
                     </tr>
                   ))
-                ) : items && typeof items === 'object' && Object.keys(items).length > 0 ? (
+                ) : (
                   <tr>
-                    <td colSpan={7} className="text-center text-red-500">Invalid items data received. Please check the API response.</td>
+                    <td colSpan={6} className="text-center py-8 text-gray-500">
+                      No items found matching your criteria.
+                    </td>
                   </tr>
-                ) : null}
+                )}
               </tbody>
             </table>
           </div>
 
-          {items.length === 0 && (
-            <div className="text-center py-12">
-              <div className="text-gray-500">No items found matching your criteria.</div>
+          {/* Pagination Controls */}
+          {pagination.totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={!pagination.hasPrevPage}
+                  className={`px-3 py-2 text-sm font-medium rounded-md ${
+                    pagination.hasPrevPage
+                      ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                      : 'text-gray-400 bg-gray-200 border border-gray-200 cursor-not-allowed'
+                  }`}
+                >
+                  Previous
+                </button>
+
+                <div className="flex space-x-1">
+                  {pagination.currentPage > 3 && pagination.totalPages > 5 && (
+                    <>
+                      <button
+                        onClick={() => handlePageChange(1)}
+                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                      >
+                        1
+                      </button>
+                      {pagination.currentPage > 4 && (
+                        <span className="px-3 py-2 text-sm font-medium text-gray-500">...</span>
+                      )}
+                    </>
+                  )}
+
+                  {getPageNumbers().map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-2 text-sm font-medium rounded-md ${
+                        pageNum === pagination.currentPage
+                          ? 'text-blue-600 bg-blue-50 border border-blue-300'
+                          : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+
+                  {pagination.currentPage < pagination.totalPages - 2 && pagination.totalPages > 5 && (
+                    <>
+                      {pagination.currentPage < pagination.totalPages - 3 && (
+                        <span className="px-3 py-2 text-sm font-medium text-gray-500">...</span>
+                      )}
+                      <button
+                        onClick={() => handlePageChange(pagination.totalPages)}
+                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                      >
+                        {pagination.totalPages}
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={!pagination.hasNextPage}
+                  className={`px-3 py-2 text-sm font-medium rounded-md ${
+                    pagination.hasNextPage
+                      ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                      : 'text-gray-400 bg-gray-200 border border-gray-200 cursor-not-allowed'
+                  }`}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>
 
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{items.length}</div>
+            <div className="text-2xl font-bold text-blue-600">{pagination.totalItems}</div>
             <div className="text-sm text-gray-600">Total Items</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-green-600">{items.filter((i: Item) => i.isAvailable).length}</div>
-            <div className="text-sm text-gray-600">Available</div>
+            <div className="text-sm text-gray-600">Available (Current Page)</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-red-600">{items.filter((i: Item) => !i.isAvailable).length}</div>
-            <div className="text-sm text-gray-600">Unavailable</div>
+            <div className="text-sm text-gray-600">Unavailable (Current Page)</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-gray-600">{pagination.totalPages}</div>
+            <div className="text-sm text-gray-600">Total Pages</div>
           </div>
         </div>
       </div>
@@ -606,7 +777,6 @@ export default function ItemsPage() {
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   />
                 </div>
-                {/* Description field removed as per requirements */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Price (₹)</label>
                   <input
@@ -702,7 +872,6 @@ export default function ItemsPage() {
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   />
                 </div>
-                {/* Description field removed as per requirements */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Price (₹)</label>
                   <input
