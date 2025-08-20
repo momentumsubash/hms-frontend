@@ -19,6 +19,8 @@ interface Guest {
   checkOutDate?: string;
   isCheckedOut: boolean;
   totalBill: number;
+  roomDiscount?: number;
+  advancePaid?: number;
   createdBy: string;
   hotel: string;
   createdAt: string;
@@ -54,7 +56,6 @@ interface GuestForm {
   advancePaid: string; // store as string for input, convert to number on submit
   checkInDate: string; // Now required as per API
   checkOutDate?: string;
-  hotel?: string;
 }
 
 // Helper function to get current datetime in local format for datetime-local input
@@ -237,6 +238,8 @@ export default function GuestsPage() {
       errors.rooms = "At least one room must be selected";
     }
 
+
+
     // Validate discount and advance paid are non-negative numbers
     const roomDiscountValue = parseFloat(formData.roomDiscount || '0');
     const advancePaidValue = parseFloat(formData.advancePaid || '0');
@@ -274,35 +277,95 @@ export default function GuestsPage() {
     try {
       let resp;
       if (editingGuest) {
-        // Filter for new rooms to be added
-        const roomsToAdd = formData.rooms.filter(roomId => !editingGuest.rooms.includes(roomId));
+        // Convert all selected room IDs to room numbers for the update
+        const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
+
+        // Get hotel ID from localStorage or user object for updates
+        const storedUser = localStorage.getItem('user');
+        let hotelId = '';
         
-        // CONVERT NEW ROOM IDS TO ROOM NUMBERS
-        const roomNumbersToAdd = roomsToAdd.map(roomId => {
-            const room = allRooms.find(r => r._id === roomId);
-            return room ? room.roomNumber : roomId;
-        });
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            hotelId = userData.hotel || user?.hotel || '';
+          } catch (e) {
+            console.error('Error parsing user data from localStorage:', e);
+            hotelId = user?.hotel || '';
+          }
+        } else {
+          hotelId = user?.hotel || '';
+        }
+
+        if (!hotelId) {
+          throw new Error("Hotel ID is required. Please contact your administrator.");
+        }
 
         const updatePayload: any = {
-          rooms: roomNumbersToAdd, // Send only the rooms to be added
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          address: formData.address,
+          rooms: roomNumbers, // Send all selected rooms as room numbers
+          hotel: hotelId, // Include hotel ID in updates
           checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
           roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
           advancePaid: parseFloat(formData.advancePaid || '0') || 0,
         };
+        
+        console.log('Submitting guest update with payload:', updatePayload);
+        console.log('Hotel ID automatically populated from localStorage:', hotelId);
+        console.log('Rooms being sent (as room numbers):', roomNumbers);
+        console.log('Update payload structure matches cURL format:', {
+          firstName: updatePayload.firstName,
+          lastName: updatePayload.lastName,
+          phone: updatePayload.phone,
+          address: updatePayload.address,
+          rooms: updatePayload.rooms,
+          checkOutDate: updatePayload.checkOutDate,
+          roomDiscount: updatePayload.roomDiscount,
+          advancePaid: updatePayload.advancePaid
+        });
         resp = await updateGuest(editingGuest._id, updatePayload);
       } else {
+        // Convert room IDs to room numbers for API
+        const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
+
+        // Get hotel ID from localStorage or user object
+        const storedUser = localStorage.getItem('user');
+        let hotelId = '';
+        
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            hotelId = userData.hotel || user?.hotel || '';
+          } catch (e) {
+            console.error('Error parsing user data from localStorage:', e);
+            hotelId = user?.hotel || '';
+          }
+        } else {
+          hotelId = user?.hotel || '';
+        }
+
+        if (!hotelId) {
+          throw new Error("Hotel ID is required. Please contact your administrator.");
+        }
+
         const createPayload: any = {
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
           phone: formData.phone,
-          rooms: formData.rooms,
-          roomNumber: formData.rooms[0],
+          address: formData.address,
+          rooms: roomNumbers, // Send room numbers instead of IDs
+          hotel: hotelId,
           checkInDate: new Date(formData.checkInDate).toISOString(),
           checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
           roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
           advancePaid: parseFloat(formData.advancePaid || '0') || 0,
         };
+        
+        console.log('Submitting guest creation with payload:', createPayload);
+        console.log('Hotel ID automatically populated from localStorage:', hotelId);
         resp = await createGuest(createPayload);
       }
       // Refresh guests and rooms
@@ -339,8 +402,8 @@ export default function GuestsPage() {
       phone: guest.phone,
       address: guest.address || "",
       rooms: guest.rooms || [], // Store room IDs here
-      roomDiscount: "0",
-      advancePaid: "0",
+      roomDiscount: guest.roomDiscount ? guest.roomDiscount.toString() : "0",
+      advancePaid: guest.advancePaid ? guest.advancePaid.toString() : "0",
       checkInDate: guest.checkInDate ? format(new Date(guest.checkInDate), "yyyy-MM-dd'T'HH:mm") : "",
       checkOutDate: guest.checkOutDate ? format(new Date(guest.checkOutDate), "yyyy-MM-dd'T'HH:mm") : ""
     });
@@ -455,6 +518,28 @@ export default function GuestsPage() {
       const room = allRooms.find(r => r._id === roomId);
       return room ? room.roomNumber : roomId;
     });
+  };
+
+  // Resolve a single room ID to its room number by checking multiple sources
+  const resolveRoomNumberFromId = (roomId: string): string => {
+    // 1) Check all rooms (complete catalog)
+    const inAll = allRooms.find(r => r._id === roomId);
+    if (inAll) return inAll.roomNumber;
+    // 2) Check available rooms list
+    const inAvailable = availableRooms.find(r => r._id === roomId);
+    if (inAvailable) return inAvailable.roomNumber;
+    // 3) Check the "rooms" state list
+    const inRoomsList = rooms.find(r => r._id === roomId);
+    if (inRoomsList) return inRoomsList.roomNumber;
+    // 4) Check current guest's checkouts snapshot (if editing)
+    if (editingGuest?.checkouts) {
+      for (const checkout of editingGuest.checkouts) {
+        const found = checkout.rooms.find(r => r._id === roomId);
+        if (found) return found.roomNumber;
+      }
+    }
+    // Fallback: return the original id so API can handle existing rooms
+    return roomId;
   };
 
   const filteredGuests = guests.filter(guest => {
@@ -628,60 +713,54 @@ export default function GuestsPage() {
                   rows={2}
                 />
               </div>
-              {user?.role === 'super_admin' && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">Hotel ID *</label>
-                  <input
-                    type="text"
-                    value={formData.hotel || ''}
-                    onChange={e => setFormData(prev => ({ ...prev, hotel: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    required
-                  />
-                </div>
-              )}
 
-              <div>
-                <label className="block text-sm font-medium mb-1">Rooms (Available only) *</label>
-                <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded px-3 py-2 ${formErrors.rooms ? 'border-red-500' : 'border-gray-300'}`}>
-                  {(() => {
-                    let roomList = availableRooms.length > 0 ? [...availableRooms] : [...rooms];
-                    if (editingGuest) {
-                        const occupiedRooms = allRooms.filter(r => editingGuest.rooms.includes(r._id));
-                        roomList = [...roomList, ...occupiedRooms];
-                    }
-                    roomList = roomList.filter((r, idx, arr) => arr.findIndex(rr => rr._id === r._id) === idx);
-                    return roomList.map(room => (
-                      <label key={room._id} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          value={room._id}
-                          checked={formData.rooms.includes(room._id)}
-                          onChange={e => {
-                            const checked = e.target.checked;
-                            setFormData(prev => {
-                              let newRooms = prev.rooms || [];
-                              if (checked) {
-                                newRooms = [...newRooms, room._id];
-                              } else {
-                                newRooms = newRooms.filter(rn => rn !== room._id);
-                              }
-                              return { ...prev, rooms: newRooms };
-                            });
-                            if (formErrors.rooms) setFormErrors(prev => ({ ...prev, rooms: "" }));
-                          }}
-                          className="form-checkbox"
-                        />
-                        <span>
-                          Room {room.roomNumber} - {room.type} (₹{room.rate}/night)
-                        </span>
-                      </label>
-                    ));
-                  })()}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Select one or more currently available rooms for the guest.</div>
-                {formErrors.rooms && <p className="text-red-500 text-xs mt-1">{formErrors.rooms}</p>}
-              </div>
+
+                             <div>
+                 <label className="block text-sm font-medium mb-1">Rooms *</label>
+                 <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded px-3 py-2 ${formErrors.rooms ? 'border-red-500' : 'border-gray-300'}`}>
+                   {(() => {
+                     let roomList = availableRooms.length > 0 ? [...availableRooms] : [...rooms];
+                     if (editingGuest) {
+                         const occupiedRooms = allRooms.filter(r => editingGuest.rooms.includes(r._id));
+                         roomList = [...roomList, ...occupiedRooms];
+                     }
+                     roomList = roomList.filter((r, idx, arr) => arr.findIndex(rr => rr._id === r._id) === idx);
+                     return roomList.map(room => (
+                       <label key={room._id} className="flex items-center space-x-2">
+                         <input
+                           type="checkbox"
+                           value={room._id}
+                           checked={formData.rooms.includes(room._id)}
+                           onChange={e => {
+                             const checked = e.target.checked;
+                             setFormData(prev => {
+                               let newRooms = prev.rooms || [];
+                               if (checked) {
+                                 newRooms = [...newRooms, room._id];
+                               } else {
+                                 newRooms = newRooms.filter(rn => rn !== room._id);
+                               }
+                               return { ...prev, rooms: newRooms };
+                             });
+                             if (formErrors.rooms) setFormErrors(prev => ({ ...prev, rooms: "" }));
+                           }}
+                           className="form-checkbox"
+                         />
+                         <span>
+                           Room {room.roomNumber} - {room.type} (₹{room.rate}/night)
+                         </span>
+                       </label>
+                     ));
+                   })()}
+                 </div>
+                 <div className="text-xs text-gray-500 mt-1">
+                   {editingGuest 
+                     ? "Select rooms for the guest. Existing rooms will be handled by the API." 
+                     : "Select one or more currently available rooms for the guest."
+                   }
+                 </div>
+                 {formErrors.rooms && <p className="text-red-500 text-xs mt-1">{formErrors.rooms}</p>}
+               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

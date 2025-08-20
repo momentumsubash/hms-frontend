@@ -283,13 +283,28 @@ export async function getGuests(params: Record<string, any> = {}) {
 }
 
 export async function addGuest(guest: any) {
+  const payload = {
+    ...guest,
+    checkInDate: guest.checkInDate || new Date().toISOString(),
+    // Ensure all required fields are present
+    firstName: guest.firstName,
+    lastName: guest.lastName,
+    email: guest.email,
+    phone: guest.phone,
+    address: guest.address || "",
+    rooms: guest.rooms,
+    hotel: guest.hotel, // This will be automatically populated from localStorage
+    roomDiscount: guest.roomDiscount || 0,
+    advancePaid: guest.advancePaid || 0
+  };
+
+  console.log('Creating guest with payload:', payload);
+  console.log('Hotel ID from payload:', guest.hotel);
+
   const res = await fetch(`${API_URL}/guests`, {
     method: "POST",
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
-    body: JSON.stringify({
-      ...guest,
-      checkInDate: guest.checkInDate || new Date().toISOString()
-    }),
+    body: JSON.stringify(payload),
   });
   if (res.status === 401) {
     localStorage.removeItem('token');
@@ -298,9 +313,14 @@ export async function addGuest(guest: any) {
   }
   if (res.status === 400) {
     const error = await res.json();
+    console.error('Guest creation failed with 400:', error);
     throw new Error(error.message || "Room is already occupied");
   }
-  if (!res.ok) throw new Error("Failed to add guest");
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Guest creation failed:', res.status, errorText);
+    throw new Error("Failed to add guest");
+  }
   return res.json();
 }
 
@@ -318,10 +338,27 @@ export async function getGuest(id: string) {
 }
 
 export async function updateGuest(id: string, guest: any) {
+  const payload = {
+    ...guest,
+    // Ensure all required fields are present
+    firstName: guest.firstName,
+    lastName: guest.lastName,
+    phone: guest.phone,
+    address: guest.address || "",
+    rooms: guest.rooms, // This will be room numbers from the frontend
+    hotel: guest.hotel, // This will be automatically populated from localStorage
+    checkOutDate: guest.checkOutDate,
+    roomDiscount: guest.roomDiscount || 0,
+    advancePaid: guest.advancePaid || 0
+  };
+
+  console.log('Updating guest with payload:', payload);
+  console.log('Hotel ID from payload:', guest.hotel);
+
   const res = await fetch(`${API_URL}/guests/${id}`, {
     method: "PUT",
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
-    body: JSON.stringify(guest),
+    body: JSON.stringify(payload),
   });
   if (res.status === 401) {
     localStorage.removeItem('token');
@@ -330,9 +367,14 @@ export async function updateGuest(id: string, guest: any) {
   }
   if (res.status === 400) {
     const error = await res.json();
+    console.error('Guest update failed with 400:', error);
     throw new Error(error.message || "Room is already occupied");
   }
-  if (!res.ok) throw new Error("Failed to update guest");
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Guest update failed:', res.status, errorText);
+    throw new Error("Failed to update guest");
+  }
   return res.json();
 }
 

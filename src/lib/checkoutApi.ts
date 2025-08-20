@@ -1,13 +1,18 @@
 import { API_URL, mergeHeaders, getAuthHeaders } from "./api";
-// Update checkout payment status (supports VAT info and checkOutDate)
+// Update checkout payment status (supports single or multiple rooms, VAT info and dates)
 export async function updateCheckoutPayment(
-  roomNumber: string,
+  roomNumbers: string | string[],
   status: string,
   vatPercent?: string,
   vatAmount?: string,
   extra?: { clientVatInfo?: any; checkOutDate?: string; checkInDate?: string }
 ) {
-  const body: any = { roomNumber, status };
+  const body: any = { status };
+  if (Array.isArray(roomNumbers)) {
+    body.rooms = roomNumbers;
+  } else {
+    body.roomNumber = roomNumbers;
+  }
   if (vatPercent !== undefined) body.vatPercent = vatPercent;
   if (vatAmount !== undefined) body.vatAmount = vatAmount;
   if (extra?.clientVatInfo) body.clientVatInfo = extra.clientVatInfo;

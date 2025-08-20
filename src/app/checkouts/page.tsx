@@ -215,7 +215,7 @@ export default function CheckoutsPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rooms</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Bill</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
@@ -230,7 +230,9 @@ export default function CheckoutsPage() {
                           <div className="text-xs text-gray-500">{checkout.guest?.email}</div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>
-                          {checkout.rooms && checkout.rooms.length > 0 ? `#${checkout.rooms[0].roomNumber}` : "-"}
+                          {checkout.rooms && checkout.rooms.length > 0 
+                            ? checkout.rooms.map((r: any) => `#${r.roomNumber}`).join(', ')
+                            : "-"}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap capitalize cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>{checkout.status}</td>
                         <td className="px-4 py-4 whitespace-nowrap font-semibold cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>₹{checkout.totalBill}</td>
@@ -284,10 +286,11 @@ export default function CheckoutsPage() {
                                       vatPercent: editVatPercent ? Number(editVatPercent) : undefined,
                                     });
                                   } else {
+                                    const roomNumbers = (editCheckout.rooms || []).map((r: any) => r.roomNumber);
                                     await updateCheckoutPayment(
-                                      editCheckout.rooms[0]?.roomNumber || "", 
-                                      editStatus, 
-                                      editVatPercent, 
+                                      roomNumbers.length === 1 ? roomNumbers[0] : roomNumbers,
+                                      editStatus,
+                                      editVatPercent,
                                       editVatAmount,
                                       {
                                         clientVatInfo: {
@@ -312,13 +315,12 @@ export default function CheckoutsPage() {
                               className="space-y-4"
                             >
                               <div>
-                                <label className="block text-sm font-medium mb-1">Room Number</label>
-                                <input
-                                  type="text"
-                                  value={editCheckout.rooms[0]?.roomNumber || ""}
-                                  disabled
-                                  className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
-                                />
+                                <label className="block text-sm font-medium mb-1">Rooms</label>
+                                <div className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 text-sm">
+                                  {Array.isArray(editCheckout.rooms) && editCheckout.rooms.length > 0
+                                    ? editCheckout.rooms.map((r: any) => `#${r.roomNumber}`).join(', ')
+                                    : '-'}
+                                </div>
                               </div>
                               
                               <div>
@@ -482,7 +484,7 @@ export default function CheckoutsPage() {
                               <div className="bill-section">
                                 <h3 className="font-semibold mb-1 text-sm">Guest Information</h3>
                                 <table className="bill-table">
-                                  <tr><td><strong>Name:</strong></td><td>{editCheckout.guest?.firstName} {editCheckout.guest?.lastName}</td><td><strong>Room:</strong></td><td>#{editCheckout.rooms[0]?.roomNumber}</td></tr>
+                                  <tr><td><strong>Name:</strong></td><td>{editCheckout.guest?.firstName} {editCheckout.guest?.lastName}</td><td><strong>Rooms:</strong></td><td>{Array.isArray(editCheckout.rooms) ? editCheckout.rooms.map((r: any) => `#${r.roomNumber}`).join(', ') : '-'}</td></tr>
                                   <tr><td><strong>Email:</strong></td><td>{editCheckout.guest?.email}</td><td><strong>Days:</strong></td><td>{calculateDaysOfStay(checkInDate, checkOutDate)} days</td></tr>
                                   <tr><td><strong>Check-in:</strong></td><td>{checkInDate || 'N/A'}</td><td><strong>Check-out:</strong></td><td>{checkOutDate || 'N/A'}</td></tr>
                                   {(clientVatNumber || clientVatCompany || clientVatAddress) && (
@@ -506,12 +508,16 @@ export default function CheckoutsPage() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    <tr>
-                                      <td>Room #{editCheckout.rooms[0]?.roomNumber}</td>
-                                      <td>{calculateDaysOfStay(checkInDate, checkOutDate)}</td>
-                                      <td>₹{editCheckout.totalRoomCharge ? (editCheckout.totalRoomCharge / calculateDaysOfStay(checkInDate, checkOutDate)).toFixed(2) : '0'}</td>
-                                      <td className="text-right">₹{editCheckout.totalRoomCharge || 0}</td>
-                                    </tr>
+                                    {Array.isArray(editCheckout.rooms) && editCheckout.rooms.length > 0 && (
+                                      editCheckout.rooms.map((r: any, idx: number) => (
+                                        <tr key={`room-${idx}`}>
+                                          <td>Room #{r.roomNumber}</td>
+                                          <td>{calculateDaysOfStay(checkInDate, checkOutDate)}</td>
+                                          <td>₹{editCheckout.totalRoomCharge ? (editCheckout.totalRoomCharge / editCheckout.rooms.length / calculateDaysOfStay(checkInDate, checkOutDate)).toFixed(2) : '0'}</td>
+                                          <td className="text-right">₹{editCheckout.totalRoomCharge ? (editCheckout.totalRoomCharge / editCheckout.rooms.length).toFixed(2) : '0'}</td>
+                                        </tr>
+                                      ))
+                                    )}
                                       {editCheckout.orders && editCheckout.orders.length > 0 && 
                                       editCheckout.orders.map((order: any) => 
                                         order.items?.map((item: any, idx: number) => (
@@ -576,11 +582,23 @@ export default function CheckoutsPage() {
                     <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                       <h2 className="text-2xl font-bold mb-4">Checkout Details</h2>
                       <div className="mb-4">
-                        <h3 className="font-semibold mb-2">Room Info</h3>
+                        <h3 className="font-semibold mb-2">Rooms Info</h3>
                         <div className="grid grid-cols-2 gap-4">
-                          <div><span className="font-medium">Room Number:</span> {detailsCheckout.rooms && detailsCheckout.rooms[0]?.roomNumber || '-'}</div>
-                          <div><span className="font-medium">Type:</span> {detailsCheckout.rooms && detailsCheckout.rooms[0]?.type || '-'}</div>
-                          <div><span className="font-medium">Occupied:</span> {detailsCheckout.rooms && detailsCheckout.rooms[0]?.isOccupied ? 'Yes' : 'No'}</div>
+                          <div>
+                            <span className="font-medium">Rooms:</span> {Array.isArray(detailsCheckout.rooms) && detailsCheckout.rooms.length > 0
+                              ? detailsCheckout.rooms.map((r: any) => `#${r.roomNumber}`).join(', ')
+                              : '-'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Types:</span> {Array.isArray(detailsCheckout.rooms) && detailsCheckout.rooms.length > 0
+                              ? Array.from(new Set(detailsCheckout.rooms.map((r: any) => r.type))).join(', ')
+                              : '-'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Any Occupied:</span> {Array.isArray(detailsCheckout.rooms) && detailsCheckout.rooms.length > 0
+                              ? (detailsCheckout.rooms.some((r: any) => r.isOccupied) ? 'Yes' : 'No')
+                              : '-'}
+                          </div>
                           <div><span className="font-medium">Hotel:</span> {detailsCheckout.hotel?.name || '-'}</div>
                         </div>
                       </div>
