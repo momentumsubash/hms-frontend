@@ -96,64 +96,64 @@ export default function StatsPage() {
   }, []);
 
   const fetchAllData = async () => {
-    setLoading(true);
-    setError("");
-    const token = getToken();
-    if (!token) {
-      setError("No authentication token");
-      setLoading(false);
-      return;
-    }
+      setLoading(true);
+      setError("");
+      const token = getToken();
+      if (!token) {
+        setError("No authentication token");
+        setLoading(false);
+        return;
+      }
     
-    try {
-      // 1. Fetch /auth/me
-      const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-      });
-      if (!meRes.ok) throw new Error("Not authenticated");
-      const meData = await meRes.json();
-      localStorage.setItem("user", JSON.stringify(meData.data || null));
+      try {
+        // 1. Fetch /auth/me
+        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        });
+        if (!meRes.ok) throw new Error("Not authenticated");
+        const meData = await meRes.json();
+        localStorage.setItem("user", JSON.stringify(meData.data || null));
       
       // 2. Fetch all stats data
       const [itemRes, roomRes, expendituresRes, expenditureStatsRes, financialRes, summaryRes] = await Promise.all([
-        fetch(`http://localhost:3000/api/stats/item-sales`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`http://localhost:3000/api/stats/room-sales`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+          fetch(`http://localhost:3000/api/stats/item-sales`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`http://localhost:3000/api/stats/room-sales`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         getExpenditures(),
         getExpenditureStats(),
         getFinancialOverview(),
         getSummaryStats(7)
-      ]);
+        ]);
 
-      if (itemRes.status === 401 || roomRes.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-        return;
-      }
+        if (itemRes.status === 401 || roomRes.status === 401) {
+          localStorage.removeItem("token");
+          window.location.href = "/login";
+          return;
+        }
 
-      if (!itemRes.ok || !roomRes.ok) throw new Error("Failed to fetch stats");
+        if (!itemRes.ok || !roomRes.ok) throw new Error("Failed to fetch stats");
 
-      const itemJson = await itemRes.json();
-      const roomJson = await roomRes.json();
+        const itemJson = await itemRes.json();
+        const roomJson = await roomRes.json();
       
-             setItemStats(itemJson.data || itemJson);
-       setRoomStats(roomJson.data || roomJson);
+        setItemStats(itemJson.data || itemJson);
+        setRoomStats(roomJson.data || roomJson);
        setExpenditures(expendituresRes?.data || []);
        setExpenditureStats(expendituresRes?.summary || null);
        setFinancialOverview(financialRes?.data || financialRes);
        setSummaryStats(summaryRes?.data || summaryRes);
-    } catch (err: any) {
-      setError(err.message || "Error fetching stats");
-    } finally {
-      setLoading(false);
-    }
-  };
+      } catch (err: any) {
+        setError(err.message || "Error fetching stats");
+      } finally {
+        setLoading(false);
+      }
+    };
 
   // Fetch with filters
   const fetchStatsWithFilters = async () => {
@@ -200,8 +200,8 @@ export default function StatsPage() {
       const itemJson = await itemRes.json();
       const roomJson = await roomRes.json();
       
-             setItemStats(itemJson.data || itemJson);
-       setRoomStats(roomJson.data || roomJson);
+      setItemStats(itemJson.data || itemJson);
+      setRoomStats(roomJson.data || roomJson);
        setExpenditures(expendituresRes?.data || []);
        setExpenditureStats(expendituresRes?.summary || null);
        setFinancialOverview(financialRes?.data || financialRes);
@@ -435,15 +435,15 @@ export default function StatsPage() {
                   <div className="text-sm text-gray-600">Total Rooms Sold: {totalRoomCount}</div>
                 </CardContent>
               </Card>
-                             <Card>
-                 <CardHeader>
+              <Card>
+                <CardHeader>
                    <CardTitle className="text-sm">Total Expenditures</CardTitle>
-                 </CardHeader>
-                 <CardContent>
+                </CardHeader>
+                <CardContent>
                    <div className="text-2xl font-bold text-red-600">₹{financialOverview?.expenditures?.approved?.total?.toLocaleString() ?? 0}</div>
                    <div className="text-sm text-gray-600">Pending: ₹{financialOverview?.expenditures?.pending?.total?.toLocaleString() ?? 0}</div>
-                 </CardContent>
-               </Card>
+                </CardContent>
+              </Card>
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm">Net Profit/Loss</CardTitle>
@@ -590,29 +590,29 @@ export default function StatsPage() {
                   <div>
                     {itemBreakdown.length === 0 ? (
                       <div className="text-gray-500 text-center py-8">No item sales data for this filter.</div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full border text-sm">
-                          <thead>
-                            <tr className="bg-gray-100">
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border text-sm">
+                        <thead>
+                          <tr className="bg-gray-100">
                               <th className="px-3 py-2 border text-left">Item Name</th>
                               <th className="px-3 py-2 border text-left">Category</th>
                               <th className="px-3 py-2 border text-center">Quantity Sold</th>
                               <th className="px-3 py-2 border text-right">Sales</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {itemBreakdown.map((row: any) => (
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {itemBreakdown.map((row: any) => (
                               <tr key={row.itemId} className="hover:bg-gray-50">
-                                                                 <td className="px-3 py-2 border">{row.name}</td>
+                              <td className="px-3 py-2 border">{row.name}</td>
                                  <td className="px-3 py-2 border">{getCategoryName(row.category)}</td>
-                                 <td className="px-3 py-2 border text-center">{row.quantity}</td>
+                              <td className="px-3 py-2 border text-center">{row.quantity}</td>
                                 <td className="px-3 py-2 border text-right">₹{row.sales?.toFixed(2)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                     )}
                   </div>
                 )}
@@ -622,31 +622,31 @@ export default function StatsPage() {
                   <div>
                     {roomBreakdown.length === 0 ? (
                       <div className="text-gray-500 text-center py-8">No room sales data for this filter.</div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full border text-sm">
-                          <thead>
-                            <tr className="bg-gray-100">
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border text-sm">
+                        <thead>
+                          <tr className="bg-gray-100">
                               <th className="px-3 py-2 border text-left">Room Number</th>
                               <th className="px-3 py-2 border text-left">Type</th>
                               <th className="px-3 py-2 border text-center">Nights Sold</th>
                               <th className="px-3 py-2 border text-right">Earnings</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {roomBreakdown.map((row: any, idx: number) => (
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {roomBreakdown.map((row: any, idx: number) => (
                               <tr key={row.roomId || idx} className="hover:bg-gray-50">
-                                <td className="px-3 py-2 border">{row.roomNumber || row.name || '-'}</td>
-                                <td className="px-3 py-2 border">{row.type || '-'}</td>
-                                <td className="px-3 py-2 border text-center">{row.nights || row.quantity || '-'}</td>
-                                <td className="px-3 py-2 border text-right">
+                              <td className="px-3 py-2 border">{row.roomNumber || row.name || '-'}</td>
+                              <td className="px-3 py-2 border">{row.type || '-'}</td>
+                              <td className="px-3 py-2 border text-center">{row.nights || row.quantity || '-'}</td>
+                              <td className="px-3 py-2 border text-right">
                                   ₹{(row.roomEarnings ?? row.earnings ?? row.sales ?? 0).toFixed(2)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                     )}
                   </div>
                 )}

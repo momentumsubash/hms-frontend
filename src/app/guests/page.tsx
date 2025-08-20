@@ -1,7 +1,7 @@
 "use client";
 
-import { getGuests, getRooms, updateGuest, addGuest as createGuest, getAvailableRooms } from "@/lib/api";
-import { useEffect, useState } from "react";
+import { getGuests, getRooms, updateGuest, addGuest as createGuest, getMe, getAvailableRooms } from "@/lib/api";
+import { useEffect, useState, useRef } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 import { format } from "date-fns";
@@ -14,39 +14,24 @@ interface Guest {
   email: string;
   phone: string;
   address?: string;
-  roomDiscount: number;
-  advancePaid: number;
   rooms: string[];
   checkInDate: string;
   checkOutDate?: string;
   isCheckedOut: boolean;
   totalBill: number;
-  createdBy: {
-    _id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-  };
-  hotel: {
-    _id: string;
-    name: string;
-  };
+  createdBy: string;
+  hotel: string;
   createdAt: string;
   updatedAt: string;
-  checkouts?: Array<{
+  checkouts?: {
     _id: string;
-    status: string;
-    rooms: Array<{
+    rooms: {
       _id: string;
       roomNumber: string;
       type: string;
       isOccupied: boolean;
-    }>;
-    totalBill: number;
-    advancePaid: number;
-    createdAt: string;
-  }>;
-  totalSpent?: number;
+    }[];
+  }[];
 }
 
 interface Room {
@@ -66,8 +51,8 @@ interface GuestForm {
   address: string;
   rooms: string[];
   roomDiscount: string; // store as string for input, convert to number on submit
-  advancePaid: string;  // store as string for input, convert to number on submit
-  checkInDate: string;  // Now required as per API
+  advancePaid: string; // store as string for input, convert to number on submit
+  checkInDate: string; // Now required as per API
   checkOutDate?: string;
   hotel?: string;
 }
@@ -109,7 +94,7 @@ export default function GuestsPage() {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
-
+  const [allRooms, setAllRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -162,9 +147,10 @@ export default function GuestsPage() {
         localStorage.setItem("user", JSON.stringify(meData.data || null));
         // 2. Fetch guests and rooms
         setLoading(true);
-        const [guestsRes, roomsRes] = await Promise.all([
+        const [guestsRes, roomsRes, allRoomsRes] = await Promise.all([
           getGuests(),
           getAvailableRooms(),
+          getRooms(),
         ]);
         
         // Process guests data
@@ -183,9 +169,18 @@ export default function GuestsPage() {
           roomsData = roomsRes;
         }
 
+        // Process all rooms data
+        let allRoomsData: Room[] = [];
+        if (allRoomsRes && isAPIResponse<Room[]>(allRoomsRes)) {
+          allRoomsData = Array.isArray(allRoomsRes.data) ? allRoomsRes.data : [];
+        } else if (Array.isArray(allRoomsRes)) {
+          allRoomsData = allRoomsRes;
+        }
+
         setGuests(guestsData);
         setRooms(roomsData);
         setAvailableRooms(roomsData);
+        setAllRooms(allRoomsData);
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -279,15 +274,23 @@ export default function GuestsPage() {
     try {
       let resp;
       if (editingGuest) {
-        // Edit: adjust planned checkout/financials only per updated API
+        // Filter for new rooms to be added
+        const roomsToAdd = formData.rooms.filter(roomId => !editingGuest.rooms.includes(roomId));
+        
+        // CONVERT NEW ROOM IDS TO ROOM NUMBERS
+        const roomNumbersToAdd = roomsToAdd.map(roomId => {
+            const room = allRooms.find(r => r._id === roomId);
+            return room ? room.roomNumber : roomId;
+        });
+
         const updatePayload: any = {
+          rooms: roomNumbersToAdd, // Send only the rooms to be added
           checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
           roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
           advancePaid: parseFloat(formData.advancePaid || '0') || 0,
         };
         resp = await updateGuest(editingGuest._id, updatePayload);
       } else {
-        // Create: send rooms array; include first as roomNumber for compatibility
         const createPayload: any = {
           firstName: formData.firstName,
           lastName: formData.lastName,
@@ -310,7 +313,6 @@ export default function GuestsPage() {
           getAvailableRooms(),
         ]);
         
-        // Ensure we always set arrays even if the response is null/undefined
         const guestsData = guestsRes?.data || [];
         const roomsData = roomsRes?.data || [];
         
@@ -329,20 +331,21 @@ export default function GuestsPage() {
 
   const handleEdit = async (guest: Guest) => {
     setEditingGuest(guest);
+    // Set form data with existing guest details, including room IDs
     setFormData({
       firstName: guest.firstName,
       lastName: guest.lastName,
       email: guest.email,
       phone: guest.phone,
       address: guest.address || "",
-      rooms: guest.rooms || [],
-      roomDiscount: guest.roomDiscount?.toString() || "0",
-      advancePaid: guest.advancePaid?.toString() || "0",
+      rooms: guest.rooms || [], // Store room IDs here
+      roomDiscount: "0",
+      advancePaid: "0",
       checkInDate: guest.checkInDate ? format(new Date(guest.checkInDate), "yyyy-MM-dd'T'HH:mm") : "",
       checkOutDate: guest.checkOutDate ? format(new Date(guest.checkOutDate), "yyyy-MM-dd'T'HH:mm") : ""
     });
     setFormErrors({});
-    // Fetch available rooms (isOccupied=false)
+    // Fetch available rooms
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
@@ -355,7 +358,6 @@ export default function GuestsPage() {
       if (!res.ok) throw new Error("Failed to fetch available rooms");
       const response = await res.json();
       
-      // Process available rooms data
       let availableRoomsData: Room[] = [];
       if (response && isAPIResponse<Room[]>(response)) {
         availableRoomsData = Array.isArray(response.data) ? response.data : [];
@@ -363,13 +365,12 @@ export default function GuestsPage() {
         availableRoomsData = response;
       }
       setAvailableRooms(availableRoomsData);
-    } catch {
+    } catch (e) {
       setAvailableRooms([]);
     }
     setShowForm(true);
   };
 
-  // Handle opening new guest form
   const handleAddNewGuest = async () => {
     setFormData({
       firstName: "",
@@ -380,11 +381,10 @@ export default function GuestsPage() {
       rooms: [],
       roomDiscount: "0",
       advancePaid: "0",
-      checkInDate: getCurrentDateTimeLocal(), // Auto-set current date/time
+      checkInDate: getCurrentDateTimeLocal(),
       checkOutDate: ""
     });
     setFormErrors({});
-    // Fetch available rooms (isOccupied=false)
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
@@ -397,7 +397,6 @@ export default function GuestsPage() {
       if (!res.ok) throw new Error("Failed to fetch available rooms");
       const response = await res.json();
       
-      // Process available rooms data
       let availableRoomsData: Room[] = [];
       if (response && isAPIResponse<Room[]>(response)) {
         availableRoomsData = Array.isArray(response.data) ? response.data : [];
@@ -405,65 +404,67 @@ export default function GuestsPage() {
         availableRoomsData = response;
       }
       setAvailableRooms(availableRoomsData);
-    } catch {
+    } catch (e) {
       setAvailableRooms([]);
     }
     setShowForm(true);
   };
 
-  // Handle check-in date change
   const handleCheckInDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newCheckInDate = e.target.value;
     setFormData(prev => ({ 
       ...prev, 
       checkInDate: newCheckInDate,
-      // Clear check-out date if it's now before the new check-in date
       checkOutDate: prev.checkOutDate && new Date(prev.checkOutDate) <= new Date(newCheckInDate) ? "" : prev.checkOutDate
     }));
-    
-    // Clear validation error when user starts typing
     if (formErrors.checkInDate) {
       setFormErrors(prev => ({ ...prev, checkInDate: "" }));
     }
   };
 
-  // Handle check-out date change
   const handleCheckOutDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, checkOutDate: e.target.value }));
-    
-    // Clear validation error when user starts typing
     if (formErrors.checkOutDate) {
       setFormErrors(prev => ({ ...prev, checkOutDate: "" }));
     }
   };
 
-  // Get minimum datetime for check-out (should be after check-in)
   const getMinCheckOutDateTime = () => {
     if (!formData.checkInDate) return getCurrentDateTimeLocal();
     const checkInDate = new Date(formData.checkInDate);
-    checkInDate.setHours(checkInDate.getHours() + 1); // Minimum 1 hour after check-in
+    checkInDate.setHours(checkInDate.getHours() + 1);
     return format(checkInDate, "yyyy-MM-dd'T'HH:mm");
   };
-
-  // Helper function to get room numbers from guest data
-  const getRoomNumbers = (guest: Guest): string[] => {
-    if (guest.checkouts && guest.checkouts.length > 0) {
-      // Get room numbers from the most recent checkout
-      const latestCheckout = guest.checkouts[guest.checkouts.length - 1];
-      return latestCheckout.rooms.map(room => room.roomNumber);
+  
+  const getRoomNumberFromGuest = (guest: Guest, roomId: string): string => {
+    if (guest.checkouts) {
+      for (const checkout of guest.checkouts) {
+        const foundRoom = checkout.rooms.find(room => room._id === roomId);
+        if (foundRoom) {
+          return foundRoom.roomNumber;
+        }
+      }
     }
-    // Fallback to room IDs if no checkout data available
-    return guest.rooms;
+    const room = allRooms.find(r => r._id === roomId);
+    return room ? room.roomNumber : roomId;
+  };
+  
+  // Helper to map room IDs to room numbers
+  const getRoomNumbersFromIds = (roomIds: string[]): string[] => {
+    return roomIds.map(roomId => {
+      const room = allRooms.find(r => r._id === roomId);
+      return room ? room.roomNumber : roomId;
+    });
   };
 
-
-  // Filter guests based on search criteria
   const filteredGuests = guests.filter(guest => {
     const matchesCheckedOut = filters.isCheckedOut === "" || 
       guest.isCheckedOut.toString() === filters.isCheckedOut;
-    const roomNumbers = getRoomNumbers(guest);
+    
+    const roomNumbers = getRoomNumbersFromIds(guest.rooms);
     const matchesRoom = filters.roomNumber === "" || 
-      roomNumbers.some(r => r.toLowerCase().includes(filters.roomNumber.toLowerCase()));
+      (roomNumbers && roomNumbers.some(r => r.toLowerCase().includes(filters.roomNumber.toLowerCase())));
+      
     const matchesSearch = filters.search === "" || 
       `${guest.firstName} ${guest.lastName}`.toLowerCase().includes(filters.search.toLowerCase()) ||
       guest.email.toLowerCase().includes(filters.search.toLowerCase()) ||
@@ -471,11 +472,9 @@ export default function GuestsPage() {
     return matchesCheckedOut && matchesRoom && matchesSearch;
   });
 
-  // Pagination logic
   const totalPages = Math.ceil(filteredGuests.length / limit);
   const paginatedGuests = filteredGuests.slice((page - 1) * limit, page * limit);
 
-  // Reset page to 1 on filter change
   useEffect(() => { setPage(1); }, [filters]);
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -647,24 +646,25 @@ export default function GuestsPage() {
                 <div className={`grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded px-3 py-2 ${formErrors.rooms ? 'border-red-500' : 'border-gray-300'}`}>
                   {(() => {
                     let roomList = availableRooms.length > 0 ? [...availableRooms] : [...rooms];
-                    // Show only available rooms
-                    roomList = roomList.filter(r => !r.isOccupied);
-                    // Unique by roomNumber
-                    roomList = roomList.filter((r, idx, arr) => arr.findIndex(rr => rr.roomNumber === r.roomNumber) === idx);
+                    if (editingGuest) {
+                        const occupiedRooms = allRooms.filter(r => editingGuest.rooms.includes(r._id));
+                        roomList = [...roomList, ...occupiedRooms];
+                    }
+                    roomList = roomList.filter((r, idx, arr) => arr.findIndex(rr => rr._id === r._id) === idx);
                     return roomList.map(room => (
                       <label key={room._id} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
-                          value={room.roomNumber}
-                          checked={formData.rooms.includes(room.roomNumber)}
+                          value={room._id}
+                          checked={formData.rooms.includes(room._id)}
                           onChange={e => {
                             const checked = e.target.checked;
                             setFormData(prev => {
                               let newRooms = prev.rooms || [];
                               if (checked) {
-                                newRooms = [...newRooms, room.roomNumber];
+                                newRooms = [...newRooms, room._id];
                               } else {
-                                newRooms = newRooms.filter(rn => rn !== room.roomNumber);
+                                newRooms = newRooms.filter(rn => rn !== room._id);
                               }
                               return { ...prev, rooms: newRooms };
                             });
@@ -783,9 +783,6 @@ export default function GuestsPage() {
                   Room
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hotel
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Stay Period
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -817,22 +814,15 @@ export default function GuestsPage() {
                     <div className="text-sm text-gray-500">{guest.phone}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {(() => {
-                      const roomNumbers = getRoomNumbers(guest);
-                      return roomNumbers && roomNumbers.length > 0 ? (
-                        roomNumbers.map((roomNumber) => (
-                          <span key={roomNumber} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
-                            Room {roomNumber}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">No rooms</span>
-                      );
-                    })()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{guest.hotel?.name || 'N/A'}</div>
-                    <div className="text-sm text-gray-500">By: {guest.createdBy?.firstName} {guest.createdBy?.lastName}</div>
+                    {guest.rooms && guest.rooms.length > 0 ? (
+                      guest.rooms.map((roomId, idx) => (
+                        <span key={roomId} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
+                          Room {getRoomNumberFromGuest(guest, roomId)}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">No rooms</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <div>
@@ -852,7 +842,7 @@ export default function GuestsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    ₹{(guest.totalSpent || guest.totalBill).toLocaleString()}
+                    ₹{guest.totalBill.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
