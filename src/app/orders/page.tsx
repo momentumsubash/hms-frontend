@@ -397,27 +397,64 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedOrders.map((order: any) => (
-                  <tr key={order._id} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`} onClick={() => handleSelectOrder(order)} style={{ cursor: 'pointer' }}>
-                    <td className="px-6 py-4 whitespace-nowrap">{order._id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{order.guestId ? `${order.guestId.firstName} ${order.guestId.lastName}` : "-"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{order.roomNumber}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {order.items?.map((i: any) => (
-                        <div key={i._id}>
-                          <span className="font-semibold">{i.name}</span> (x{i.quantity}) - ₹{i.price} [{i.itemId?.category}]
-                        </div>
-                      ))}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">₹{order.totalAmount}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">₹{order.extraCharges}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{order.status}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{order.createdBy ? `${order.createdBy.firstName} ${order.createdBy.lastName}` : "-"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{order.hotel?.name || "-"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{new Date(order.createdAt).toLocaleString()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{new Date(order.updatedAt).toLocaleString()}</td>
-                  </tr>
-                ))}
+                {paginatedOrders.map((order: any) => {
+                  // Defensive extraction for all fields
+                  const orderId = order._id ? String(order._id) : "-";
+                  const guest = order.guestId && typeof order.guestId === 'object'
+                    ? `${order.guestId.firstName || ''} ${order.guestId.lastName || ''}`.trim() || "-"
+                    : (order.guestId ? String(order.guestId) : "-");
+                  const room = typeof order.roomNumber === 'string' || typeof order.roomNumber === 'number'
+                    ? String(order.roomNumber)
+                    : (order.room && typeof order.room === 'object' && order.room.roomNumber ? String(order.room.roomNumber) : (order.room ? String(order.room) : "-"));
+                  const items = Array.isArray(order.items) && order.items.length > 0
+                    ? order.items.map((i: any) => {
+                        const name = i.name ? String(i.name) : "-";
+                        const qty = i.quantity ? String(i.quantity) : "-";
+                        const price = i.price ? String(i.price) : "-";
+                        let category = "";
+                        if (i.itemId && typeof i.itemId === 'object') {
+                          category = i.itemId.category || i.itemId.name || "";
+                        } else if (i.itemId) {
+                          category = String(i.itemId);
+                        }
+                        return `${name} (x${qty}) - ₹${price}${category ? ` [${category}]` : ''}`;
+                      }).join("; ")
+                    : "-";
+                  const total = order.totalAmount !== undefined ? `₹${String(order.totalAmount)}` : "-";
+                  const extra = order.extraCharges !== undefined ? `₹${String(order.extraCharges)}` : "-";
+                  const status = order.status ? String(order.status) : "-";
+                  const createdBy = order.createdBy && typeof order.createdBy === 'object'
+                    ? `${order.createdBy.firstName || ''} ${order.createdBy.lastName || ''}`.trim() || "-"
+                    : (order.createdBy ? String(order.createdBy) : "-");
+                  const hotel = order.hotel && typeof order.hotel === 'object'
+                    ? (order.hotel.name ? String(order.hotel.name) : "-")
+                    : (order.hotel ? String(order.hotel) : "-");
+                  const createdAt = order.createdAt
+                    ? (typeof window !== 'undefined'
+                        ? new Date(order.createdAt).toLocaleString()
+                        : new Date(order.createdAt).toISOString())
+                    : "-";
+                  const updatedAt = order.updatedAt
+                    ? (typeof window !== 'undefined'
+                        ? new Date(order.updatedAt).toLocaleString()
+                        : new Date(order.updatedAt).toISOString())
+                    : "-";
+                  return (
+                    <tr key={orderId} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`} onClick={() => handleSelectOrder(order)} style={{ cursor: 'pointer' }}>
+                      <td className="px-6 py-4 whitespace-nowrap">{orderId}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{guest}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{room}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{items}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{total}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{extra}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{status}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{createdBy}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{hotel}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{createdAt}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{updatedAt}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

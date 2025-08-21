@@ -395,13 +395,14 @@ export default function GuestsPage() {
   const handleEdit = async (guest: Guest) => {
     setEditingGuest(guest);
     // Set form data with existing guest details, including room IDs
+    const normalizedRooms = normalizeGuestRoomIds(guest);
     setFormData({
       firstName: guest.firstName,
       lastName: guest.lastName,
       email: guest.email,
       phone: guest.phone,
       address: guest.address || "",
-      rooms: guest.rooms || [], // Store room IDs here
+      rooms: normalizedRooms, // Store normalized room IDs here
       roomDiscount: guest.roomDiscount ? guest.roomDiscount.toString() : "0",
       advancePaid: guest.advancePaid ? guest.advancePaid.toString() : "0",
       checkInDate: guest.checkInDate ? format(new Date(guest.checkInDate), "yyyy-MM-dd'T'HH:mm") : "",
@@ -518,6 +519,42 @@ export default function GuestsPage() {
       const room = allRooms.find(r => r._id === roomId);
       return room ? room.roomNumber : roomId;
     });
+  };
+
+  // Normalize a guest's rooms array into room IDs where possible
+  const normalizeGuestRoomIds = (guest: Guest): string[] => {
+    const result: string[] = [];
+    const allById = new Map(allRooms.map(r => [r._id, r]));
+    const allByNumber = new Map(allRooms.map(r => [r.roomNumber, r]));
+    const checkoutById = new Map<string, string>(); // id -> roomNumber
+    const checkoutByNumberToId = new Map<string, string>(); // roomNumber -> id
+    if (guest.checkouts) {
+      for (const co of guest.checkouts) {
+        for (const r of co.rooms) {
+          checkoutById.set(r._id, r.roomNumber);
+          checkoutByNumberToId.set(r.roomNumber, r._id);
+        }
+      }
+    }
+    for (const value of guest.rooms || []) {
+      if (allById.has(value)) {
+        result.push(value); // already an id
+        continue;
+      }
+      const asIdFromCheckout = checkoutByNumberToId.get(value);
+      if (asIdFromCheckout) {
+        result.push(asIdFromCheckout);
+        continue;
+      }
+      const byNumber = allByNumber.get(value);
+      if (byNumber) {
+        result.push(byNumber._id);
+        continue;
+      }
+      // last resort: keep as-is (API may handle it)
+      result.push(value);
+    }
+    return Array.from(new Set(result));
   };
 
   // Resolve a single room ID to its room number by checking multiple sources
@@ -721,8 +758,9 @@ export default function GuestsPage() {
                    {(() => {
                      let roomList = availableRooms.length > 0 ? [...availableRooms] : [...rooms];
                      if (editingGuest) {
-                         const occupiedRooms = allRooms.filter(r => editingGuest.rooms.includes(r._id));
-                         roomList = [...roomList, ...occupiedRooms];
+                       const guestIds = normalizeGuestRoomIds(editingGuest);
+                       const assignedRooms = allRooms.filter(r => guestIds.includes(r._id));
+                       roomList = [...roomList, ...assignedRooms];
                      }
                      roomList = roomList.filter((r, idx, arr) => arr.findIndex(rr => rr._id === r._id) === idx);
                      return roomList.map(room => (
