@@ -323,8 +323,9 @@ export default function OrdersPage() {
                           onClick={() => setCreateForm(f => ({ ...f, itemId: item._id }))}
                         >
                           <div className="font-semibold">{item.name}</div>
-                          <div className="text-xs text-gray-500">{item.category}</div>
-                          <div className="text-xs text-gray-400">ID: {item._id}</div>
+                          <div className="text-xs text-gray-500">{item.category.name}</div>
+                          {/* <div className="text-xs text-gray-400">ID: {item._id}</div> */}
+                          <div className="text-xs text-gray-400">Price: {item.price}</div>
                         </li>
                       ))}
                     </ul>
