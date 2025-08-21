@@ -102,7 +102,7 @@ export default function ItemsPage() {
     if (!token) return;
 
     try {
-      const apiBase = "${process.env.NEXT_PUBLIC_API_BASE_URL}";
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
       const params = new URLSearchParams({
         page: pageNum.toString(),
         limit: limit.toString()
