@@ -282,7 +282,7 @@ export default function ItemsPage() {
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
 
-      const res = await fetch("${process.env.NEXT_PUBLIC_API_BASE_URL}/items", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
