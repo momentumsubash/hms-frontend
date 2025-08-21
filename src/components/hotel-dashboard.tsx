@@ -156,7 +156,7 @@ export function HotelDashboard() {
 					} else {
 						const token = localStorage.getItem('token');
 						if (token) {
-							const res = await fetch("${process.env.NEXT_PUBLIC_API_BASE_URL}/users/me", {
+							const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/me`, {
 								headers: { Authorization: `Bearer ${token}` },
 							});
 							if (res.status === 401) {
