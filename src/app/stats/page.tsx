@@ -119,10 +119,10 @@ export default function StatsPage() {
       
       // 2. Fetch all stats data
       const [itemRes, roomRes, expendituresRes, expenditureStatsRes, financialRes, summaryRes] = await Promise.all([
-          fetch(`http://localhost:3000/api/stats/item-sales`, {
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/item-sales`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          fetch(`http://localhost:3000/api/stats/room-sales`, {
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/room-sales`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         getExpenditures(),
@@ -162,12 +162,12 @@ export default function StatsPage() {
     const token = getToken();
     
     try {
-      const itemUrl = new URL("http://localhost:3000/api/stats/item-sales");
+      const itemUrl = new URL("${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/item-sales");
       if (itemCategory) itemUrl.searchParams.append("category", itemCategory);
       if (startDate) itemUrl.searchParams.append("startDate", startDate);
       if (endDate) itemUrl.searchParams.append("endDate", endDate);
 
-      const roomUrl = new URL("http://localhost:3000/api/stats/room-sales");
+      const roomUrl = new URL("${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/room-sales");
       if (roomType) roomUrl.searchParams.append("type", roomType);
       if (startDate) roomUrl.searchParams.append("startDate", startDate);
       if (endDate) roomUrl.searchParams.append("endDate", endDate);

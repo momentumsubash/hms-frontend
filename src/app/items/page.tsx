@@ -102,7 +102,7 @@ export default function ItemsPage() {
     if (!token) return;
 
     try {
-      const apiBase = "http://localhost:3000/api";
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
       const params = new URLSearchParams({
         page: pageNum.toString(),
         limit: limit.toString()
@@ -220,7 +220,7 @@ export default function ItemsPage() {
 
         // 3. Fetch categories for this hotel
         if (hotelId) {
-          const catRes = await fetch(`http://localhost:3000/api/categories?hotelId=${hotelId}`, {
+          const catRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/categories?hotelId=${hotelId}`, {
             headers: {
               Authorization: `Bearer ${token}`,
               Accept: "application/json"
@@ -282,7 +282,7 @@ export default function ItemsPage() {
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
 
-      const res = await fetch("http://localhost:3000/api/items", {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -329,7 +329,7 @@ export default function ItemsPage() {
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
 
-      const res = await fetch(`http://localhost:3000/api/items/${selectedItem._id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items/${selectedItem._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -364,7 +364,7 @@ export default function ItemsPage() {
     if (!selectedItem) return;
     try {
       const token = getToken();
-      const res = await fetch(`http://localhost:3000/api/items/${selectedItem._id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items/${selectedItem._id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`
@@ -413,7 +413,7 @@ export default function ItemsPage() {
     setSelectedItem(item);
     const token = getToken();
     try {
-      const res = await fetch(`http://localhost:3000/api/items/${item._id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items/${item._id}`, {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`

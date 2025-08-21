@@ -31,7 +31,7 @@ export function HotelDashboard() {
 		setNotesLoading(true);
 		setNotesError("");
 		try {
-			const res = await fetch(`http://localhost:3000/api/hotels/${hotelId}/notes`, {
+			const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/${hotelId}/notes`, {
 				headers: { Authorization: `Bearer ${notesToken}` },
 			});
 			if (!res.ok) throw new Error("Failed to fetch notes");
@@ -51,7 +51,7 @@ export function HotelDashboard() {
 		setNotesLoading(true);
 		setNotesError("");
 		try {
-			const res = await fetch(`http://localhost:3000/api/hotels/${hotelId}/notes`, {
+			const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/${hotelId}/notes`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -74,7 +74,7 @@ export function HotelDashboard() {
 		setNotesLoading(true);
 		setNotesError("");
 		try {
-			const res = await fetch(`http://localhost:3000/api/hotels/${hotelId}/notes/${noteId}`, {
+			const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/${hotelId}/notes/${noteId}`, {
 				method: "DELETE",
 				headers: { Authorization: `Bearer ${notesToken}` },
 			});
@@ -156,7 +156,7 @@ export function HotelDashboard() {
 					} else {
 						const token = localStorage.getItem('token');
 						if (token) {
-							const res = await fetch("http://localhost:3000/api/users/me", {
+							const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/users/me`, {
 								headers: { Authorization: `Bearer ${token}` },
 							});
 							if (res.status === 401) {

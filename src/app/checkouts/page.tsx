@@ -490,8 +490,8 @@ export default function CheckoutsPage() {
                                   {(clientVatNumber || clientVatCompany || clientVatAddress) && (
                                     <tr>
                                       <td><strong>Client VAT:</strong></td>
-                                      <td colSpan="3">{clientVatNumber} · {clientVatCompany} · {clientVatAddress}</td>
-                                    </tr>
+                                      <td colSpan={3}>{clientVatNumber} · {clientVatCompany} · {clientVatAddress}</td>
+                                      </tr>
                                   )}
                                 </table>
                               </div>

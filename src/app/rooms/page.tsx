@@ -87,6 +87,14 @@ export default function RoomsPage() {
   const [roomToDelete, setRoomToDelete] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Helper function to get standard headers
+  const getRequestHeaders = (token: string) => {
+    return {
+      'Accept': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  };
+
   // Load data with server-side filtering and pagination
   const loadData = useCallback(async (resetPage = false, customFilters?: typeof filters) => {
     try {
@@ -109,12 +117,7 @@ export default function RoomsPage() {
       if (currentFilters.roomNumber) queryParams.append('roomNumber', currentFilters.roomNumber);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        },
+        headers: getRequestHeaders(token),
       });
 
       if (!response.ok) {
@@ -177,10 +180,7 @@ export default function RoomsPage() {
       try {
         // 1. /auth/me
         const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
+          headers: getRequestHeaders(token),
         });
         if (!meRes.ok) throw new Error("Not authenticated");
         const meData = await meRes.json();
@@ -190,8 +190,7 @@ export default function RoomsPage() {
         // 2. /hotels/me
         const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, {
           headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
+            ...getRequestHeaders(token)
           },
         });
         if (hotelRes.ok) {
@@ -233,7 +232,7 @@ export default function RoomsPage() {
     setTimeout(() => setToast(null), 5000);
   };
 
-  // Create room function - Updated to include hotel ID
+  // Create room function - Updated to include hotel ID and proper headers
   const createRoom = async (roomData: any) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
@@ -255,8 +254,8 @@ export default function RoomsPage() {
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms`, {
       method: 'POST',
       headers: {
+        ...getRequestHeaders(token),
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(roomDataWithHotel),
     });
@@ -271,16 +270,14 @@ export default function RoomsPage() {
     return responseData;
   };
 
-  // Delete room function
+  // Delete room function - Updated with proper headers
   const deleteRoom = async (roomNumber: string) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
 
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/${roomNumber}`, {
       method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
+      headers: getRequestHeaders(token),
     });
 
     if (!response.ok) {
@@ -290,6 +287,54 @@ export default function RoomsPage() {
     }
 
     return await response.json();
+  };
+
+  // Update room function - Enhanced with proper headers
+  const updateRoomLocal = async (roomNumber: string, roomData: any) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) throw new Error("No authentication token");
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/${roomNumber}`, {
+      method: 'PUT',
+      headers: {
+        ...getRequestHeaders(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(roomData),
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      const errorMessage = responseData?.message || 'Failed to update room';
+      throw new Error(errorMessage);
+    }
+
+    return responseData;
+  };
+
+  // Update room maintenance function - Enhanced with proper headers
+  const updateRoomMaintenanceLocal = async (roomNumber: string, status: string) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) throw new Error("No authentication token");
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/${roomNumber}/maintenance`, {
+      method: 'PUT',
+      headers: {
+        ...getRequestHeaders(token),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ maintenanceStatus: status }),
+    });
+
+    const responseData = await response.json();
+    
+    if (!response.ok) {
+      const errorMessage = responseData?.message || 'Failed to update room maintenance';
+      throw new Error(errorMessage);
+    }
+
+    return responseData;
   };
 
   // Clear all filters
@@ -776,7 +821,7 @@ export default function RoomsPage() {
                   e.preventDefault();
                   setEditLoading(true);
                   try {
-                    await updateRoom(editRoom.roomNumber, {
+                    await updateRoomLocal(editRoom.roomNumber, {
                       type: editForm.type,
                       rate: Number(editForm.rate),
                       description: editForm.description,
@@ -787,7 +832,7 @@ export default function RoomsPage() {
                     });
 
                     if (editForm.maintanenceStatus) {
-                      await updateRoomMaintenance(editRoom.roomNumber, editForm.maintanenceStatus);
+                      await updateRoomMaintenanceLocal(editRoom.roomNumber, editForm.maintanenceStatus);
                     }
 
                     setShowEdit(false);
@@ -795,7 +840,7 @@ export default function RoomsPage() {
                     showToast("Room updated successfully!", "success");
                     await loadData();
                   } catch (e: any) {
-                    const errorMessage = e.response?.data?.message || e.message || 'An unexpected error occurred while updating the room';
+                    const errorMessage = e.message || 'An unexpected error occurred while updating the room';
                     showToast(errorMessage, "error");
                   } finally {
                     setEditLoading(false);

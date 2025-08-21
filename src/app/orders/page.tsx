@@ -43,7 +43,7 @@ export default function OrdersPage() {
       setItemLoading(true);
       try {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api";
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "${process.env.NEXT_PUBLIC_API_BASE_URL}";
   const params = new URLSearchParams();
   params.set('limit', '100');
   if (itemSearch) params.set('search', itemSearch);
@@ -227,7 +227,7 @@ export default function OrdersPage() {
                     try {
                       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
                       if (!token) throw new Error("No token found");
-                      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000/api";
+                      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "${process.env.NEXT_PUBLIC_API_BASE_URL}";
                       const res = await fetch(`${apiBase}/orders`, {
                         method: "POST",
                         headers: {
