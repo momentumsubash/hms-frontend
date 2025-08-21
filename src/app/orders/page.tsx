@@ -1,13 +1,8 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
-import { getItems } from "@/lib/api";
-
-// Notification state for bottom-right toast
-// (must be inside the component, so move this logic below)
 
 export default function OrdersPage() {
   // Pagination state
@@ -23,7 +18,7 @@ export default function OrdersPage() {
   const [createError, setCreateError] = useState("");
   const [createForm, setCreateForm] = useState({
     roomNumber: "",
-    itemId: ""
+    items: [{ itemId: "", quantity: "1" }]
   });
   const [itemSearch, setItemSearch] = useState("");
   const [itemList, setItemList] = useState<any[]>([]);
@@ -43,14 +38,14 @@ export default function OrdersPage() {
       setItemLoading(true);
       try {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "${process.env.NEXT_PUBLIC_API_BASE_URL}";
-  const params = new URLSearchParams();
-  params.set('limit', '100');
-  if (itemSearch) params.set('search', itemSearch);
-  const url = `${apiBase}/items?${params.toString()}`;
-  const headers: Record<string, string> = { Accept: "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(url, { headers });
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+        const params = new URLSearchParams();
+        params.set('limit', '100');
+        if (itemSearch) params.set('search', itemSearch);
+        const url = `${apiBase}/items?${params.toString()}`;
+        const headers: Record<string, string> = { Accept: "application/json" };
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+        const res = await fetch(url, { headers });
         if (!res.ok) throw new Error("Failed to fetch items");
         const items = await res.json();
         setItemList(items.data || items);
@@ -209,6 +204,10 @@ export default function OrdersPage() {
             onClick={() => {
               setShowCreate(true);
               setCreateError("");
+              setCreateForm({
+                roomNumber: "",
+                items: [{ itemId: "", quantity: "1" }]
+              });
             }}
           >+ New Order</button>
         </div>
@@ -227,7 +226,20 @@ export default function OrdersPage() {
                     try {
                       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
                       if (!token) throw new Error("No token found");
-                      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "${process.env.NEXT_PUBLIC_API_BASE_URL}";
+                      
+                      // Prepare items array with proper format
+                      const items = createForm.items
+                        .filter(item => item.itemId && item.quantity)
+                        .map(item => ({
+                          itemId: item.itemId,
+                          quantity: parseInt(item.quantity) || 0
+                        }));
+                      
+                      if (items.length === 0) {
+                        throw new Error("Please add at least one item");
+                      }
+
+                      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
                       const res = await fetch(`${apiBase}/orders`, {
                         method: "POST",
                         headers: {
@@ -236,7 +248,7 @@ export default function OrdersPage() {
                         },
                         body: JSON.stringify({
                           roomNumber: createForm.roomNumber,
-                          itemId: createForm.itemId
+                          items: items
                         })
                       });
                       const data = await res.json().catch(() => ({}));
@@ -246,7 +258,7 @@ export default function OrdersPage() {
                       }
                       setNotification({ type: 'success', message: data?.message || 'Order created successfully' });
                       setShowCreate(false);
-                      setCreateForm({ roomNumber: "", itemId: "" });
+                      setCreateForm({ roomNumber: "", items: [{ itemId: "", quantity: "1" }] });
                       await fetchAll();
                     } catch (err: any) {
                       setCreateError(err.message);
@@ -256,12 +268,13 @@ export default function OrdersPage() {
                   }}
                   className="space-y-4"
                 >
-        {/* Notification Toast */}
-        {notification && (
-          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-            {notification.message}
-          </div>
-        )}
+                  {/* Notification Toast */}
+                  {notification && (
+                    <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+                      {notification.message}
+                    </div>
+                  )}
+                  
                   <div>
                     <label className="block text-sm font-medium mb-1">Room Number</label>
                     <input
@@ -272,17 +285,65 @@ export default function OrdersPage() {
                       required
                     />
                   </div>
+                  
+                  {/* Items section */}
                   <div>
-                    <label className="block text-sm font-medium mb-1">Item ID</label>
-                    <input
-                      type="text"
-                      value={createForm.itemId}
-                      onChange={e => setCreateForm(f => ({ ...f, itemId: e.target.value }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      required
-                    />
+                    <label className="block text-sm font-medium mb-1">Items</label>
+                    {createForm.items.map((item, index) => (
+                      <div key={index} className="flex gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={item.itemId}
+                          onChange={e => {
+                            const newItems = [...createForm.items];
+                            newItems[index].itemId = e.target.value;
+                            setCreateForm(f => ({ ...f, items: newItems }));
+                          }}
+                          className="flex-1 border border-gray-300 rounded px-3 py-2"
+                          placeholder="Item ID"
+                          required
+                        />
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={e => {
+                            const newItems = [...createForm.items];
+                            newItems[index].quantity = e.target.value;
+                            setCreateForm(f => ({ ...f, items: newItems }));
+                          }}
+                          className="w-20 border border-gray-300 rounded px-3 py-2"
+                          placeholder="Qty"
+                          min="1"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (createForm.items.length > 1) {
+                              const newItems = createForm.items.filter((_, i) => i !== index);
+                              setCreateForm(f => ({ ...f, items: newItems }));
+                            }
+                          }}
+                          className="px-2 text-red-600 hover:bg-red-100 rounded"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setCreateForm(f => ({ 
+                        ...f, 
+                        items: [...f.items, { itemId: "", quantity: "1" }] 
+                      }))}
+                      className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      + Add Another Item
+                    </button>
                   </div>
+                  
                   {createError && <div className="text-red-600 mb-2">{createError}</div>}
+                  
                   <div className="flex justify-end space-x-3 pt-4">
                     <button
                       type="button"
@@ -298,6 +359,7 @@ export default function OrdersPage() {
                   </div>
                 </form>
               </div>
+              
               {/* Right: Item List */}
               <div className="flex-1 min-w-[320px] max-w-[400px]">
                 <div className="flex items-center mb-2">
@@ -319,12 +381,26 @@ export default function OrdersPage() {
                       {itemList.map((item: any) => (
                         <li
                           key={item._id}
-                          className={`p-2 rounded cursor-pointer hover:bg-blue-100 ${createForm.itemId === item._id ? 'bg-blue-200' : ''}`}
-                          onClick={() => setCreateForm(f => ({ ...f, itemId: item._id }))}
+                          className={`p-2 rounded cursor-pointer hover:bg-blue-100 ${createForm.items.some(i => i.itemId === item._id) ? 'bg-blue-200' : ''}`}
+                          onClick={() => {
+                            // Add this item to the form
+                            const newItems = [...createForm.items];
+                            const lastIndex = newItems.length - 1;
+                            
+                            // If the last item is empty, use it
+                            if (lastIndex >= 0 && !newItems[lastIndex].itemId) {
+                              newItems[lastIndex].itemId = item._id;
+                              newItems[lastIndex].quantity = "1";
+                            } else {
+                              // Otherwise add a new item
+                              newItems.push({ itemId: item._id, quantity: "1" });
+                            }
+                            
+                            setCreateForm(f => ({ ...f, items: newItems }));
+                          }}
                         >
                           <div className="font-semibold">{item.name}</div>
-                          <div className="text-xs text-gray-500">{item.category.name}</div>
-                          {/* <div className="text-xs text-gray-400">ID: {item._id}</div> */}
+                          <div className="text-xs text-gray-500">{item.category?.name || 'No category'}</div>
                           <div className="text-xs text-gray-400">Price: {item.price}</div>
                         </li>
                       ))}
@@ -542,7 +618,5 @@ export default function OrdersPage() {
         </div>
       </div>
     </div>
-
   );
 }
-
