@@ -412,7 +412,7 @@ export default function GuestsPage() {
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
-      const res = await fetch("http://localhost:3000/api/rooms?isOccupied=false", {
+      const res = await fetch("${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?isOccupied=false", {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`
@@ -451,7 +451,7 @@ export default function GuestsPage() {
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
-      const res = await fetch("http://localhost:3000/api/rooms?isOccupied=false", {
+      const res = await fetch("${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?isOccupied=false", {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`
