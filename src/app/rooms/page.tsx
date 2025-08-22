@@ -25,7 +25,7 @@ export default function RoomsPage() {
   
   // Pagination and filter state
   const [page, setPage] = useState(1);
-  const [limit] = useState(20);
+  const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalRooms, setTotalRooms] = useState(0);
   
@@ -60,7 +60,6 @@ export default function RoomsPage() {
   const [editForm, setEditForm] = useState<any>({
     type: "",
     rate: 0,
-    description: "",
     amenities: [],
     isOccupied: false,
     capacity: 1,
@@ -87,6 +86,10 @@ export default function RoomsPage() {
   const [roomToDelete, setRoomToDelete] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  // Room details modal state
+  const [showDetails, setShowDetails] = useState(false);
+  const [roomDetails, setRoomDetails] = useState<any>(null);
+
   // Helper function to get standard headers
   const getRequestHeaders = (token: string) => {
     return {
@@ -95,7 +98,7 @@ export default function RoomsPage() {
     };
   };
 
-  // Load data with server-side filtering and pagination
+  // Load data with server-side filtering and pagination - UPDATED FOR YOUR API FORMAT
   const loadData = useCallback(async (resetPage = false, customFilters?: typeof filters) => {
     try {
       setLoading(true);
@@ -106,7 +109,7 @@ export default function RoomsPage() {
       const currentFilters = customFilters || filters;
       const currentPage = resetPage ? 1 : page;
 
-      // Build query parameters
+      // Build query parameters exactly like the curl example
       const queryParams = new URLSearchParams();
       queryParams.append('page', currentPage.toString());
       queryParams.append('limit', limit.toString());
@@ -116,7 +119,9 @@ export default function RoomsPage() {
       if (currentFilters.isOccupied !== "") queryParams.append('isOccupied', currentFilters.isOccupied);
       if (currentFilters.roomNumber) queryParams.append('roomNumber', currentFilters.roomNumber);
 
+      // Make the API call exactly like the curl example
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?${queryParams.toString()}`, {
+        method: 'GET',
         headers: getRequestHeaders(token),
       });
 
@@ -127,22 +132,46 @@ export default function RoomsPage() {
 
       const data = await response.json();
       
-      // Handle different response structures
-      if (data.data) {
-        setRooms(data.data.rooms || data.data || []);
-        setTotalPages(data.data.totalPages || Math.ceil((data.data.total || 0) / limit));
-        setTotalRooms(data.data.total || data.data.length || 0);
+      console.log('API Response:', data); // Debug log
+      
+      // Handle the specific response structure from your API
+      let roomsData = [];
+      let totalCount = 0;
+      let totalPagesCount = 0;
+      let currentPageNum = 1;
+
+      if (data.success && Array.isArray(data.data)) {
+        // Structure: { success: true, data: [], pagination: {}, roomCount: number }
+        roomsData = data.data;
+        totalCount = data.roomCount || data.pagination?.total || 0;
+        totalPagesCount = data.pagination?.pages || Math.ceil(totalCount / limit);
+        currentPageNum = data.pagination?.page || currentPage;
+      } else if (Array.isArray(data)) {
+        // Fallback: simple array response
+        roomsData = data;
+        totalCount = data.length;
+        totalPagesCount = Math.ceil(totalCount / limit);
       } else {
-        // Fallback for simple array response
-        setRooms(data || []);
-        setTotalPages(1);
-        setTotalRooms(data?.length || 0);
+        // Fallback - ensure roomsData is always an array
+        roomsData = [];
+        totalCount = 0;
+        totalPagesCount = 0;
+      }
+
+      setRooms(roomsData);
+      setTotalPages(totalPagesCount);
+      setTotalRooms(totalCount);
+      
+      // Update page if it's different from what API returned
+      if (currentPageNum !== page) {
+        setPage(currentPageNum);
       }
 
       if (resetPage) {
         setPage(1);
       }
     } catch (e: any) {
+      console.error('Error loading rooms:', e);
       setError(e.message);
       setRooms([]);
       setTotalPages(0);
@@ -162,15 +191,19 @@ export default function RoomsPage() {
       clearTimeout(searchDebounce);
     }
     
-    // For search-like filters, debounce the API call
-    // For all filters, apply immediately with new filters
-    loadData(true, newFilters);
+    // Set a new timeout to debounce the API call for search inputs
+    if (filterKey === 'roomNumber') {
+      setSearchDebounce(setTimeout(() => {
+        loadData(true, newFilters);
+      }, 500));
+    } else {
+      // For other filters, apply immediately
+      loadData(true, newFilters);
+    }
   };
 
   useEffect(() => {
-    // 1. Fetch /auth/me, store user in localStorage
-    // 2. Fetch /hotels/me, store hotel in localStorage (if needed)
-    // 3. Fetch rooms with filters
+    // Initial data load
     const fetchAll = async () => {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) {
@@ -185,36 +218,34 @@ export default function RoomsPage() {
         if (!meRes.ok) throw new Error("Not authenticated");
         const meData = await meRes.json();
         setUser(meData.data || null);
-        localStorage.setItem("user", JSON.stringify(meData.data || null));
+        localStorage.setItem('user', JSON.stringify(meData.data || null));
         
         // 2. /hotels/me
         const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, {
-          headers: {
-            ...getRequestHeaders(token)
-          },
+          headers: getRequestHeaders(token),
         });
         if (hotelRes.ok) {
           const hotelData = await hotelRes.json();
           const hotelInfo = hotelData.data || null;
           setHotel(hotelInfo);
-          localStorage.setItem("hotel", JSON.stringify(hotelInfo));
+          localStorage.setItem('hotel', JSON.stringify(hotelInfo));
         }
         
         // 3. Load rooms with initial filters
         await loadData();
       } catch (e: any) {
         setUser(null);
-        localStorage.removeItem("user");
-        localStorage.removeItem("hotel");
+        localStorage.removeItem('user');
+        localStorage.removeItem('hotel');
       }
     };
     fetchAll();
   }, []);
 
-  // Load data when page changes (but not on initial mount to avoid double loading)
+  // Load data when page changes
   useEffect(() => {
     if (page > 1) {
-      loadData();
+      loadData(false);
     }
   }, [page, loadData]);
 
@@ -232,20 +263,18 @@ export default function RoomsPage() {
     setTimeout(() => setToast(null), 5000);
   };
 
-  // Create room function - Updated to include hotel ID and proper headers
+  // Create room function
   const createRoom = async (roomData: any) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
 
-    // Get hotel ID from localStorage or state
     const storedHotel = typeof window !== "undefined" ? localStorage.getItem("hotel") : null;
     const hotelData = storedHotel ? JSON.parse(storedHotel) : hotel;
     
     if (!hotelData || !hotelData._id) {
-      throw new Error("Hotel information not found. Please refresh the page.");
+      throw new Error("Hotel information not found");
     }
 
-    // Add hotel ID to room data
     const roomDataWithHotel = {
       ...roomData,
       hotel: hotelData._id
@@ -270,7 +299,7 @@ export default function RoomsPage() {
     return responseData;
   };
 
-  // Delete room function - Updated with proper headers
+  // Delete room function
   const deleteRoom = async (roomNumber: string) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
@@ -289,7 +318,7 @@ export default function RoomsPage() {
     return await response.json();
   };
 
-  // Update room function - Enhanced with proper headers
+  // Update room function
   const updateRoomLocal = async (roomNumber: string, roomData: any) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
@@ -313,7 +342,7 @@ export default function RoomsPage() {
     return responseData;
   };
 
-  // Update room maintenance function - Enhanced with proper headers
+  // Update room maintenance function
   const updateRoomMaintenanceLocal = async (roomNumber: string, status: string) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
@@ -346,6 +375,90 @@ export default function RoomsPage() {
     };
     setFilters(clearedFilters);
     loadData(true, clearedFilters);
+  };
+
+  // Generate pagination buttons
+  const generatePaginationButtons = () => {
+    const buttons = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    // Adjust if we're near the end
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+    
+    // First and previous buttons
+    if (startPage > 1) {
+      buttons.push(
+        <button
+          key="first"
+          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          onClick={() => setPage(1)}
+          disabled={page === 1 || loading}
+        >
+          «
+        </button>
+      );
+      
+      buttons.push(
+        <button
+          key="prev"
+          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          onClick={() => setPage(page - 1)}
+          disabled={page === 1 || loading}
+        >
+          ‹
+        </button>
+      );
+    }
+    
+    // Page number buttons
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <button
+          key={i}
+          className={`px-3 py-2 text-sm font-medium rounded-md ${
+            page === i
+              ? 'text-white bg-blue-600 border border-blue-600'
+              : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+          } disabled:opacity-50`}
+          onClick={() => setPage(i)}
+          disabled={loading}
+        >
+          {i}
+        </button>
+      );
+    }
+    
+    // Next and last buttons
+    if (endPage < totalPages) {
+      buttons.push(
+        <button
+          key="next"
+          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          onClick={() => setPage(page + 1)}
+          disabled={page === totalPages || loading}
+        >
+          ›
+        </button>
+      );
+      
+      buttons.push(
+        <button
+          key="last"
+          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          onClick={() => setPage(totalPages)}
+          disabled={page === totalPages || loading}
+        >
+          »
+        </button>
+      );
+    }
+    
+    return buttons;
   };
 
   if (loading && rooms.length === 0) {
@@ -385,19 +498,19 @@ export default function RoomsPage() {
           </button>
         </div>
 
-        {/* Summary Section */}
+        {/* Summary Section - UPDATED */}
         <div className="flex gap-8 mb-6">
           <div className="bg-blue-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-blue-700 text-sm font-semibold">Total Found</div>
+            <div className="text-blue-700 text-sm font-semibold">Total Rooms</div>
             <div className="text-2xl font-bold text-blue-900">{totalRooms}</div>
           </div>
           <div className="bg-green-100 rounded-lg shadow p-4 flex-1 text-center">
             <div className="text-green-700 text-sm font-semibold">Current Page</div>
-            <div className="text-2xl font-bold text-green-900">{rooms.length}</div>
+            <div className="text-2xl font-bold text-green-900">{rooms.length} of {Math.min(limit, totalRooms - (page - 1) * limit)}</div>
           </div>
           <div className="bg-purple-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-purple-700 text-sm font-semibold">Pages</div>
-            <div className="text-2xl font-bold text-purple-900">{totalPages}</div>
+            <div className="text-purple-700 text-sm font-semibold">Page Info</div>
+            <div className="text-2xl font-bold text-purple-900">{page} / {totalPages}</div>
           </div>
         </div>
 
@@ -480,7 +593,6 @@ export default function RoomsPage() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room #</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amenities</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
@@ -489,169 +601,130 @@ export default function RoomsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Occupied</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Maintenance</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated At</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {rooms.map((room: any) => (
-                  <tr key={room._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap font-medium">{room.roomNumber}</td>
-                    <td className="px-4 py-4 whitespace-nowrap capitalize">{room.type}</td>
-                    <td className="px-4 py-4 whitespace-nowrap max-w-xs truncate" title={room.description}>
-                      {room.description || '-'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {room.amenities && room.amenities.length > 0 ? (
-                        <div className="flex flex-wrap gap-1 max-w-xs">
-                          {room.amenities.slice(0, 3).map((a: string, i: number) => (
-                            <span key={i} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">{a}</span>
-                          ))}
-                          {room.amenities.length > 3 && (
-                            <span className="text-gray-500 text-xs">+{room.amenities.length - 3}</span>
-                          )}
+                {Array.isArray(rooms) && rooms.length > 0 ? (
+                  rooms.map((room: any) => (
+                    <tr key={room._id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 whitespace-nowrap font-medium">{room.roomNumber}</td>
+                      <td className="px-4 py-4 whitespace-nowrap capitalize">{room.type}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {room.amenities && room.amenities.length > 0 ? (
+                          <div className="flex flex-wrap gap-1 max-w-xs">
+                            {room.amenities.slice(0, 3).map((a: string, i: number) => (
+                              <span key={i} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">{a}</span>
+                            ))}
+                            {room.amenities.length > 3 && (
+                              <span className="text-gray-500 text-xs">+{room.amenities.length - 3}</span>
+                            )}
+                          </div>
+                        ) : "-"}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">{room.capacity}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">{room.hotel?.name || '-'}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">{room.guestName || '-'}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">{room.guestPhone || '-'}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">₹{room.rate}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {room.isOccupied ? (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            Occupied
+                          </span>
+                        ) : (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            Available
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {(room.maintenanceStatus || room.maintanenceStatus) ? (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            {(room.maintenanceStatus || room.maintanenceStatus)}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex space-x-2">
+                          <button
+                            className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                            onClick={() => {
+                              setRoomDetails(room);
+                              setShowDetails(true);
+                            }}
+                          >
+                            View
+                          </button>
+                          <button
+                            className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                            onClick={() => {
+                              setEditRoom(room);
+                              setEditForm({
+                                type: room.type,
+                                rate: room.rate,
+                                amenities: room.amenities || [],
+                                isOccupied: room.isOccupied,
+                                capacity: room.capacity,
+                                maintanenceStatus: (room.maintenanceStatus || room.maintanenceStatus || ""),
+                              });
+                              setShowEdit(true);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="text-red-600 hover:text-red-900 text-sm font-medium"
+                            onClick={() => {
+                              setRoomToDelete(room);
+                              setShowDeleteConfirm(true);
+                            }}
+                          >
+                            Delete
+                          </button>
                         </div>
-                      ) : "-"}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">{room.capacity}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">{room.hotel?.name || '-'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">{room.guestName || '-'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">{room.guestPhone || '-'}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">₹{room.rate}</td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {room.isOccupied ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                          Occupied
-                        </span>
-                      ) : (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                          Available
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {(room.maintenanceStatus || room.maintanenceStatus) ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                          {(room.maintenanceStatus || room.maintanenceStatus)}
-                        </span>
-                      ) : '-'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {room.createdAt ? new Date(room.createdAt).toLocaleDateString() : '-'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {room.updatedAt ? new Date(room.updatedAt).toLocaleDateString() : '-'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex space-x-2">
-                        <button
-                          className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                          onClick={() => {
-                            setEditRoom(room);
-                            setEditForm({
-                              type: room.type,
-                              rate: room.rate,
-                              description: room.description,
-                              amenities: room.amenities || [],
-                              isOccupied: room.isOccupied,
-                              capacity: room.capacity,
-                              maintanenceStatus: (room.maintenanceStatus || room.maintanenceStatus || ""),
-                            });
-                            setShowEdit(true);
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className="text-red-600 hover:text-red-900 text-sm font-medium"
-                          onClick={() => {
-                            setRoomToDelete(room);
-                            setShowDeleteConfirm(true);
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
+                      {loading ? 'Loading rooms...' : 'No rooms found'}
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Pagination Controls */}
+          {/* Enhanced Pagination Controls - UPDATED */}
           {totalPages > 1 && (
-            <div className="flex justify-between items-center px-6 py-4 bg-gray-50 border-t">
+            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 bg-gray-50 border-t gap-4">
               <div className="text-sm text-gray-700">
-                Showing page {page} of {totalPages} ({totalRooms} total rooms)
+                Showing {rooms.length} rooms (Page {page} of {totalPages}, Total: {totalRooms})
               </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => setPage(1)}
-                  disabled={page === 1 || loading}
-                >
-                  First
-                </button>
-                <button
-                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => setPage(page - 1)}
-                  disabled={page === 1 || loading}
-                >
-                  Previous
-                </button>
-                
-                {/* Page numbers */}
-                <div className="hidden sm:flex space-x-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (page <= 3) {
-                      pageNum = i + 1;
-                    } else if (page >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = page - 2 + i;
-                    }
-                    
-                    return (
-                      <button
-                        key={pageNum}
-                        className={`px-3 py-2 text-sm font-medium rounded-md ${
-                          page === pageNum
-                            ? 'text-white bg-blue-600 border border-blue-600'
-                            : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                        onClick={() => setPage(pageNum)}
-                        disabled={loading}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <button
-                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => setPage(page + 1)}
-                  disabled={page === totalPages || loading}
-                >
-                  Next
-                </button>
-                <button
-                  className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => setPage(totalPages)}
-                  disabled={page === totalPages || loading}
-                >
-                  Last
-                </button>
+              <div className="flex items-center space-x-1">
+                {generatePaginationButtons()}
+              </div>
+              <div className="flex items-center space-x-2 text-sm">
+                <span>Go to page:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={totalPages}
+                  value={page}
+                  onChange={(e) => {
+                    const newPage = Math.max(1, Math.min(totalPages, parseInt(e.target.value) || 1));
+                    setPage(newPage);
+                  }}
+                  className="w-16 border border-gray-300 rounded px-2 py-1 text-center"
+                  disabled={loading}
+                />
               </div>
             </div>
           )}
 
-          {rooms.length === 0 && !loading && (
+          {(!Array.isArray(rooms) || rooms.length === 0) && !loading && (
             <div className="text-center py-12">
               <div className="text-gray-500 text-lg mb-2">No rooms found</div>
               <div className="text-gray-400 text-sm">
@@ -672,7 +745,100 @@ export default function RoomsPage() {
           )}
         </div>
 
-        {/* Add Room Modal - Updated form submission */}
+        {/* Room Details Modal */}
+        {showDetails && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold mb-4">Room Details - {roomDetails?.roomNumber}</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Room Number</label>
+                  <div className="text-lg font-medium">{roomDetails?.roomNumber}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Type</label>
+                  <div className="text-lg capitalize">{roomDetails?.type}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Rate</label>
+                  <div className="text-lg">₹{roomDetails?.rate}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Description</label>
+                  <div className="text-lg">{roomDetails?.description || 'No description available'}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Amenities</label>
+                  <div className="flex flex-wrap gap-2">
+                    {roomDetails?.amenities && roomDetails.amenities.length > 0 ? (
+                      roomDetails.amenities.map((a: string, i: number) => (
+                        <span key={i} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                          {a}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-gray-500">No amenities</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Capacity</label>
+                  <div className="text-lg">{roomDetails?.capacity}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Hotel</label>
+                  <div className="text-lg">{roomDetails?.hotel?.name || '-'}</div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Occupied</label>
+                  <div className="text-lg">
+                    {roomDetails?.isOccupied ? (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                        Occupied
+                      </span>
+                    ) : (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        Available
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Maintenance Status</label>
+                  <div className="text-lg">
+                    {(roomDetails?.maintenanceStatus || roomDetails?.maintanenceStatus) ? (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                        {(roomDetails?.maintenanceStatus || roomDetails?.maintanenceStatus)}
+                      </span>
+                    ) : 'No maintenance'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Created At</label>
+                  <div className="text-lg">
+                    {roomDetails?.createdAt ? new Date(roomDetails.createdAt).toLocaleDateString() : '-'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-500">Updated At</label>
+                  <div className="text-lg">
+                    {roomDetails?.updatedAt ? new Date(roomDetails.updatedAt).toLocaleDateString() : '-'}
+                  </div>
+                </div>
+                <div className="flex justify-end pt-4">
+                  <button
+                    onClick={() => setShowDetails(false)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Room Modal */}
         {showAdd && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -781,18 +947,6 @@ export default function RoomsPage() {
                     required
                   />
                 </div>
-                {/* <div>
-                  <label className="block text-sm font-medium mb-1">Maintenance Status</label>
-                  <select
-                    value={addForm.maintanenceStatus}
-                    onChange={e => setAddForm((f: any) => ({ ...f, maintanenceStatus: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  >
-                    <option value="">No Maintenance</option>
-                    <option value="pending">Pending</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div> */}
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
@@ -824,7 +978,6 @@ export default function RoomsPage() {
                     await updateRoomLocal(editRoom.roomNumber, {
                       type: editForm.type,
                       rate: Number(editForm.rate),
-                      description: editForm.description,
                       amenities: Array.isArray(editForm.amenities)
                         ? editForm.amenities.filter((a: string) => a.trim() !== "")
                         : [],
@@ -871,15 +1024,6 @@ export default function RoomsPage() {
                     onChange={e => setEditForm((f: any) => ({ ...f, rate: e.target.value }))}
                     className="w-full border border-gray-300 rounded px-3 py-2"
                     required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    value={editForm.description}
-                    onChange={e => setEditForm((f: any) => ({ ...f, description: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    rows={2}
                   />
                 </div>
                 <div>
@@ -970,7 +1114,6 @@ export default function RoomsPage() {
                       await loadData(true);
                     } catch (e: any) {
                       const errorMessage = e.message || 'An unexpected error occurred while deleting the room';
-                      // If room is occupied or has active checkouts, show specific error
                       if (errorMessage.includes('occupied') || errorMessage.includes('checkout')) {
                         showToast("Cannot delete room: Room is currently occupied or has active checkouts", "error");
                       } else {

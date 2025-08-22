@@ -24,15 +24,27 @@ interface Item {
   hotel?: { name: string };
   createdAt: string;
   updatedAt: string;
+  profitMarginBand?: string;
+  comment?: string;
 }
 
 interface PaginationInfo {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
+interface SortInfo {
+  by: string;
+  order: string;
+}
+
+interface ApiResponse {
+  success: boolean;
+  data: Item[];
+  pagination: PaginationInfo;
+  sort?: SortInfo;
 }
 
 function getToken() {
@@ -43,14 +55,12 @@ function getToken() {
 export default function ItemsPage() {
   // Pagination state
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const [limit] = useState(10);
   const [pagination, setPagination] = useState<PaginationInfo>({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    itemsPerPage: limit,
-    hasNextPage: false,
-    hasPrevPage: false,
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 1,
   });
 
   const navLinks = [
@@ -96,18 +106,23 @@ export default function ItemsPage() {
   // Categories state
   const [categories, setCategories] = useState<CategoryObj[]>([]);
 
-  // Function to fetch items with pagination
+  // Debounce timer for search
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Function to fetch items with pagination and filters
   const fetchItems = async (pageNum: number = page, filterParams = filters) => {
     const token = getToken();
     if (!token) return;
 
     try {
+      setLoading(true);
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
       const params = new URLSearchParams({
         page: pageNum.toString(),
         limit: limit.toString()
       });
       
+      // Add filters to query params
       if (filterParams.isAvailable) params.append("isAvailable", filterParams.isAvailable);
       if (filterParams.category) params.append("category", filterParams.category);
       if (filterParams.search) params.append("search", filterParams.search);
@@ -123,62 +138,22 @@ export default function ItemsPage() {
         throw new Error("Failed to fetch items");
       }
 
-      const data = await itemsRes.json();
+      const data: ApiResponse = await itemsRes.json();
       
-      // Handle different response structures
-      let itemsData: Item[] = [];
-      let paginationData: PaginationInfo = {
-        currentPage: pageNum,
-        totalPages: 1,
-        totalItems: 0,
-        itemsPerPage: limit,
-        hasNextPage: false,
-        hasPrevPage: false,
-      };
-
-      if (data.data && Array.isArray(data.data)) {
-        itemsData = data.data;
-        // If pagination info is provided in response
+      if (data.success && Array.isArray(data.data)) {
+        setItems(data.data);
+        
+        // Set pagination info from API response
         if (data.pagination) {
-          paginationData = {
-            currentPage: data.pagination.currentPage || pageNum,
-            totalPages: data.pagination.totalPages || 1,
-            totalItems: data.pagination.totalItems || itemsData.length,
-            itemsPerPage: data.pagination.itemsPerPage || limit,
-            hasNextPage: data.pagination.hasNextPage || false,
-            hasPrevPage: data.pagination.hasPrevPage || false,
-          };
-        } else {
-          // Calculate pagination info if not provided
-          paginationData.totalItems = itemsData.length;
-          paginationData.totalPages = Math.ceil(itemsData.length / limit);
-          paginationData.hasNextPage = pageNum < paginationData.totalPages;
-          paginationData.hasPrevPage = pageNum > 1;
+          setPagination(data.pagination);
         }
-      } else if (Array.isArray(data)) {
-        itemsData = data;
-        paginationData.totalItems = itemsData.length;
-        paginationData.totalPages = Math.ceil(itemsData.length / limit);
-        paginationData.hasNextPage = pageNum < paginationData.totalPages;
-        paginationData.hasPrevPage = pageNum > 1;
+      } else {
+        throw new Error("Invalid response format");
       }
-
-      // Apply client-side search filter if needed (when API doesn't support search)
-      if (filterParams.search && !params.has("search")) {
-        itemsData = itemsData.filter((item: Item) =>
-          item.name && item.name.toLowerCase().includes(filterParams.search.toLowerCase())
-        );
-        // Recalculate pagination for client-side filtering
-        paginationData.totalItems = itemsData.length;
-        paginationData.totalPages = Math.ceil(itemsData.length / limit);
-        paginationData.hasNextPage = pageNum < paginationData.totalPages;
-        paginationData.hasPrevPage = pageNum > 1;
-      }
-
-      setItems(itemsData);
-      setPagination(paginationData);
     } catch (e: any) {
       setError(e.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -251,17 +226,44 @@ export default function ItemsPage() {
     }
   }, [page]);
 
-  // Reset to page 1 and refetch when filters change
-  useEffect(() => {
-    if (!loading) {
-      setPage(1);
-      fetchItems(1, filters);
+  // Handle filter changes with debouncing for search
+  const handleFilterChange = (filterKey: string, value: string) => {
+    const newFilters = { ...filters, [filterKey]: value };
+    setFilters(newFilters);
+
+    // Clear existing timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
     }
-  }, [filters.category, filters.search, filters.isAvailable]);
+
+    // Set a new timeout to debounce the API call for search
+    if (filterKey === 'search') {
+      setSearchTimeout(setTimeout(() => {
+        setPage(1);
+        fetchItems(1, newFilters);
+      }, 500));
+    } else {
+      // For other filters, apply immediately
+      setPage(1);
+      fetchItems(1, newFilters);
+    }
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    const clearedFilters = {
+      category: "",
+      search: "",
+      isAvailable: ""
+    };
+    setFilters(clearedFilters);
+    setPage(1);
+    fetchItems(1, clearedFilters);
+  };
 
   // Pagination handlers
   const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages && newPage !== page) {
+    if (newPage >= 1 && newPage <= pagination.pages && newPage !== page) {
       setPage(newPage);
     }
   };
@@ -282,7 +284,7 @@ export default function ItemsPage() {
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -340,7 +342,7 @@ export default function ItemsPage() {
 
       if (res.status === 401) {
         localStorage.removeItem("token");
-        window.location.href = "/login";
+        window.location.href = ("/login");
         return;
       }
 
@@ -373,7 +375,7 @@ export default function ItemsPage() {
 
       if (res.status === 401) {
         localStorage.removeItem("token");
-        window.location.href = "/login";
+        window.location.href = ("/login");
         return;
       }
 
@@ -437,8 +439,8 @@ export default function ItemsPage() {
         price: item.price.toString(),
         category: typeof item.category === 'object' && item.category !== null ? item.category._id : item.category,
         isAvailable: item.isAvailable,
-        profitMarginBand: (item as any).profitMarginBand || "",
-        comment: (item as any).comment || ""
+        profitMarginBand: item.profitMarginBand || "",
+        comment: item.comment || ""
       });
       setShowEditModal(true);
     }
@@ -464,35 +466,100 @@ export default function ItemsPage() {
     }
   }, [success]);
 
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages: number[] = [];
-    const maxVisiblePages = 5;
-    const { currentPage, totalPages } = pagination;
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [searchTimeout]);
 
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 5; i++) {
-          pages.push(i);
-        }
-      } else if (currentPage >= totalPages - 2) {
-        for (let i = totalPages - 4; i <= totalPages; i++) {
-          pages.push(i);
-        }
-      } else {
-        for (let i = currentPage - 2; i <= currentPage + 2; i++) {
-          pages.push(i);
-        }
-      }
+  // Generate pagination buttons
+  const generatePaginationButtons = () => {
+    const buttons = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, pagination.page - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(pagination.pages, startPage + maxVisiblePages - 1);
+    
+    // Adjust if we're near the end
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
-    return pages;
+    
+    // First and previous buttons
+    if (startPage > 1) {
+      buttons.push(
+        <button
+          key="first"
+          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          onClick={() => handlePageChange(1)}
+          disabled={pagination.page === 1 || loading}
+        >
+          «
+        </button>
+      );
+      
+      buttons.push(
+        <button
+          key="prev"
+          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          onClick={() => handlePageChange(pagination.page - 1)}
+          disabled={pagination.page === 1 || loading}
+        >
+          ‹
+        </button>
+      );
+    }
+    
+    // Page number buttons
+    for (let i = startPage; i <= endPage; i++) {
+      buttons.push(
+        <button
+          key={i}
+          className={`px-3 py-2 text-sm font-medium rounded-md ${
+            pagination.page === i
+              ? 'text-white bg-blue-600 border border-blue-600'
+              : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+          } disabled:opacity-50`}
+          onClick={() => handlePageChange(i)}
+          disabled={loading}
+        >
+          {i}
+        </button>
+      );
+    }
+    
+    // Next and last buttons
+    if (endPage < pagination.pages) {
+      buttons.push(
+        <button
+          key="next"
+          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          onClick={() => handlePageChange(pagination.page + 1)}
+          disabled={pagination.page === pagination.pages || loading}
+        >
+          ›
+        </button>
+      );
+      
+      buttons.push(
+        <button
+          key="last"
+          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          onClick={() => handlePageChange(pagination.pages)}
+          disabled={pagination.page === pagination.pages || loading}
+        >
+          »
+        </button>
+      );
+    }
+    
+    return buttons;
   };
 
-  if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
+  if (loading && items.length === 0) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -543,14 +610,22 @@ export default function ItemsPage() {
 
         {/* Filters */}
         <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-semibold mb-3">Filters</h3>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-semibold">Filters</h3>
+            <button
+              onClick={clearFilters}
+              className="text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              Clear All Filters
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Search (Name)</label>
               <input
                 type="text"
                 value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 placeholder="Search items..."
               />
@@ -559,7 +634,7 @@ export default function ItemsPage() {
               <label className="block text-sm font-medium mb-1">Category</label>
               <select
                 value={filters.category}
-                onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
+                onChange={(e) => handleFilterChange('category', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
               >
                 <option value="">All Categories</option>
@@ -576,7 +651,7 @@ export default function ItemsPage() {
               <label className="block text-sm font-medium mb-1">Availability</label>
               <select
                 value={filters.isAvailable}
-                onChange={(e) => setFilters(prev => ({ ...prev, isAvailable: e.target.value }))}
+                onChange={(e) => handleFilterChange('isAvailable', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
               >
                 <option value="">All Items</option>
@@ -587,16 +662,21 @@ export default function ItemsPage() {
           </div>
         </div>
 
+        {/* Loading indicator for filter changes */}
+        {loading && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4 flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
+            Loading items...
+          </div>
+        )}
+
         {/* Items Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {/* Pagination Info */}
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
             <div className="flex justify-between items-center">
               <div className="text-sm text-gray-700">
-                Showing {pagination.totalItems > 0 ? ((pagination.currentPage - 1) * pagination.itemsPerPage) + 1 : 0} to {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of {pagination.totalItems} items
-              </div>
-              <div className="text-sm text-gray-700">
-                Page {pagination.currentPage} of {pagination.totalPages}
+                Showing {items.length} of {pagination.total} items (Page {pagination.page} of {pagination.pages})
               </div>
             </div>
           </div>
@@ -655,7 +735,7 @@ export default function ItemsPage() {
                 ) : (
                   <tr>
                     <td colSpan={6} className="text-center py-8 text-gray-500">
-                      No items found matching your criteria.
+                      {loading ? 'Loading items...' : 'No items found matching your criteria.'}
                     </td>
                   </tr>
                 )}
@@ -664,76 +744,28 @@ export default function ItemsPage() {
           </div>
 
           {/* Pagination Controls */}
-          {pagination.totalPages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() => handlePageChange(pagination.currentPage - 1)}
-                  disabled={!pagination.hasPrevPage}
-                  className={`px-3 py-2 text-sm font-medium rounded-md ${
-                    pagination.hasPrevPage
-                      ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                      : 'text-gray-400 bg-gray-200 border border-gray-200 cursor-not-allowed'
-                  }`}
-                >
-                  Previous
-                </button>
-
-                <div className="flex space-x-1">
-                  {pagination.currentPage > 3 && pagination.totalPages > 5 && (
-                    <>
-                      <button
-                        onClick={() => handlePageChange(1)}
-                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                      >
-                        1
-                      </button>
-                      {pagination.currentPage > 4 && (
-                        <span className="px-3 py-2 text-sm font-medium text-gray-500">...</span>
-                      )}
-                    </>
-                  )}
-
-                  {getPageNumbers().map((pageNum) => (
-                    <button
-                      key={pageNum}
-                      onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-2 text-sm font-medium rounded-md ${
-                        pageNum === pagination.currentPage
-                          ? 'text-blue-600 bg-blue-50 border border-blue-300'
-                          : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  ))}
-
-                  {pagination.currentPage < pagination.totalPages - 2 && pagination.totalPages > 5 && (
-                    <>
-                      {pagination.currentPage < pagination.totalPages - 3 && (
-                        <span className="px-3 py-2 text-sm font-medium text-gray-500">...</span>
-                      )}
-                      <button
-                        onClick={() => handlePageChange(pagination.totalPages)}
-                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                      >
-                        {pagination.totalPages}
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => handlePageChange(pagination.currentPage + 1)}
-                  disabled={!pagination.hasNextPage}
-                  className={`px-3 py-2 text-sm font-medium rounded-md ${
-                    pagination.hasNextPage
-                      ? 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                      : 'text-gray-400 bg-gray-200 border border-gray-200 cursor-not-allowed'
-                  }`}
-                >
-                  Next
-                </button>
+          {pagination.pages > 1 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 bg-gray-50 border-t gap-4">
+              <div className="text-sm text-gray-700">
+                Showing {items.length} items (Page {pagination.page} of {pagination.pages}, Total: {pagination.total})
+              </div>
+              <div className="flex items-center space-x-1">
+                {generatePaginationButtons()}
+              </div>
+              <div className="flex items-center space-x-2 text-sm">
+                <span>Go to page:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={pagination.pages}
+                  value={page}
+                  onChange={(e) => {
+                    const newPage = Math.max(1, Math.min(pagination.pages, parseInt(e.target.value) || 1));
+                    setPage(newPage);
+                  }}
+                  className="w-16 border border-gray-300 rounded px-2 py-1 text-center"
+                  disabled={loading}
+                />
               </div>
             </div>
           )}
@@ -742,7 +774,7 @@ export default function ItemsPage() {
         {/* Summary Stats */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{pagination.totalItems}</div>
+            <div className="text-2xl font-bold text-blue-600">{pagination.total}</div>
             <div className="text-sm text-gray-600">Total Items</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
@@ -754,7 +786,7 @@ export default function ItemsPage() {
             <div className="text-sm text-gray-600">Unavailable (Current Page)</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-gray-600">{pagination.totalPages}</div>
+            <div className="text-2xl font-bold text-gray-600">{pagination.pages}</div>
             <div className="text-sm text-gray-600">Total Pages</div>
           </div>
         </div>
