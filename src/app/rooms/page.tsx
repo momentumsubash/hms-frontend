@@ -25,7 +25,7 @@ export default function RoomsPage() {
   
   // Pagination and filter state
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit] = useState(20);
   const [totalPages, setTotalPages] = useState(0);
   const [totalRooms, setTotalRooms] = useState(0);
   
@@ -781,7 +781,7 @@ export default function RoomsPage() {
                     required
                   />
                 </div>
-                <div>
+                {/* <div>
                   <label className="block text-sm font-medium mb-1">Maintenance Status</label>
                   <select
                     value={addForm.maintanenceStatus}
@@ -792,7 +792,7 @@ export default function RoomsPage() {
                     <option value="pending">Pending</option>
                     <option value="completed">Completed</option>
                   </select>
-                </div>
+                </div> */}
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
