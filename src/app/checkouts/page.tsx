@@ -8,26 +8,6 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 
-// You'll need to create this hook in a new file: hooks/useDebounce.ts
-// If you don't have it, here's the implementation:
-/*
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-*/
-
 export default function CheckoutsPage() {
   const [page, setPage] = useState(1);
   const limit = 10;
@@ -77,11 +57,21 @@ export default function CheckoutsPage() {
   const [checkInDate, setCheckInDate] = useState<string>("");
   const [checkOutDate, setCheckOutDate] = useState<string>("");
 
+  // Hotel name state
+  const [hotelName, setHotelName] = useState("Hotel");
+
   // Load data when page, status filter, or debounced search changes
   useEffect(() => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, filters.status, debouncedSearch]);
+
+  // Update hotel name from user data
+  useEffect(() => {
+    if (user && user.hotel && user.hotel.name) {
+      setHotelName(user.hotel.name);
+    }
+  }, [user]);
 
   const loadData = useCallback(async () => {
     try {
@@ -154,6 +144,16 @@ export default function CheckoutsPage() {
     return Math.max(diffDays, 1);
   };
 
+  // Calculate room charges
+  const calculateRoomCharges = (checkout: any) => {
+    if (!checkout.rooms || checkout.rooms.length === 0) return 0;
+    
+    const nights = calculateDaysOfStay(checkout.checkInDate, checkout.checkOutDate);
+    return checkout.rooms.reduce((total: number, room: any) => {
+      return total + (room.rate * nights);
+    }, 0);
+  };
+
   // Print bill function
   const printBill = () => {
     const printContent = document.getElementById('bill-content');
@@ -163,7 +163,7 @@ export default function CheckoutsPage() {
         printWindow.document.write(`
           <html>
             <head>
-              <title>Hotel Bill - ${editCheckout?.guest?.firstName} ${editCheckout?.guest?.lastName}</title>
+              <title>Hotel Bill - ${detailsCheckout?.guest?.firstName} ${detailsCheckout?.guest?.lastName}</title>
               <style>
                 body { 
                   font-family: Arial, sans-serif; 
@@ -186,6 +186,8 @@ export default function CheckoutsPage() {
                 .bill-section h3 { 
                   margin: 5px 0 3px 0; 
                   font-size: 13px; 
+                  border-bottom: 1px solid #ccc;
+                  padding-bottom: 3px;
                 }
                 .bill-table { 
                   width: 100%; 
@@ -208,12 +210,30 @@ export default function CheckoutsPage() {
                   background-color: #f0f0f0; 
                 }
                 .text-right { text-align: right; }
+                .text-center { text-align: center; }
                 .bill-footer {
                   margin-top: 15px;
                   text-align: center;
                   border-top: 1px solid #ccc;
                   padding-top: 8px;
                   font-size: 11px;
+                }
+                .order-details {
+                  margin-top: 10px;
+                }
+                .order-table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin: 5px 0;
+                  font-size: 10px;
+                }
+                .order-table th, .order-table td {
+                  border: 1px solid #ddd;
+                  padding: 3px 5px;
+                }
+                .order-header {
+                  background-color: #f9f9f9;
+                  font-weight: bold;
                 }
                 @media print {
                   body { 
@@ -234,6 +254,9 @@ export default function CheckoutsPage() {
                     margin-top: 10px;
                     padding-top: 5px;
                   }
+                  .order-table {
+                    font-size: 9px;
+                  }
                 }
               </style>
             </head>
@@ -249,7 +272,7 @@ export default function CheckoutsPage() {
     }
   };
 
-const handleEditSubmit = async (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editCheckout) return;
 
@@ -274,7 +297,6 @@ const handleEditSubmit = async (e: React.FormEvent) => {
       }
 
       // 2. Prepare the payload for the separate payment update (VAT)
-      // This is the part that caused the error.
       const vatUpdatePayload: any = {};
       
       // Check if editVatPercent is a valid number before adding it to the payload
@@ -307,6 +329,7 @@ const handleEditSubmit = async (e: React.FormEvent) => {
       setEditLoading(false);
     }
   };
+
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
   return (
@@ -690,7 +713,8 @@ const handleEditSubmit = async (e: React.FormEvent) => {
             <div id="bill-content">
               {/* Bill Header */}
               <div className="bill-header">
-                <h1 className="text-xl font-bold">HOTEL BILL</h1>
+                <h1 className="text-xl font-bold">${hotelName.toUpperCase()}</h1>
+                <h2 className="text-lg">HOTEL BILL</h2>
                 <p>Date: {new Date().toLocaleDateString()}</p>
                 <p>Invoice #: {detailsCheckout._id.slice(-8)}</p>
               </div>
@@ -722,6 +746,75 @@ const handleEditSubmit = async (e: React.FormEvent) => {
                 </div>
               )}
 
+              {/* Order Details */}
+              {detailsCheckout.orders && detailsCheckout.orders.length > 0 && (
+                <div className="bill-section">
+                  <h3 className="font-semibold text-lg">Order Details</h3>
+                  {detailsCheckout.orders.map((order: any, index: number) => (
+                    <div key={index} className="order-details">
+                      <p><strong>Order #{index + 1}</strong> (Room: {order.roomNumber}) - {new Date(order.createdAt).toLocaleDateString()}</p>
+                      <table className="order-table">
+                        <thead>
+                          <tr className="order-header">
+                            <th>Item</th>
+                            <th className="text-center">Qty</th>
+                            <th className="text-right">Price</th>
+                            <th className="text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {order.items.map((item: any, itemIndex: number) => (
+                            <tr key={itemIndex}>
+                              <td>{item.name}</td>
+                              <td className="text-center">{item.quantity}</td>
+                              <td className="text-right">₹{item.price?.toLocaleString()}</td>
+                              <td className="text-right">₹{item.total?.toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="total-row">
+                            <td colSpan={3} className="text-right">Order Total:</td>
+                            <td className="text-right">₹{order.totalAmount?.toLocaleString()}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Room Charges Details */}
+              <div className="bill-section">
+                <h3 className="font-semibold text-lg">Room Charges</h3>
+                <table className="bill-table">
+                  <thead>
+                    <tr>
+                      <th>Room</th>
+                      <th>Type</th>
+                      <th className="text-right">Rate per Night</th>
+                      <th className="text-center">Nights</th>
+                      <th className="text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detailsCheckout.rooms.map((room: any, index: number) => {
+                      const nights = calculateDaysOfStay(detailsCheckout.checkInDate, detailsCheckout.checkOutDate);
+                      const roomTotal = room.rate * nights;
+                      return (
+                        <tr key={index}>
+                          <td>#{room.roomNumber}</td>
+                          <td className="capitalize">{room.type}</td>
+                          <td className="text-right">₹{room.rate?.toLocaleString()}</td>
+                          <td className="text-center">{nights}</td>
+                          <td className="text-right">₹{roomTotal.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
               {/* Billing Summary */}
               <div className="bill-section">
                 <h3 className="font-semibold text-lg">Bill Summary</h3>
@@ -735,7 +828,7 @@ const handleEditSubmit = async (e: React.FormEvent) => {
                   <tbody>
                     <tr>
                       <td className="px-4 py-2">Room Charges ({calculateDaysOfStay(detailsCheckout.checkInDate, detailsCheckout.checkOutDate)} nights)</td>
-                      <td className="px-4 py-2 text-right">{detailsCheckout.totalRoomCharge?.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right">{calculateRoomCharges(detailsCheckout)?.toLocaleString()}</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-2">Food & Beverage Orders</td>
@@ -745,10 +838,10 @@ const handleEditSubmit = async (e: React.FormEvent) => {
                       <td className="px-4 py-2">Other Charges</td>
                       <td className="px-4 py-2 text-right">{detailsCheckout.totalExtraCharge?.toLocaleString()}</td>
                     </tr>
-                    {detailsCheckout.discountAmount > 0 && (
+                    {detailsCheckout.roomDiscount > 0 && (
                       <tr>
-                        <td className="px-4 py-2 text-red-600">Discount</td>
-                        <td className="px-4 py-2 text-right text-red-600">({detailsCheckout.discountAmount?.toLocaleString()})</td>
+                        <td className="px-4 py-2 text-red-600">Room Discount</td>
+                        <td className="px-4 py-2 text-right text-red-600">({detailsCheckout.roomDiscount?.toLocaleString()})</td>
                       </tr>
                     )}
                     {detailsCheckout.vatAmount > 0 && (
@@ -760,7 +853,7 @@ const handleEditSubmit = async (e: React.FormEvent) => {
                     <tr className="font-bold">
                       <td className="px-4 py-2">Subtotal</td>
                       <td className="px-4 py-2 text-right">
-                        {(detailsCheckout.totalRoomCharge + detailsCheckout.totalOrderCharge + detailsCheckout.totalExtraCharge).toLocaleString()}
+                        {(calculateRoomCharges(detailsCheckout) + detailsCheckout.totalOrderCharge + detailsCheckout.totalExtraCharge - (detailsCheckout.roomDiscount || 0)).toLocaleString()}
                       </td>
                     </tr>
                     {detailsCheckout.advancePaid > 0 && (
@@ -771,10 +864,16 @@ const handleEditSubmit = async (e: React.FormEvent) => {
                     )}
                     <tr className="font-extrabold text-lg bg-gray-200">
                       <td className="px-4 py-2">Grand Total</td>
-                      <td className="px-4 py-2 text-right">{detailsCheckout.totalBill?.toLocaleString()}</td>
+                      <td className="px-4 py-2 text-right">₹{detailsCheckout.totalBill?.toLocaleString()}</td>
                     </tr>
                   </tbody>
                 </table>
+              </div>
+
+              {/* Footer */}
+              <div className="bill-footer">
+                <p>Thank you for staying with us!</p>
+                <p>For any queries, please contact hotel management</p>
               </div>
             </div>
           </div>
