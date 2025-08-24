@@ -294,7 +294,7 @@ export default function GuestsPage() {
         
         // 2. Fetch rooms data
         const [roomsRes, allRoomsRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?isOccupied=false`, {
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
             headers: getRequestHeaders(token),
           }),
           fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms`, {
@@ -612,7 +612,7 @@ const handleEdit = async (guest: Guest) => {
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?isOccupied=false`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
         headers: getRequestHeaders(token),
       });
       if (!res.ok) throw new Error("Failed to fetch available rooms");

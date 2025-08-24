@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function OrdersPage() {
   // Pagination state
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const [limit, setLimit] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [updating, setUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
   const [updateError, setUpdateError] = useState("");
+  
   // Create order modal state
   const [showCreate, setShowCreate] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
@@ -23,14 +27,17 @@ export default function OrdersPage() {
   const [itemSearch, setItemSearch] = useState("");
   const [itemList, setItemList] = useState<any[]>([]);
   const [itemLoading, setItemLoading] = useState(false);
+  
   // Notification state for bottom-right toast
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  
   useEffect(() => {
     if (notification) {
       const t = setTimeout(() => setNotification(null), 3000);
       return () => clearTimeout(t);
     }
   }, [notification]);
+  
   // Fetch items for modal
   useEffect(() => {
     if (!showCreate) return;
@@ -89,6 +96,7 @@ export default function OrdersPage() {
       setUpdating(false);
     }
   };
+  
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
@@ -99,6 +107,7 @@ export default function OrdersPage() {
     { label: "Rooms", href: "/rooms" },
     { label: "Users", href: "/users" },
   ];
+  
   const { logout } = useAuth();
   const [user, setUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
@@ -107,14 +116,26 @@ export default function OrdersPage() {
     }
     return null;
   });
+  
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // Enhanced filter state
   const [filters, setFilters] = useState({
     status: "",
+    roomNumber: "",
+    guestName: "",
+    guestPhone: "",
     search: ""
   });
+
+  // Use debounced values for filters
+  const debouncedRoomNumber = useDebounce(filters.roomNumber, 500);
+  const debouncedGuestName = useDebounce(filters.guestName, 500);
+  const debouncedGuestPhone = useDebounce(filters.guestPhone, 500);
+  const debouncedSearch = useDebounce(filters.search, 500);
 
   // Fetch /auth/me first, then orders
   const fetchAll = async () => {
@@ -147,21 +168,70 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchAll();
-  }, []);
+  }, [page]);
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      setPage(1);
+      loadData(token);
+    }
+  }, [filters.status, debouncedRoomNumber, debouncedGuestName, debouncedGuestPhone, debouncedSearch]);
 
   const loadData = async (token: string) => {
     try {
       setLoading(true);
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api";
-      const res = await fetch(`${apiBase}/orders?page=${page}&limit=${limit}`, {
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      params.set('page', page.toString());
+      params.set('limit', limit.toString());
+      
+      // Add filters to query parameters only if they have values
+      if (filters.status) {
+        params.set('status', filters.status);
+      }
+      
+      if (debouncedRoomNumber) {
+        params.set('roomNumber', debouncedRoomNumber);
+      }
+      
+      if (debouncedGuestName) {
+        params.set('guestName', debouncedGuestName);
+      }
+      
+      if (debouncedGuestPhone) {
+        params.set('guestPhone', debouncedGuestPhone);
+      }
+      
+      // Use search parameter only if no specific filters are set
+      // This ensures we use the specific filter parameters for better API compatibility
+      if (debouncedSearch && !debouncedRoomNumber && !debouncedGuestName && !debouncedGuestPhone) {
+        params.set('search', debouncedSearch);
+      }
+      
+      console.log("API Request:", `${apiBase}/orders?${params.toString()}`);
+      
+      const res = await fetch(`${apiBase}/orders?${params.toString()}`, {
         headers: {
           Accept: "application/json",
           Authorization: `Bearer ${token}`
         },
         credentials: "include"
       });
+      
+      if (!res.ok) throw new Error("Failed to fetch orders");
+      
       const data = await res.json();
-      setOrders(data.data || []);
+      
+      if (data.success) {
+        setOrders(data.data || []);
+        setTotalPages(data.pagination?.pages || 1);
+        setTotalCount(data.pagination?.total || 0);
+      } else {
+        throw new Error(data.message || "Failed to fetch orders");
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -169,24 +239,26 @@ export default function OrdersPage() {
     }
   };
 
-  // Filter orders
-  const filteredOrders = orders.filter((order: any) => {
-    const matchesStatus = filters.status === "" || (order.status && order.status.toLowerCase() === filters.status);
-    const guestName = order.guestId ? `${order.guestId.firstName} ${order.guestId.lastName}` : "";
-    const matchesSearch = filters.search === "" ||
-      (guestName && guestName.toLowerCase().includes(filters.search.toLowerCase())) ||
-      (order.roomNumber && order.roomNumber.toString().includes(filters.search));
-    return matchesStatus && matchesSearch;
-  });
+  const handleFilterChange = (key: string, value: string) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredOrders.length / limit);
-  const paginatedOrders = filteredOrders.slice((page - 1) * limit, page * limit);
+  const clearFilters = () => {
+    setFilters({
+      status: "",
+      roomNumber: "",
+      guestName: "",
+      guestPhone: "",
+      search: ""
+    });
+  };
 
-  // Reset page to 1 on filter change
-  useEffect(() => { setPage(1); }, [filters]);
+  const hasActiveFilters = () => {
+    return filters.status || filters.roomNumber || filters.guestName || filters.guestPhone || filters.search;
+  };
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
+  
   return (
     <div className="min-h-screen bg-slate-50">
       <NavBar
@@ -196,6 +268,7 @@ export default function OrdersPage() {
         logout={logout}
         navLinks={navLinks}
       />
+      
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Orders Management</h1>
@@ -211,6 +284,7 @@ export default function OrdersPage() {
             }}
           >+ New Order</button>
         </div>
+        
         {/* Create Order Modal */}
         {showCreate && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -426,30 +500,70 @@ export default function OrdersPage() {
 
         {/* Filters */}
         <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-semibold mb-3">Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-semibold">Filters</h3>
+            {hasActiveFilters() && (
+              <button 
+                onClick={clearFilters}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Clear All Filters
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Search (Order #, Guest)</label>
+              <label className="block text-sm font-medium mb-1">Search (General)</label>
               <input
                 type="text"
                 value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Search orders..."
+                placeholder="General search..."
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Status</label>
               <select
                 value={filters.status}
-                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                onChange={(e) => handleFilterChange('status', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
               >
-                <option value="">All</option>
+                <option value="">All Status</option>
                 <option value="completed">Completed</option>
                 <option value="pending">Pending</option>
                 <option value="cancelled">Cancelled</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Room Number</label>
+              <input
+                type="text"
+                value={filters.roomNumber}
+                onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                placeholder="Room number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Guest Name</label>
+              <input
+                type="text"
+                value={filters.guestName}
+                onChange={(e) => handleFilterChange('guestName', e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                placeholder="Guest name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Guest Phone</label>
+              <input
+                type="text"
+                value={filters.guestPhone}
+                onChange={(e) => handleFilterChange('guestPhone', e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                placeholder="Guest phone"
+              />
             </div>
           </div>
         </div>
@@ -460,23 +574,17 @@ export default function OrdersPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Extra Charges</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created At</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated At</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedOrders.map((order: any) => {
+                {orders.map((order: any) => {
                   // Defensive extraction for all fields
-                  const orderId = order._id ? String(order._id) : "-";
                   const guest = order.guestId && typeof order.guestId === 'object'
                     ? `${order.guestId.firstName || ''} ${order.guestId.lastName || ''}`.trim() || "-"
                     : (order.guestId ? String(order.guestId) : "-");
@@ -498,65 +606,115 @@ export default function OrdersPage() {
                       }).join("; ")
                     : "-";
                   const total = order.totalAmount !== undefined ? `₹${String(order.totalAmount)}` : "-";
-                  const extra = order.extraCharges !== undefined ? `₹${String(order.extraCharges)}` : "-";
                   const status = order.status ? String(order.status) : "-";
                   const createdBy = order.createdBy && typeof order.createdBy === 'object'
                     ? `${order.createdBy.firstName || ''} ${order.createdBy.lastName || ''}`.trim() || "-"
                     : (order.createdBy ? String(order.createdBy) : "-");
-                  const hotel = order.hotel && typeof order.hotel === 'object'
-                    ? (order.hotel.name ? String(order.hotel.name) : "-")
-                    : (order.hotel ? String(order.hotel) : "-");
-                  const createdAt = order.createdAt
-                    ? (typeof window !== 'undefined'
-                        ? new Date(order.createdAt).toLocaleString()
-                        : new Date(order.createdAt).toISOString())
-                    : "-";
-                  const updatedAt = order.updatedAt
-                    ? (typeof window !== 'undefined'
-                        ? new Date(order.updatedAt).toLocaleString()
-                        : new Date(order.updatedAt).toISOString())
-                    : "-";
+                  
                   return (
-                    <tr key={orderId} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`} onClick={() => handleSelectOrder(order)} style={{ cursor: 'pointer' }}>
-                      <td className="px-6 py-4 whitespace-nowrap">{orderId}</td>
+                    <tr key={order._id} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`} onClick={() => handleSelectOrder(order)} style={{ cursor: 'pointer' }}>
                       <td className="px-6 py-4 whitespace-nowrap">{guest}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{room}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{items}</td>
+                      <td className="px-6 py-4 whitespace-nowrap max-w-xs truncate" title={items}>{items}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{total}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{extra}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{status}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          status === 'completed' ? 'bg-green-100 text-green-800' :
+                          status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {status}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">{createdBy}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{hotel}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{createdAt}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{updatedAt}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          
           {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-4">
-              <button
-                className="px-3 py-1 rounded border bg-white disabled:opacity-50"
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-              >Prev</button>
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  key={i}
-                  className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-blue-500 text-white' : 'bg-white'}`}
-                  onClick={() => setPage(i + 1)}
-                >{i + 1}</button>
-              ))}
-              <button
-                className="px-3 py-1 rounded border bg-white disabled:opacity-50"
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-              >Next</button>
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+            <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+              <div className="text-sm text-gray-700">
+                Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{" "}
+                <span className="font-medium">{Math.min(page * limit, totalCount)}</span> of{" "}
+                <span className="font-medium">{totalCount}</span> results
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+                >
+                  <option value="10">10 per page</option>
+                  <option value="20">20 per page</option>
+                  <option value="50">50 per page</option>
+                  <option value="100">100 per page</option>
+                </select>
+                
+                <div className="flex space-x-1">
+                  <button
+                    className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
+                    onClick={() => setPage(1)}
+                    disabled={page === 1}
+                  >«</button>
+                  
+                  <button
+                    className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 1}
+                  >‹</button>
+                  
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (page <= 3) {
+                      pageNum = i + 1;
+                    } else if (page >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = page - 2 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        className={`px-3 py-1 rounded border text-sm ${
+                          page === pageNum ? 'bg-blue-500 text-white' : 'bg-white'
+                        }`}
+                        onClick={() => setPage(pageNum)}
+                      >{pageNum}</button>
+                    );
+                  })}
+                  
+                  {totalPages > 5 && page < totalPages - 2 && (
+                    <span className="px-2 py-1">...</span>
+                  )}
+                  
+                  <button
+                    className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
+                    onClick={() => setPage(page + 1)}
+                    disabled={page === totalPages}
+                  >›</button>
+                  
+                  <button
+                    className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
+                    onClick={() => setPage(totalPages)}
+                    disabled={page === totalPages}
+                  >»</button>
+                </div>
+              </div>
             </div>
-          )}
+          </div>
+          
           {selectedOrder && (
             <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
               <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
@@ -589,31 +747,54 @@ export default function OrdersPage() {
                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     onClick={handleUpdateOrderStatus}
                     disabled={updating}
-                  >{updating ? 'Updating...' : 'Update'}</button>
+                    >{updating ? 'Updating...' : 'Update'}</button>
                 </div>
               </div>
             </div>
           )}
-          {filteredOrders.length === 0 && (
+          
+          {orders.length === 0 && !loading && (
             <div className="text-center py-12">
-              <div className="text-gray-500">No orders found matching your criteria.</div>
+              <div className="text-gray-500">
+                {hasActiveFilters() 
+                  ? "No orders found matching your filters." 
+                  : "No orders found."}
+              </div>
+              {hasActiveFilters() && (
+                <button 
+                  onClick={clearFilters}
+                  className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  Clear all filters
+                </button>
+              )}
             </div>
           )}
         </div>
 
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{orders.length}</div>
+            <div className="text-2xl font-bold text-blue-600">{totalCount}</div>
             <div className="text-sm text-gray-600">Total Orders</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">{orders.filter((o: any) => o.status === "Completed").length}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {orders.filter((o: any) => o.status === "completed").length}
+            </div>
             <div className="text-sm text-gray-600">Completed</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-yellow-600">{orders.filter((o: any) => o.status === "Pending").length}</div>
+            <div className="text-2xl font-bold text-yellow-600">
+              {orders.filter((o: any) => o.status === "pending").length}
+            </div>
             <div className="text-sm text-gray-600">Pending</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-red-600">
+              {orders.filter((o: any) => o.status === "cancelled").length}
+            </div>
+            <div className="text-sm text-gray-600">Cancelled</div>
           </div>
         </div>
       </div>
