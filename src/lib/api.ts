@@ -1,4 +1,5 @@
 // Create a new user
+import { Hotel } from '@/types/hotel';
 export async function createUser(user: any) {
   const res = await fetch(`${API_URL}/users`, {
     method: "POST",
@@ -112,17 +113,25 @@ export async function getMe() {
 }
 
 // USERS
+// lib/api.ts - Update getCurrentUser function
 export async function getCurrentUser() {
   const res = await fetch(`${API_URL}/users/me`, {
     headers: mergeHeaders({ 'Accept': 'application/json' }, getAuthHeaders()),
   });
+  
   if (res.status === 401) {
     localStorage.removeItem('token');
     window.location.href = '/login';
-    return;
+    throw new Error('Not authenticated');
   }
-  if (!res.ok) throw new Error("Not authenticated");
-  return res.json();
+  
+  if (!res.ok) {
+    throw new Error('Not authenticated');
+  }
+  
+  const data = await res.json();
+  // Return the user data from the response structure
+  return data.data; // This returns the user object directly
 }
 
 export async function getUserById(id: string) {
@@ -525,52 +534,105 @@ export async function deleteItem(id: string) {
 }
 
 // HOTELS
-export async function getHotels() {
-  const res = await fetch(`${API_URL}/hotels`, {
-    headers: mergeHeaders({}, getAuthHeaders())
+export const getHotels = async (): Promise<{ success: boolean; data: Hotel[] }> => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/hotels`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
   });
-  if (res.status === 401) {
-    localStorage.removeItem('token');
-    window.location.href = '/login';
-    return;
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch hotels');
   }
-  if (!res.ok) throw new Error("Failed to fetch hotels");
-  return res.json();
-}
+  
+  return response.json();
+};
 
-export async function addHotel(hotel: any) {
-  const res = await fetch(`${API_URL}/hotels`, {
-    method: "POST",
-    headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
+export const getHotel = async (id: string): Promise<{ success: boolean; data: Hotel }> => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/hotels/${id}`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch hotel');
+  }
+  
+  return response.json();
+};
+
+export const addHotel = async (hotel: Partial<Hotel>): Promise<{ success: boolean; data: Hotel }> => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/hotels`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(hotel),
   });
-  if (res.status === 401) {
-    localStorage.removeItem('token');
-    window.location.href = '/login';
-    return;
+  
+  if (!response.ok) {
+    throw new Error('Failed to create hotel');
   }
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || "Failed to add hotel");
-  }
-  return res.json();
-}
+  
+  return response.json();
+};
 
-export async function updateHotel(id: string, hotel: any) {
-  const res = await fetch(`${API_URL}/hotels/${id}`, {
-    method: "PUT",
-    headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
+export const updateHotel = async (id: string, hotel: Partial<Hotel>): Promise<{ success: boolean; data: Hotel }> => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/hotels/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(hotel),
   });
-  if (!res.ok) throw new Error("Failed to update hotel");
-  return res.json();
-}
+  
+  if (!response.ok) {
+    throw new Error('Failed to update hotel');
+  }
+  
+  return response.json();
+};
 
-export async function deleteHotel(id: string) {
-  const res = await fetch(`${API_URL}/hotels/${id}`, {
-    method: "DELETE",
-    headers: mergeHeaders({}, getAuthHeaders()),
+export const deleteHotel = async (id: string): Promise<{ success: boolean; message: string }> => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/hotels/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
   });
-  if (!res.ok) throw new Error("Failed to delete hotel");
-  return res.json();
-}
+  
+  if (!response.ok) {
+    throw new Error('Failed to delete hotel');
+  }
+  
+  return response.json();
+};
+
+export const updateHotelBalance = async (id: string, initialAmount: number): Promise<{ success: boolean; data: any }> => {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_URL}/hotels/${id}/balance`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ initialAmount }),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to update hotel balance');
+  }
+  
+  return response.json();
+};

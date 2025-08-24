@@ -3,12 +3,12 @@
 import { getCheckouts } from "@/lib/api";
 import { updateCheckoutPayment, updateCheckout } from "@/lib/checkoutApi";
 import { useEffect, useState, useCallback } from "react";
-import { useDebounce } from "@/hooks/useDebounce"; // You'll need to create this hook
+import { useDebounce } from "@/hooks/useDebounce";
 
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 
-// Create this hook in a new file: hooks/useDebounce.ts
+// You'll need to create this hook in a new file: hooks/useDebounce.ts
 // If you don't have it, here's the implementation:
 /*
 export function useDebounce<T>(value: T, delay: number): T {
@@ -51,8 +51,8 @@ export default function CheckoutsPage() {
     status: "",
     search: ""
   });
-  const [searchInput, setSearchInput] = useState(""); // Separate state for input value
-  const debouncedSearch = useDebounce(searchInput, 500); // Debounce the search input
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 500);
   const [pagination, setPagination] = useState({ 
     page: 1, 
     limit: 10, 
@@ -249,6 +249,64 @@ export default function CheckoutsPage() {
     }
   };
 
+const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editCheckout) return;
+
+    setEditLoading(true);
+    setEditError("");
+
+    try {
+      // 1. Prepare the payload for the main checkout update
+      const payload: any = {
+        status: editStatus,
+        advancePaid: parseFloat(advanceAmount) || 0,
+        checkInDate,
+        checkOutDate,
+      };
+
+      if (clientVatNumber || clientVatCompany || clientVatAddress) {
+        payload.clientVatInfo = {
+          vatNumber: clientVatNumber,
+          companyName: clientVatCompany,
+          address: clientVatAddress,
+        };
+      }
+
+      // 2. Prepare the payload for the separate payment update (VAT)
+      // This is the part that caused the error.
+      const vatUpdatePayload: any = {};
+      
+      // Check if editVatPercent is a valid number before adding it to the payload
+      if (editVatPercent !== "") {
+        vatUpdatePayload.vatPercent = parseFloat(editVatPercent);
+      } else {
+        // If the user clears the field, we should send null to clear it on the server
+        vatUpdatePayload.vatPercent = null;
+      }
+      
+      // Check if editVatAmount is a valid number before adding it to the payload
+      if (editVatAmount !== "") {
+        vatUpdatePayload.vatAmount = parseFloat(editVatAmount);
+      } else {
+        // Send null to clear the value on the server
+        vatUpdatePayload.vatAmount = null;
+      }
+
+      // 3. Execute both API calls
+      await updateCheckout(editCheckout._id, payload);
+      await updateCheckoutPayment(editCheckout._id, vatUpdatePayload);
+
+      // Reload data and close modal
+      loadData();
+      setShowEdit(false);
+      setEditCheckout(null);
+    } catch (e: any) {
+      setEditError(e.message || "Failed to update checkout.");
+    } finally {
+      setEditLoading(false);
+    }
+  };
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
   return (
@@ -330,7 +388,7 @@ export default function CheckoutsPage() {
           {/* Results Count */}
           <div className="text-sm text-gray-600">
             {pagination.totalCount === 0 ? 'No results' : 
-             `Showing ${((pagination.page - 1) * pagination.limit) + 1}-${Math.min(pagination.page * pagination.limit, pagination.totalCount)} of ${pagination.totalCount} checkouts`}
+              `Showing ${((pagination.page - 1) * pagination.limit) + 1}-${Math.min(pagination.page * pagination.limit, pagination.totalCount)} of ${pagination.totalCount} checkouts`}
           </div>
         </div>
 
@@ -421,10 +479,6 @@ export default function CheckoutsPage() {
                     ))}
                   </tbody>
                 </table>
-
-                {/* Rest of the modal and pagination code remains the same */}
-                {/* ... */}
-                
               </>
             ) : (
               <div className="text-center py-12">
@@ -440,8 +494,292 @@ export default function CheckoutsPage() {
               </div>
             )}
           </div>
+          
+          {/* Pagination Controls */}
+          <div className="flex justify-between items-center p-4 bg-white border-t border-gray-200">
+            <button
+              onClick={() => setPage(page => Math.max(1, page - 1))}
+              disabled={page === 1}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-700">
+              Page {page} of {pagination.totalPages}
+            </span>
+            <button
+              onClick={() => setPage(page => page + 1)}
+              disabled={page === pagination.totalPages}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {showEdit && editCheckout && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-xl font-semibold">Edit Checkout for {editCheckout?.guest?.firstName} {editCheckout?.guest?.lastName}</h3>
+              <button
+                onClick={() => setShowEdit(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                &times;
+              </button>
+            </div>
+            {editError && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{editError}</div>}
+            <form onSubmit={handleEditSubmit}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Status */}
+                <div>
+                  <label htmlFor="editStatus" className="block text-sm font-medium text-gray-700">Status</label>
+                  <select
+                    id="editStatus"
+                    value={editStatus}
+                    onChange={(e) => setEditStatus(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+                {/* Advance Amount */}
+                <div>
+                  <label htmlFor="advanceAmount" className="block text-sm font-medium text-gray-700">Advance Paid (₹)</label>
+                  <input
+                    type="number"
+                    id="advanceAmount"
+                    value={advanceAmount}
+                    onChange={(e) => setAdvanceAmount(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                {/* VAT Percent */}
+                <div>
+                  <label htmlFor="editVatPercent" className="block text-sm font-medium text-gray-700">VAT Percent (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="editVatPercent"
+                    value={editVatPercent}
+                    onChange={(e) => setEditVatPercent(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                {/* VAT Amount */}
+                <div>
+                  <label htmlFor="editVatAmount" className="block text-sm font-medium text-gray-700">VAT Amount (₹)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="editVatAmount"
+                    value={editVatAmount}
+                    onChange={(e) => setEditVatAmount(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                {/* Check-in Date */}
+                <div>
+                  <label htmlFor="checkInDate" className="block text-sm font-medium text-gray-700">Check-in Date</label>
+                  <input
+                    type="date"
+                    id="checkInDate"
+                    value={checkInDate}
+                    onChange={(e) => setCheckInDate(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                {/* Check-out Date */}
+                <div>
+                  <label htmlFor="checkOutDate" className="block text-sm font-medium text-gray-700">Check-out Date</label>
+                  <input
+                    type="date"
+                    id="checkOutDate"
+                    value={checkOutDate}
+                    onChange={(e) => setCheckOutDate(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <h4 className="text-lg font-semibold mt-4 mb-2">Client VAT Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Client VAT Number */}
+                <div>
+                  <label htmlFor="clientVatNumber" className="block text-sm font-medium text-gray-700">VAT Number</label>
+                  <input
+                    type="text"
+                    id="clientVatNumber"
+                    value={clientVatNumber}
+                    onChange={(e) => setClientVatNumber(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                {/* Client Company Name */}
+                <div>
+                  <label htmlFor="clientVatCompany" className="block text-sm font-medium text-gray-700">Company Name</label>
+                  <input
+                    type="text"
+                    id="clientVatCompany"
+                    value={clientVatCompany}
+                    onChange={(e) => setClientVatCompany(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                {/* Client Address */}
+                <div className="col-span-1 md:col-span-2">
+                  <label htmlFor="clientVatAddress" className="block text-sm font-medium text-gray-700">Address</label>
+                  <input
+                    type="text"
+                    id="clientVatAddress"
+                    value={clientVatAddress}
+                    onChange={(e) => setClientVatAddress(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEdit(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+                  disabled={editLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`px-4 py-2 rounded-md text-white ${editLoading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  disabled={editLoading}
+                >
+                  {editLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Details Modal */}
+      {showDetails && detailsCheckout && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl mx-4">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-2xl font-semibold">Checkout Details</h3>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={printBill}
+                  className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
+                >
+                  Print Bill
+                </button>
+                <button
+                  onClick={() => setShowDetails(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+
+            <div id="bill-content">
+              {/* Bill Header */}
+              <div className="bill-header">
+                <h1 className="text-xl font-bold">HOTEL BILL</h1>
+                <p>Date: {new Date().toLocaleDateString()}</p>
+                <p>Invoice #: {detailsCheckout._id.slice(-8)}</p>
+              </div>
+
+              {/* Guest & Room Details */}
+              <div className="bill-section grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <h3 className="font-semibold text-lg">Guest Information</h3>
+                  <p><strong>Name:</strong> {detailsCheckout.guest?.firstName} {detailsCheckout.guest?.lastName}</p>
+                  <p><strong>Email:</strong> {detailsCheckout.guest?.email}</p>
+                  <p><strong>Phone:</strong> {detailsCheckout.guest?.phone}</p>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg">Stay Information</h3>
+                  <p><strong>Rooms:</strong> {detailsCheckout.rooms.map((r: any) => `#${r.roomNumber}`).join(', ')}</p>
+                  <p><strong>Check-in:</strong> {new Date(detailsCheckout.checkInDate).toLocaleDateString()}</p>
+                  <p><strong>Check-out:</strong> {detailsCheckout.checkOutDate ? new Date(detailsCheckout.checkOutDate).toLocaleDateString() : 'N/A'}</p>
+                  <p><strong>Nights:</strong> {calculateDaysOfStay(detailsCheckout.checkInDate, detailsCheckout.checkOutDate)}</p>
+                </div>
+              </div>
+
+              {/* Client VAT Info (if available) */}
+              {detailsCheckout.clientVatInfo?.vatNumber && (
+                <div className="bill-section text-sm">
+                  <h3 className="font-semibold text-lg">Client VAT Information</h3>
+                  <p><strong>VAT Number:</strong> {detailsCheckout.clientVatInfo.vatNumber}</p>
+                  <p><strong>Company:</strong> {detailsCheckout.clientVatInfo.companyName}</p>
+                  <p><strong>Address:</strong> {detailsCheckout.clientVatInfo.address}</p>
+                </div>
+              )}
+
+              {/* Billing Summary */}
+              <div className="bill-section">
+                <h3 className="font-semibold text-lg">Bill Summary</h3>
+                <table className="bill-table w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="px-4 py-2 text-left">Description</th>
+                      <th className="px-4 py-2 text-right">Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="px-4 py-2">Room Charges ({calculateDaysOfStay(detailsCheckout.checkInDate, detailsCheckout.checkOutDate)} nights)</td>
+                      <td className="px-4 py-2 text-right">{detailsCheckout.totalRoomCharge?.toLocaleString()}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2">Food & Beverage Orders</td>
+                      <td className="px-4 py-2 text-right">{detailsCheckout.totalOrderCharge?.toLocaleString()}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2">Other Charges</td>
+                      <td className="px-4 py-2 text-right">{detailsCheckout.totalExtraCharge?.toLocaleString()}</td>
+                    </tr>
+                    {detailsCheckout.discountAmount > 0 && (
+                      <tr>
+                        <td className="px-4 py-2 text-red-600">Discount</td>
+                        <td className="px-4 py-2 text-right text-red-600">({detailsCheckout.discountAmount?.toLocaleString()})</td>
+                      </tr>
+                    )}
+                    {detailsCheckout.vatAmount > 0 && (
+                      <tr>
+                        <td className="px-4 py-2">VAT ({detailsCheckout.vatPercent || 0}%)</td>
+                        <td className="px-4 py-2 text-right">{detailsCheckout.vatAmount?.toLocaleString()}</td>
+                      </tr>
+                    )}
+                    <tr className="font-bold">
+                      <td className="px-4 py-2">Subtotal</td>
+                      <td className="px-4 py-2 text-right">
+                        {(detailsCheckout.totalRoomCharge + detailsCheckout.totalOrderCharge + detailsCheckout.totalExtraCharge).toLocaleString()}
+                      </td>
+                    </tr>
+                    {detailsCheckout.advancePaid > 0 && (
+                      <tr className="text-green-700">
+                        <td className="px-4 py-2">Advance Paid</td>
+                        <td className="px-4 py-2 text-right">({detailsCheckout.advancePaid?.toLocaleString()})</td>
+                      </tr>
+                    )}
+                    <tr className="font-extrabold text-lg bg-gray-200">
+                      <td className="px-4 py-2">Grand Total</td>
+                      <td className="px-4 py-2 text-right">{detailsCheckout.totalBill?.toLocaleString()}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

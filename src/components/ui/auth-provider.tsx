@@ -1,7 +1,7 @@
+// components/ui/auth-provider.tsx
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { getCurrentUser } from "@/lib/api";
-// import { logoutApi } from "@/lib/logoutApi";
 
 interface AuthContextType {
   user: any;
@@ -22,17 +22,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError("");
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      
       if (!token) {
         setUser(null);
         setLoading(false);
         return;
       }
+      
       try {
-        const data = await getCurrentUser();
-        setUser(data.user || data);
+        const userData = await getCurrentUser();
+        setUser(userData); // This should now be the user object directly
       } catch (err: any) {
+        console.error('Failed to fetch user:', err);
         setUser(null);
         setError(err.message || "Not authenticated");
+        
         // Prevent multiple redirects
         if (typeof window !== "undefined" && !sessionStorage.getItem("redirected401")) {
           sessionStorage.setItem("redirected401", "1");
@@ -43,9 +47,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     }
+    
     fetchUser();
+    
     // Clear redirect flag on mount (so next login works)
-    return () => { if (typeof window !== "undefined") sessionStorage.removeItem("redirected401"); };
+    return () => { 
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("redirected401");
+      }
+    };
   }, []);
 
   function logout() {

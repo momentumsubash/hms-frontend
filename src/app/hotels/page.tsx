@@ -1,22 +1,24 @@
-
 "use client";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
-import { getHotels, addHotel, updateHotel } from "@/lib/api";
+import { getHotels, addHotel, updateHotel, updateHotelBalance } from "@/lib/api";
 import { createExpenditure, getExpenditures, approveExpenditure, rejectExpenditure } from "@/lib/expenditure";
 import { Hotel } from "@/types/hotel";
 import { Expenditure, ExpenditureFilters } from "@/types/expenditure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { format } from "date-fns";
+import { PlusIcon, PencilIcon } from "@heroicons/react/24/outline";
 
 export default function HotelsPage() {
   // Hotel state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const [showExpenditureModal, setShowExpenditureModal] = useState(false);
+  const [balanceAmount, setBalanceAmount] = useState(0);
 
   // Expenditure state
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
@@ -61,8 +63,11 @@ export default function HotelsPage() {
       state: "",
       zip: ""
     },
+    locationMap: "",
     nearby: [],
     notes: [],
+    initialAmount: 0,
+    currentBalance: 0,
     createdAt: new Date().toISOString()
   });
 
@@ -78,7 +83,7 @@ export default function HotelsPage() {
   ];
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [hotels, setHotels] = useState<any[]>([]);
+  const [hotels, setHotels] = useState<Hotel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({
@@ -100,8 +105,8 @@ export default function HotelsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await getHotels();
-      setHotels(res?.data || res || []);
+      const response = await getHotels();
+      setHotels(response.data || []);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -158,17 +163,30 @@ export default function HotelsPage() {
     }
   };
 
+  const handleUpdateBalance = async () => {
+    if (!selectedHotel?._id) return;
+    try {
+      await updateHotelBalance(selectedHotel._id, balanceAmount);
+      setShowBalanceModal(false);
+      loadData();
+      setBalanceAmount(0);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
   // Filter hotels
-  const filteredHotels = hotels.filter((hotel: any) => {
+  const filteredHotels = hotels.filter((hotel: Hotel) => {
     const matchesName = filters.name === "" || (hotel.name && hotel.name.toLowerCase().includes(filters.name.toLowerCase()));
-    const matchesCity = filters.city === "" || (hotel.city && hotel.city.toLowerCase().includes(filters.city.toLowerCase()));
+    const matchesCity = filters.city === "" || (hotel.address?.city && hotel.address.city.toLowerCase().includes(filters.city.toLowerCase()));
     const matchesSearch = filters.search === "" ||
       (hotel.name && hotel.name.toLowerCase().includes(filters.search.toLowerCase())) ||
-      (hotel.city && hotel.city.toLowerCase().includes(filters.search.toLowerCase()));
+      (hotel.address?.city && hotel.address.city.toLowerCase().includes(filters.search.toLowerCase()));
     return matchesName && matchesCity && matchesSearch;
   });
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
+  
   return (
     <div className="min-h-screen bg-slate-50">
       <NavBar
@@ -181,181 +199,295 @@ export default function HotelsPage() {
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Hotels Management</h1>
-          <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
-            Add New Hotel
-          </Button>
+          {user?.role === 'super_admin' && (
+            <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+              Add New Hotel
+            </Button>
+          )}
         </div>
 
-        {/* Create Hotel Modal */}
-        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Hotel</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              try {
-                await addHotel(newHotel);
-                setShowCreateModal(false);
-                loadData();
-              } catch (e: any) {
-                setError(e.message);
-              }
-            }} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+        {/* Create Hotel Modal - Only for super_admin */}
+        {user?.role === 'super_admin' && (
+          <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create New Hotel</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await addHotel(newHotel);
+                  setShowCreateModal(false);
+                  loadData();
+                  // Reset form
+                  setNewHotel({
+                    name: "",
+                    description: "",
+                    location: "",
+                    phone: "",
+                    logo: "",
+                    images: [],
+                    vatNumber: "",
+                    companyName: "",
+                    vatAddress: "",
+                    type: "",
+                    roomCount: 0,
+                    floors: 0,
+                    established: new Date().getFullYear(),
+                    amenities: [],
+                    gallery: [],
+                    contact: {
+                      phone: "",
+                      reception: "",
+                      email: "",
+                      website: ""
+                    },
+                    address: {
+                      street: "",
+                      area: "",
+                      city: "",
+                      state: "",
+                      zip: ""
+                    },
+                    locationMap: "",
+                    nearby: [],
+                    notes: [],
+                    initialAmount: 0,
+                    currentBalance: 0,
+                    createdAt: new Date().toISOString()
+                  });
+                } catch (e: any) {
+                  setError(e.message);
+                }
+              }} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Hotel Name *</label>
+                    <input
+                      type="text"
+                      value={newHotel.name}
+                      onChange={(e) => setNewHotel({...newHotel, name: e.target.value})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Type</label>
+                    <input
+                      type="text"
+                      value={newHotel.type}
+                      onChange={(e) => setNewHotel({...newHotel, type: e.target.value})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="e.g., 5-Star Luxury Hotel"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Phone</label>
+                    <input
+                      type="text"
+                      value={newHotel.phone}
+                      onChange={(e) => setNewHotel({...newHotel, phone: e.target.value})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="+1-555-123-4567"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Room Count</label>
+                    <input
+                      type="number"
+                      value={newHotel.roomCount}
+                      onChange={(e) => setNewHotel({...newHotel, roomCount: parseInt(e.target.value) || 0})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Floors</label>
+                    <input
+                      type="number"
+                      value={newHotel.floors}
+                      onChange={(e) => setNewHotel({...newHotel, floors: parseInt(e.target.value) || 0})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Established Year</label>
+                    <input
+                      type="number"
+                      value={newHotel.established}
+                      onChange={(e) => setNewHotel({...newHotel, established: parseInt(e.target.value) || new Date().getFullYear()})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">VAT Number</label>
+                    <input
+                      type="text"
+                      value={newHotel.vatNumber}
+                      onChange={(e) => setNewHotel({...newHotel, vatNumber: e.target.value})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      value={newHotel.companyName}
+                      onChange={(e) => setNewHotel({...newHotel, companyName: e.target.value})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">VAT Address</label>
+                    <input
+                      type="text"
+                      value={newHotel.vatAddress}
+                      onChange={(e) => setNewHotel({...newHotel, vatAddress: e.target.value})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Initial Amount</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={newHotel.initialAmount}
+                      onChange={(e) => setNewHotel({...newHotel, initialAmount: parseFloat(e.target.value) || 0})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                </div>
+                
                 <div>
-                  <label className="block text-sm font-medium mb-1">Hotel Name</label>
-                  <input
-                    type="text"
-                    value={newHotel.name}
-                    onChange={(e) => setNewHotel({...newHotel, name: e.target.value})}
+                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <textarea
+                    value={newHotel.description}
+                    onChange={(e) => setNewHotel({...newHotel, description: e.target.value})}
                     className="w-full border border-gray-300 rounded px-3 py-2"
-                    required
+                    rows={3}
+                    placeholder="A brief description of the hotel..."
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Type</label>
-                  <input
-                    type="text"
-                    value={newHotel.type}
-                    onChange={(e) => setNewHotel({...newHotel, type: e.target.value})}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Phone</label>
-                  <input
-                    type="text"
-                    value={newHotel.phone}
-                    onChange={(e) => setNewHotel({...newHotel, phone: e.target.value})}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Room Count</label>
-                  <input
-                    type="number"
-                    value={newHotel.roomCount}
-                    onChange={(e) => setNewHotel({...newHotel, roomCount: parseInt(e.target.value)})}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
-                <textarea
-                  value={newHotel.description}
-                  onChange={(e) => setNewHotel({...newHotel, description: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  rows={3}
-                  required
-                />
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">VAT Number</label>
-                  <input
-                    type="text"
-                    value={newHotel.vatNumber}
-                    onChange={(e) => setNewHotel({...newHotel, vatNumber: e.target.value})}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
+                  <label className="block text-sm font-medium mb-1">Address</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input
+                      type="text"
+                      value={newHotel.address?.street}
+                      onChange={(e) => setNewHotel({...newHotel, address: {...newHotel.address, street: e.target.value}})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Street"
+                    />
+                    <input
+                      type="text"
+                      value={newHotel.address?.area}
+                      onChange={(e) => setNewHotel({...newHotel, address: {...newHotel.address, area: e.target.value}})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Area"
+                    />
+                    <input
+                      type="text"
+                      value={newHotel.address?.city}
+                      onChange={(e) => setNewHotel({...newHotel, address: {...newHotel.address, city: e.target.value}})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="City"
+                    />
+                    <input
+                      type="text"
+                      value={newHotel.address?.state}
+                      onChange={(e) => setNewHotel({...newHotel, address: {...newHotel.address, state: e.target.value}})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="State"
+                    />
+                    <input
+                      type="text"
+                      value={newHotel.address?.zip}
+                      onChange={(e) => setNewHotel({...newHotel, address: {...newHotel.address, zip: e.target.value}})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="ZIP Code"
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium mb-1">Company Name</label>
+                  <label className="block text-sm font-medium mb-1">Contact Information</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input
+                      type="text"
+                      value={newHotel.contact?.phone}
+                      onChange={(e) => setNewHotel({...newHotel, contact: {...newHotel.contact, phone: e.target.value}})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Phone"
+                    />
+                    <input
+                      type="text"
+                      value={newHotel.contact?.reception}
+                      onChange={(e) => setNewHotel({...newHotel, contact: {...newHotel.contact, reception: e.target.value}})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Reception"
+                    />
+                    <input
+                      type="email"
+                      value={newHotel.contact?.email}
+                      onChange={(e) => setNewHotel({...newHotel, contact: {...newHotel.contact, email: e.target.value}})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Email"
+                    />
+                    <input
+                      type="url"
+                      value={newHotel.contact?.website}
+                      onChange={(e) => setNewHotel({...newHotel, contact: {...newHotel.contact, website: e.target.value}})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Website URL"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Amenities (comma-separated)</label>
                   <input
                     type="text"
-                    value={newHotel.companyName}
-                    onChange={(e) => setNewHotel({...newHotel, companyName: e.target.value})}
+                    value={newHotel.amenities?.join(", ")}
+                    onChange={(e) => setNewHotel({...newHotel, amenities: e.target.value.split(",").map(item => item.trim())})}
                     className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="WiFi, Pool, Gym, Spa, Restaurant"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1">Address</label>
-                <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Nearby Attractions (comma-separated)</label>
                   <input
                     type="text"
-                    value={newHotel.address.street}
-                    onChange={(e) => setNewHotel({...newHotel, address: {...newHotel.address, street: e.target.value}})}
+                    value={newHotel.nearby?.join(", ")}
+                    onChange={(e) => setNewHotel({...newHotel, nearby: e.target.value.split(",").map(item => item.trim())})}
                     className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="Street"
-                    required
-                  />
-                  <input
-                    type="text"
-                    value={newHotel.address.area}
-                    onChange={(e) => setNewHotel({...newHotel, address: {...newHotel.address, area: e.target.value}})}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="Area"
-                  />
-                  <input
-                    type="text"
-                    value={newHotel.address.city}
-                    onChange={(e) => setNewHotel({...newHotel, address: {...newHotel.address, city: e.target.value}})}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="City"
-                    required
-                  />
-                  <input
-                    type="text"
-                    value={newHotel.address.zip}
-                    onChange={(e) => setNewHotel({...newHotel, address: {...newHotel.address, zip: e.target.value}})}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="ZIP"
+                    placeholder="Central Park, Shopping Mall, Museum"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1">Contact Information</label>
-                <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Location Map URL</label>
                   <input
-                    type="text"
-                    value={newHotel.contact.email}
-                    onChange={(e) => setNewHotel({...newHotel, contact: {...newHotel.contact, email: e.target.value}})}
+                    type="url"
+                    value={newHotel.locationMap}
+                    onChange={(e) => setNewHotel({...newHotel, locationMap: e.target.value})}
                     className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="Email"
-                    required
-                  />
-                  <input
-                    type="text"
-                    value={newHotel.contact.website}
-                    onChange={(e) => setNewHotel({...newHotel, contact: {...newHotel.contact, website: e.target.value}})}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="Website"
+                    placeholder="https://maps.google.com/..."
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1">Amenities (comma-separated)</label>
-                <input
-                  type="text"
-                  value={newHotel.amenities.join(", ")}
-                  onChange={(e) => setNewHotel({...newHotel, amenities: e.target.value.split(",").map(item => item.trim())})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="WiFi, Pool, Gym"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-                  Create Hotel
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                    Create Hotel
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
 
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -410,7 +542,7 @@ export default function HotelsPage() {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+                            <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
@@ -443,18 +575,18 @@ export default function HotelsPage() {
                       <div className="text-sm text-gray-500">
                         {hotel.type || 'N/A'} Type
                       </div>
+                      {hotel.currentBalance !== undefined && (
+                        <div className="text-sm text-green-600 font-medium">
+                          Balance: ${hotel.currentBalance.toFixed(2)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
                         Created: {hotel.createdAt ? new Date(hotel.createdAt).toLocaleDateString() : 'N/A'}
                       </div>
-                      {hotel.updatedAt && hotel.updatedAt !== hotel.createdAt && (
-                        <div className="text-sm text-gray-500">
-                          Updated: {new Date(hotel.updatedAt).toLocaleDateString()}
-                        </div>
-                      )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 space-y-2">
                       <Button
                         onClick={() => {
                           setSelectedHotel(hotel);
@@ -462,9 +594,24 @@ export default function HotelsPage() {
                         }}
                         variant="outline"
                         size="sm"
+                        className="w-full"
                       >
                         Edit
                       </Button>
+                      {(user?.role === 'manager' || user?.role === 'super_admin') && (
+                        <Button
+                          onClick={() => {
+                            setSelectedHotel(hotel);
+                            setBalanceAmount(hotel.initialAmount || 0);
+                            setShowBalanceModal(true);
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="w-full bg-green-100 text-green-800 hover:bg-green-200"
+                        >
+                          Update Balance
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -480,7 +627,7 @@ export default function HotelsPage() {
 
         {/* Edit Hotel Modal */}
         <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Hotel</DialogTitle>
             </DialogHeader>
@@ -496,9 +643,9 @@ export default function HotelsPage() {
                   setError(e.message);
                 }
               }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1">Hotel Name</label>
+                    <label className="block text-sm font-medium mb-1">Hotel Name *</label>
                     <input
                       type="text"
                       value={selectedHotel.name}
@@ -514,6 +661,74 @@ export default function HotelsPage() {
                       value={selectedHotel.type}
                       onChange={(e) => setSelectedHotel({...selectedHotel, type: e.target.value})}
                       className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="e.g., 5-Star Luxury Hotel"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Phone</label>
+                    <input
+                      type="text"
+                      value={selectedHotel.contact?.phone || selectedHotel.phone}
+                      onChange={(e) => setSelectedHotel({
+                        ...selectedHotel, 
+                        contact: { ...selectedHotel.contact, phone: e.target.value }
+                      })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="+1-555-123-4567"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Room Count</label>
+                    <input
+                      type="number"
+                      value={selectedHotel.roomCount}
+                      onChange={(e) => setSelectedHotel({...selectedHotel, roomCount: parseInt(e.target.value) || 0})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Floors</label>
+                    <input
+                      type="number"
+                      value={selectedHotel.floors}
+                      onChange={(e) => setSelectedHotel({...selectedHotel, floors: parseInt(e.target.value) || 0})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Established Year</label>
+                    <input
+                      type="number"
+                      value={selectedHotel.established}
+                      onChange={(e) => setSelectedHotel({...selectedHotel, established: parseInt(e.target.value) || new Date().getFullYear()})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">VAT Number</label>
+                    <input
+                      type="text"
+                      value={selectedHotel.vatNumber}
+                      onChange={(e) => setSelectedHotel({...selectedHotel, vatNumber: e.target.value})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Company Name</label>
+                    <input
+                      type="text"
+                      value={selectedHotel.companyName}
+                      onChange={(e) => setSelectedHotel({...selectedHotel, companyName: e.target.value})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">VAT Address</label>
+                    <input
+                      type="text"
+                      value={selectedHotel.vatAddress}
+                      onChange={(e) => setSelectedHotel({...selectedHotel, vatAddress: e.target.value})}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
                     />
                   </div>
                 </div>
@@ -525,54 +740,13 @@ export default function HotelsPage() {
                     onChange={(e) => setSelectedHotel({...selectedHotel, description: e.target.value})}
                     className="w-full border border-gray-300 rounded px-3 py-2"
                     rows={3}
-                    required
+                    placeholder="A brief description of the hotel..."
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Phone</label>
-                    <input
-                      type="text"
-                      value={selectedHotel.contact?.phone || selectedHotel.phone}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        contact: { ...selectedHotel.contact, phone: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={selectedHotel.contact?.email}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        contact: { ...selectedHotel.contact, email: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">City</label>
-                    <input
-                      type="text"
-                      value={selectedHotel.address?.city}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        address: { ...selectedHotel.address, city: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Street</label>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Address</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input
                       type="text"
                       value={selectedHotel.address?.street}
@@ -581,7 +755,93 @@ export default function HotelsPage() {
                         address: { ...selectedHotel.address, street: e.target.value }
                       })}
                       className="w-full border border-gray-300 rounded px-3 py-2"
-                      required
+                      placeholder="Street"
+                    />
+                    <input
+                      type="text"
+                      value={selectedHotel.address?.area}
+                      onChange={(e) => setSelectedHotel({
+                        ...selectedHotel, 
+                        address: { ...selectedHotel.address, area: e.target.value }
+                      })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Area"
+                    />
+                    <input
+                      type="text"
+                      value={selectedHotel.address?.city}
+                      onChange={(e) => setSelectedHotel({
+                        ...selectedHotel, 
+                        address: { ...selectedHotel.address, city: e.target.value }
+                      })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="City"
+                    />
+                    <input
+                      type="text"
+                      value={selectedHotel.address?.state}
+                      onChange={(e) => setSelectedHotel({
+                        ...selectedHotel, 
+                        address: { ...selectedHotel.address, state: e.target.value }
+                      })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="State"
+                    />
+                    <input
+                      type="text"
+                      value={selectedHotel.address?.zip}
+                      onChange={(e) => setSelectedHotel({
+                        ...selectedHotel, 
+                        address: { ...selectedHotel.address, zip: e.target.value }
+                      })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="ZIP Code"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Contact Information</label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input
+                      type="text"
+                      value={selectedHotel.contact?.phone}
+                      onChange={(e) => setSelectedHotel({
+                        ...selectedHotel, 
+                        contact: { ...selectedHotel.contact, phone: e.target.value }
+                      })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Phone"
+                    />
+                    <input
+                      type="text"
+                      value={selectedHotel.contact?.reception}
+                      onChange={(e) => setSelectedHotel({
+                        ...selectedHotel, 
+                        contact: { ...selectedHotel.contact, reception: e.target.value }
+                      })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Reception"
+                    />
+                    <input
+                      type="email"
+                      value={selectedHotel.contact?.email}
+                      onChange={(e) => setSelectedHotel({
+                        ...selectedHotel, 
+                        contact: { ...selectedHotel.contact, email: e.target.value }
+                      })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Email"
+                    />
+                    <input
+                      type="url"
+                      value={selectedHotel.contact?.website}
+                      onChange={(e) => setSelectedHotel({
+                        ...selectedHotel, 
+                        contact: { ...selectedHotel.contact, website: e.target.value }
+                      })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Website URL"
                     />
                   </div>
                 </div>
@@ -596,11 +856,36 @@ export default function HotelsPage() {
                       amenities: e.target.value.split(",").map(item => item.trim())
                     })}
                     className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="WiFi, Pool, Gym"
+                    placeholder="WiFi, Pool, Gym, Spa, Restaurant"
                   />
                 </div>
 
-                <div className="flex justify-end space-x-2">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Nearby Attractions (comma-separated)</label>
+                  <input
+                    type="text"
+                    value={selectedHotel.nearby?.join(", ") || ""}
+                    onChange={(e) => setSelectedHotel({
+                      ...selectedHotel, 
+                      nearby: e.target.value.split(",").map(item => item.trim())
+                    })}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="Central Park, Shopping Mall, Museum"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Location Map URL</label>
+                  <input
+                    type="url"
+                    value={selectedHotel.locationMap}
+                    onChange={(e) => setSelectedHotel({...selectedHotel, locationMap: e.target.value})}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="https://maps.google.com/..."
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-4">
                   <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
                     Cancel
                   </Button>
@@ -610,6 +895,35 @@ export default function HotelsPage() {
                 </div>
               </form>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Update Balance Modal */}
+        <Dialog open={showBalanceModal} onOpenChange={setShowBalanceModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Update Hotel Balance</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Initial Amount</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={balanceAmount}
+                  onChange={(e) => setBalanceAmount(parseFloat(e.target.value) || 0)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setShowBalanceModal(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateBalance} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  Update Balance
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -871,8 +1185,24 @@ export default function HotelsPage() {
             </Dialog>
           </div>
         )}
+        {/* <div className="flex justify-between items-center mb-6">
+  <Button 
+    onClick={() => {
+      if (user?.role === 'super_admin') {
+        setShowCreateModal(true);
+      } else {
+        setError("Only super administrators can create new hotels");
+      }
+    }} 
+    className="bg-blue-600 hover:bg-blue-700 text-white"
+  >
+    <PlusIcon className="w-5 h-5 mr-2" />
+    Add New Hotel
+  </Button>
+</div> */}
       </div>
+      
+
     </div>
   );
 }
-
