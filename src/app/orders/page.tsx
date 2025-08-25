@@ -28,6 +28,10 @@ export default function OrdersPage() {
   const [itemList, setItemList] = useState<any[]>([]);
   const [itemLoading, setItemLoading] = useState(false);
   
+  // Occupied rooms state
+  const [occupiedRooms, setOccupiedRooms] = useState<any[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
+  
   // Notification state for bottom-right toast
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   
@@ -38,9 +42,33 @@ export default function OrdersPage() {
     }
   }, [notification]);
   
+  // Fetch occupied rooms for modal
+  const fetchOccupiedRooms = useCallback(async () => {
+    setRoomsLoading(true);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const url = `${apiBase}/rooms?page=1&limit=100&isoccupied=true`;
+      const headers: Record<string, string> = { Accept: "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      
+      const res = await fetch(url, { headers });
+      if (!res.ok) throw new Error("Failed to fetch occupied rooms");
+      
+      const data = await res.json();
+      setOccupiedRooms(data.data || data);
+    } catch (error) {
+      console.error("Error fetching occupied rooms:", error);
+      setOccupiedRooms([]);
+    } finally {
+      setRoomsLoading(false);
+    }
+  }, []);
+
   // Fetch items for modal
   useEffect(() => {
     if (!showCreate) return;
+    
     const fetchItems = async () => {
       setItemLoading(true);
       try {
@@ -62,8 +90,10 @@ export default function OrdersPage() {
         setItemLoading(false);
       }
     };
+    
     fetchItems();
-  }, [showCreate, itemSearch]);
+    fetchOccupiedRooms();
+  }, [showCreate, itemSearch, fetchOccupiedRooms]);
 
   const handleSelectOrder = (order: any) => {
     setSelectedOrder(order);
@@ -132,10 +162,10 @@ export default function OrdersPage() {
   });
 
   // Use debounced values for filters
-  const debouncedRoomNumber = useDebounce(filters.roomNumber, 500);
-  const debouncedGuestName = useDebounce(filters.guestName, 500);
-  const debouncedGuestPhone = useDebounce(filters.guestPhone, 500);
-  const debouncedSearch = useDebounce(filters.search, 500);
+  const debouncedRoomNumber = useDebounce(filters.roomNumber, 1000);
+  const debouncedGuestName = useDebounce(filters.guestName, 1000);
+  const debouncedGuestPhone = useDebounce(filters.guestPhone, 1000);
+  const debouncedSearch = useDebounce(filters.search, 1000);
 
   // Fetch /auth/me first, then orders
   const fetchAll = async () => {
@@ -288,7 +318,7 @@ export default function OrdersPage() {
         {/* Create Order Modal */}
         {showCreate && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 w-full max-w-4xl max-h-[90vh] flex gap-8 overflow-y-auto">
+            <div className="bg-white rounded-lg p-8 w-full max-w-6xl max-h-[90vh] flex gap-8 overflow-y-auto">
               {/* Left: Form */}
               <div className="flex-1 min-w-[320px]">
                 <h2 className="text-2xl font-bold mb-4">Create New Order</h2>
@@ -311,6 +341,10 @@ export default function OrdersPage() {
                       
                       if (items.length === 0) {
                         throw new Error("Please add at least one item");
+                      }
+
+                      if (!createForm.roomNumber) {
+                        throw new Error("Please select a room");
                       }
 
                       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -350,14 +384,27 @@ export default function OrdersPage() {
                   )}
                   
                   <div>
-                    <label className="block text-sm font-medium mb-1">Room Number</label>
-                    <input
-                      type="text"
-                      value={createForm.roomNumber}
-                      onChange={e => setCreateForm(f => ({ ...f, roomNumber: e.target.value }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      required
-                    />
+                    <label className="block text-sm font-medium mb-1">Select Room</label>
+                    {roomsLoading ? (
+                      <div className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100">Loading rooms...</div>
+                    ) : occupiedRooms.length === 0 ? (
+                      <div className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100">No occupied rooms available</div>
+                    ) : (
+                      <select
+                        value={createForm.roomNumber}
+                        onChange={e => setCreateForm(f => ({ ...f, roomNumber: e.target.value }))}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        required
+                      >
+                        <option value="">Select a room</option>
+                        {occupiedRooms.map((room) => (
+                          <option key={room._id} value={room.roomNumber}>
+                            Room {room.roomNumber} - {room.guestId?.firstName} {room.guestId?.lastName} 
+                            {room.hotelId?.name && ` (${room.hotelId.name})`}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   
                   {/* Items section */}
@@ -428,7 +475,7 @@ export default function OrdersPage() {
                     <button
                       type="submit"
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                      disabled={createLoading}
+                      disabled={createLoading || roomsLoading || occupiedRooms.length === 0}
                     >{createLoading ? "Creating..." : "Create Order"}</button>
                   </div>
                 </form>
