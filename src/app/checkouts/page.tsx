@@ -822,7 +822,7 @@ export default function CheckoutsPage() {
                   <thead>
                     <tr className="bg-gray-100">
                       <th className="px-4 py-2 text-left">Description</th>
-                      <th className="px-4 py-2 text-right">Amount (₹)</th>
+                      <th className="px-4 py-2 text-right">Amount (रु)</th>
                     </tr>
                   </thead>
                   <tbody>
