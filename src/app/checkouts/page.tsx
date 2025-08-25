@@ -317,7 +317,7 @@ export default function CheckoutsPage() {
 
       // 3. Execute both API calls
       await updateCheckout(editCheckout._id, payload);
-      await updateCheckoutPayment(editCheckout._id, vatUpdatePayload);
+      //await updateCheckoutPayment(editCheckout._id, vatUpdatePayload);
 
       // Reload data and close modal
       loadData();
