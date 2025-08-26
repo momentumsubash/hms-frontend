@@ -460,6 +460,20 @@ export async function getCheckouts(params: Record<string, any> = {}) {
   return res.json();
 }
 
+// Add this function to get checkout by ID
+export async function getCheckoutById(id: string) {
+  const res = await fetch(`${API_URL}/checkouts/${id}`, {
+    headers: mergeHeaders({ 'Accept': 'application/json' }, getAuthHeaders()),
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error("Failed to fetch checkout");
+  return res.json();
+}
+
 export async function createCheckout(checkout: any) {
   const res = await fetch(`${API_URL}/checkouts`, {
     method: "POST",

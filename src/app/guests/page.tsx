@@ -297,7 +297,7 @@ export default function GuestsPage() {
           fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
             headers: getRequestHeaders(token),
           }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms`, {
+          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
             headers: getRequestHeaders(token),
           })
         ]);
@@ -566,7 +566,7 @@ const handleEdit = async (guest: Guest) => {
     // Fetch ALL rooms (not just available ones) for editing
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (token) {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
         headers: getRequestHeaders(token),
       });
       if (res.ok) {

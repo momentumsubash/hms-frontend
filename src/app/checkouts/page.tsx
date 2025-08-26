@@ -1,6 +1,6 @@
 "use client";
 
-import { getCheckouts } from "@/lib/api";
+import { getCheckouts, getCheckoutById } from "@/lib/api"; 
 import { updateCheckoutPayment, updateCheckout } from "@/lib/checkoutApi";
 import { useEffect, useState, useCallback } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -46,6 +46,7 @@ export default function CheckoutsPage() {
   const [editStatus, setEditStatus] = useState<string>("");
   const [showDetails, setShowDetails] = useState(false);
   const [detailsCheckout, setDetailsCheckout] = useState<any>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false); // Added loading state for details
   const [editVatPercent, setEditVatPercent] = useState<string>("");
   const [editVatAmount, setEditVatAmount] = useState<string>("");
   
@@ -101,6 +102,19 @@ export default function CheckoutsPage() {
     }
   }, [page, limit, filters.status, debouncedSearch]);
 
+  // Function to load detailed checkout data
+  const loadCheckoutDetails = async (checkoutId: string) => {
+    try {
+      setDetailsLoading(true);
+      const checkoutData = await getCheckoutById(checkoutId);
+      setDetailsCheckout(checkoutData.data);
+    } catch (e: any) {
+      setError("Failed to load checkout details: " + e.message);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
   // Reset page to 1 on filter change
   useEffect(() => { 
     setPage(1); 
@@ -130,28 +144,6 @@ export default function CheckoutsPage() {
     });
     setSearchInput("");
     setPage(1);
-  };
-
-  // Calculate days of stay
-  const calculateDaysOfStay = (checkIn: string, checkOut: string) => {
-    if (!checkIn) return 1;
-    const start = new Date(checkIn);
-    const end = checkOut ? new Date(checkOut) : new Date();
-    // If end is before start, clamp to start
-    const effectiveEnd = end < start ? start : end;
-    const diffTime = Math.abs(effectiveEnd.getTime() - start.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(diffDays, 1);
-  };
-
-  // Calculate room charges
-  const calculateRoomCharges = (checkout: any) => {
-    if (!checkout.rooms || checkout.rooms.length === 0) return 0;
-    
-    const nights = calculateDaysOfStay(checkout.checkInDate, checkout.checkOutDate);
-    return checkout.rooms.reduce((total: number, room: any) => {
-      return total + (room.rate * nights);
-    }, 0);
   };
 
   // Print bill function
@@ -445,19 +437,31 @@ export default function CheckoutsPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {checkouts.map((checkout: any) => (
                       <tr key={checkout._id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>
+                        <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { 
+                          setDetailsCheckout(checkout); 
+                          setShowDetails(true);
+                          loadCheckoutDetails(checkout._id);
+                        }}>
                           {checkout.guest ? `${checkout.guest.firstName} ${checkout.guest.lastName}` : "-"}
                           <div className="text-xs text-gray-500">{checkout.guest?.email}</div>
                           {checkout.guest?.phone && (
                             <div className="text-xs text-gray-500">{checkout.guest.phone}</div>
                           )}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>
+                        <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { 
+                          setDetailsCheckout(checkout); 
+                          setShowDetails(true);
+                          loadCheckoutDetails(checkout._id);
+                        }}>
                           {checkout.rooms && checkout.rooms.length > 0 
                             ? checkout.rooms.map((r: any) => `#${r.roomNumber}`).join(', ')
                             : "-"}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap capitalize cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>
+                        <td className="px-4 py-4 whitespace-nowrap capitalize cursor-pointer" onClick={() => { 
+                          setDetailsCheckout(checkout); 
+                          setShowDetails(true);
+                          loadCheckoutDetails(checkout._id);
+                        }}>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             checkout.status === 'completed' 
                               ? 'bg-green-100 text-green-800' 
@@ -466,14 +470,23 @@ export default function CheckoutsPage() {
                             {checkout.status}
                           </span>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap font-semibold cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>₹{checkout.totalBill?.toLocaleString()}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-xs cursor-pointer" onClick={() => { setDetailsCheckout(checkout); setShowDetails(true); }}>{checkout.createdAt ? new Date(checkout.createdAt).toLocaleString() : ""}</td>
+                        <td className="px-4 py-4 whitespace-nowrap font-semibold cursor-pointer" onClick={() => { 
+                          setDetailsCheckout(checkout); 
+                          setShowDetails(true);
+                          loadCheckoutDetails(checkout._id);
+                        }}>₹{checkout.totalBill?.toLocaleString()}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-xs cursor-pointer" onClick={() => { 
+                          setDetailsCheckout(checkout); 
+                          setShowDetails(true);
+                          loadCheckoutDetails(checkout._id);
+                        }}>{checkout.createdAt ? new Date(checkout.createdAt).toLocaleString() : ""}</td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <button
                             className="text-blue-600 hover:underline text-sm mr-3"
-                            onClick={() => {
-                              setDetailsCheckout(checkout);
+                            onClick={() => { 
+                              setDetailsCheckout(checkout); 
                               setShowDetails(true);
+                              loadCheckoutDetails(checkout._id);
                             }}
                           >
                             View
@@ -689,7 +702,7 @@ export default function CheckoutsPage() {
       )}
 
       {/* View Details Modal */}
-      {showDetails && detailsCheckout && (
+      {showDetails && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl mx-4">
             <div className="flex justify-between items-center border-b pb-3 mb-4">
@@ -710,172 +723,183 @@ export default function CheckoutsPage() {
               </div>
             </div>
 
-            <div id="bill-content">
-              {/* Bill Header */}
-              <div className="bill-header">
-                <h1 className="text-xl font-bold">${hotelName.toUpperCase()}</h1>
-                <h2 className="text-lg">HOTEL BILL</h2>
-                <p>Date: {new Date().toLocaleDateString()}</p>
-                <p>Invoice #: {detailsCheckout._id.slice(-8)}</p>
+            {detailsLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <div>Loading checkout details...</div>
               </div>
-
-              {/* Guest & Room Details */}
-              <div className="bill-section grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <h3 className="font-semibold text-lg">Guest Information</h3>
-                  <p><strong>Name:</strong> {detailsCheckout.guest?.firstName} {detailsCheckout.guest?.lastName}</p>
-                  <p><strong>Email:</strong> {detailsCheckout.guest?.email}</p>
-                  <p><strong>Phone:</strong> {detailsCheckout.guest?.phone}</p>
+            ) : (
+              <div id="bill-content">
+                {/* Bill Header */}
+                <div className="bill-header">
+                  <h1 className="text-xl font-bold">${hotelName.toUpperCase()}</h1>
+                  <h2 className="text-lg">HOTEL BILL</h2>
+                  <p>Date: {new Date().toLocaleDateString()}</p>
+                  <p>Invoice #: {detailsCheckout?._id?.slice(-8)}</p>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-lg">Stay Information</h3>
-                  <p><strong>Rooms:</strong> {detailsCheckout.rooms.map((r: any) => `#${r.roomNumber}`).join(', ')}</p>
-                  <p><strong>Check-in:</strong> {new Date(detailsCheckout.checkInDate).toLocaleDateString()}</p>
-                  <p><strong>Check-out:</strong> {detailsCheckout.checkOutDate ? new Date(detailsCheckout.checkOutDate).toLocaleDateString() : 'N/A'}</p>
-                  <p><strong>Nights:</strong> {calculateDaysOfStay(detailsCheckout.checkInDate, detailsCheckout.checkOutDate)}</p>
-                </div>
-              </div>
 
-              {/* Client VAT Info (if available) */}
-              {detailsCheckout.clientVatInfo?.vatNumber && (
-                <div className="bill-section text-sm">
-                  <h3 className="font-semibold text-lg">Client VAT Information</h3>
-                  <p><strong>VAT Number:</strong> {detailsCheckout.clientVatInfo.vatNumber}</p>
-                  <p><strong>Company:</strong> {detailsCheckout.clientVatInfo.companyName}</p>
-                  <p><strong>Address:</strong> {detailsCheckout.clientVatInfo.address}</p>
+                {/* Guest & Room Details */}
+                <div className="bill-section grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <h3 className="font-semibold text-lg">Guest Information</h3>
+                    <p><strong>Name:</strong> {detailsCheckout?.guest?.firstName} {detailsCheckout?.guest?.lastName}</p>
+                    <p><strong>Email:</strong> {detailsCheckout?.guest?.email}</p>
+                    {detailsCheckout?.guest?.phone && (
+                      <p><strong>Phone:</strong> {detailsCheckout.guest.phone}</p>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Stay Information</h3>
+                    <p><strong>Rooms:</strong> {detailsCheckout?.rooms?.map((r: any) => `#${r.roomNumber}`).join(', ') || 'N/A'}</p>
+                    <p><strong>Nights:</strong> {detailsCheckout?.nights || 1}</p>
+                  </div>
                 </div>
-              )}
 
-              {/* Order Details */}
-              {detailsCheckout.orders && detailsCheckout.orders.length > 0 && (
-                <div className="bill-section">
-                  <h3 className="font-semibold text-lg">Order Details</h3>
-                  {detailsCheckout.orders.map((order: any, index: number) => (
-                    <div key={index} className="order-details">
-                      <p><strong>Order #{index + 1}</strong> (Room: {order.roomNumber}) - {new Date(order.createdAt).toLocaleDateString()}</p>
-                      <table className="order-table">
-                        <thead>
-                          <tr className="order-header">
-                            <th>Item</th>
-                            <th className="text-center">Qty</th>
-                            <th className="text-right">Price</th>
-                            <th className="text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {order.items.map((item: any, itemIndex: number) => (
-                            <tr key={itemIndex}>
-                              <td>{item.name}</td>
-                              <td className="text-center">{item.quantity}</td>
-                              <td className="text-right">₹{item.price?.toLocaleString()}</td>
-                              <td className="text-right">₹{item.total?.toLocaleString()}</td>
+                {/* Client VAT Info (if available) */}
+                {detailsCheckout?.clientVatInfo?.vatNumber && (
+                  <div className="bill-section text-sm">
+                    <h3 className="font-semibold text-lg">Client VAT Information</h3>
+                    <p><strong>VAT Number:</strong> {detailsCheckout.clientVatInfo.vatNumber}</p>
+                    <p><strong>Company:</strong> {detailsCheckout.clientVatInfo.companyName}</p>
+                    <p><strong>Address:</strong> {detailsCheckout.clientVatInfo.address}</p>
+                  </div>
+                )}
+
+                {/* Order Details */}
+                {detailsCheckout?.orders && detailsCheckout.orders.length > 0 && (
+                  <div className="bill-section">
+                    <h3 className="font-semibold text-lg">Order Details</h3>
+                    {detailsCheckout.orders.map((order: any, index: number) => (
+                      <div key={index} className="order-details">
+                        <p><strong>Order #{index + 1}</strong> - {new Date(order.createdAt).toLocaleDateString()}</p>
+                        <table className="order-table">
+                          <thead>
+                            <tr className="order-header">
+                              <th>Item</th>
+                              <th className="text-center">Qty</th>
+                              <th className="text-right">Price</th>
+                              <th className="text-right">Total</th>
                             </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="total-row">
-                            <td colSpan={3} className="text-right">Order Total:</td>
-                            <td className="text-right">₹{order.totalAmount?.toLocaleString()}</td>
+                          </thead>
+                          <tbody>
+                            {order.items.map((item: any, itemIndex: number) => (
+                              <tr key={itemIndex}>
+                                <td>{item.name}</td>
+                                <td className="text-center">{item.quantity}</td>
+                                <td className="text-right">₹{item.price?.toLocaleString()}</td>
+                                <td className="text-right">₹{item.total?.toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr className="total-row">
+                              <td colSpan={3} className="text-right">Order Total:</td>
+                              <td className="text-right">₹{order.totalAmount?.toLocaleString()}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Room Charges Details */}
+                <div className="bill-section">
+                  <h3 className="font-semibold text-lg">Room Charges</h3>
+                  <table className="bill-table">
+                    <thead>
+                      <tr>
+                        <th>Room</th>
+                        <th>Type</th>
+                        <th className="text-right">Rate per Night</th>
+                        <th className="text-center">Nights</th>
+                        <th className="text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailsCheckout?.rooms?.map((room: any, index: number) => {
+                        const nights = detailsCheckout.nights || 1;
+                        const roomTotal = room.rate * nights;
+                        return (
+                          <tr key={index}>
+                            <td>#{room.roomNumber}</td>
+                            <td className="capitalize">{room.type}</td>
+                            <td className="text-right">₹{room.rate?.toLocaleString()}</td>
+                            <td className="text-center">{nights}</td>
+                            <td className="text-right">₹{roomTotal.toLocaleString()}</td>
                           </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  ))}
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              )}
 
-              {/* Room Charges Details */}
-              <div className="bill-section">
-                <h3 className="font-semibold text-lg">Room Charges</h3>
-                <table className="bill-table">
-                  <thead>
-                    <tr>
-                      <th>Room</th>
-                      <th>Type</th>
-                      <th className="text-right">Rate per Night</th>
-                      <th className="text-center">Nights</th>
-                      <th className="text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detailsCheckout.rooms.map((room: any, index: number) => {
-                      const nights = calculateDaysOfStay(detailsCheckout.checkInDate, detailsCheckout.checkOutDate);
-                      const roomTotal = room.rate * nights;
-                      return (
-                        <tr key={index}>
-                          <td>#{room.roomNumber}</td>
-                          <td className="capitalize">{room.type}</td>
-                          <td className="text-right">₹{room.rate?.toLocaleString()}</td>
-                          <td className="text-center">{nights}</td>
-                          <td className="text-right">₹{roomTotal.toLocaleString()}</td>
+                {/* Billing Summary */}
+                <div className="bill-section">
+                  <h3 className="font-semibold text-lg">Bill Summary</h3>
+                  <table className="bill-table w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="px-4 py-2 text-left">Description</th>
+                        <th className="px-4 py-2 text-right">Amount (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="px-4 py-2">Room Charges ({detailsCheckout?.nights || 1} nights)</td>
+                        <td className="px-4 py-2 text-right">{detailsCheckout?.calculatedRoomCharge?.toLocaleString()}</td>
+                      </tr>
+                      {detailsCheckout?.roomDiscount > 0 && (
+                        <tr>
+                          <td className="px-4 py-2 text-red-600">Room Discount</td>
+                          <td className="px-4 py-2 text-right text-red-600">-{detailsCheckout.roomDiscount?.toLocaleString()}</td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                      )}
+    
+                      {detailsCheckout?.totalOrderCharge > 0 && (
+                        <tr>
+                          <td className="px-4 py-2">Food & Beverage Orders</td>
+                          <td className="px-4 py-2 text-right">{detailsCheckout.totalOrderCharge?.toLocaleString()}</td>
+                        </tr>
+                      )}
+                      {detailsCheckout?.totalExtraCharge > 0 && (
+                        <tr>
+                          <td className="px-4 py-2">Other Charges</td>
+                          <td className="px-4 py-2 text-right">{detailsCheckout.totalExtraCharge?.toLocaleString()}</td>
+                        </tr>
+                      )}
+                      {detailsCheckout?.vatAmount > 0 && (
+                        <tr>
+                          <td className="px-4 py-2">VAT ({detailsCheckout.vatPercent || 0}%)</td>
+                          <td className="px-4 py-2 text-right">{detailsCheckout.vatAmount?.toLocaleString()}</td>
+                        </tr>
+                      )}
+                      <tr className="font-bold">
+                        <td className="px-4 py-2">Total Before Advance</td>
+                        <td className="px-4 py-2 text-right">
+                          {detailsCheckout?.totalBeforeAdvance?.toLocaleString()}
+                        </td>
+                      </tr>
+                      {detailsCheckout?.advancePaid > 0 && (
+                        <tr className="text-green-700">
+                          <td className="px-4 py-2">Advance Paid</td>
+                          <td className="px-4 py-2 text-right">-{detailsCheckout.advancePaid?.toLocaleString()}</td>
+                        </tr>
+                      )}
+                      <tr className="font-extrabold text-lg bg-gray-200">
+                        <td className="px-4 py-2">Grand Total</td>
+                        <td className="px-4 py-2 text-right">₹{detailsCheckout?.totalBill?.toLocaleString()}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
 
-              {/* Billing Summary */}
-              <div className="bill-section">
-                <h3 className="font-semibold text-lg">Bill Summary</h3>
-                <table className="bill-table w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="px-4 py-2 text-left">Description</th>
-                      <th className="px-4 py-2 text-right">Amount (रु)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="px-4 py-2">Room Charges ({calculateDaysOfStay(detailsCheckout.checkInDate, detailsCheckout.checkOutDate)} nights)</td>
-                      <td className="px-4 py-2 text-right">{calculateRoomCharges(detailsCheckout)?.toLocaleString()}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2">Food & Beverage Orders</td>
-                      <td className="px-4 py-2 text-right">{detailsCheckout.totalOrderCharge?.toLocaleString()}</td>
-                    </tr>
-                    <tr>
-                      <td className="px-4 py-2">Other Charges</td>
-                      <td className="px-4 py-2 text-right">{detailsCheckout.totalExtraCharge?.toLocaleString()}</td>
-                    </tr>
-                    {detailsCheckout.roomDiscount > 0 && (
-                      <tr>
-                        <td className="px-4 py-2 text-red-600">Room Discount</td>
-                        <td className="px-4 py-2 text-right text-red-600">({detailsCheckout.roomDiscount?.toLocaleString()})</td>
-                      </tr>
-                    )}
-                    {detailsCheckout.vatAmount > 0 && (
-                      <tr>
-                        <td className="px-4 py-2">VAT ({detailsCheckout.vatPercent || 0}%)</td>
-                        <td className="px-4 py-2 text-right">{detailsCheckout.vatAmount?.toLocaleString()}</td>
-                      </tr>
-                    )}
-                    <tr className="font-bold">
-                      <td className="px-4 py-2">Subtotal</td>
-                      <td className="px-4 py-2 text-right">
-                        {(calculateRoomCharges(detailsCheckout) + detailsCheckout.totalOrderCharge + detailsCheckout.totalExtraCharge - (detailsCheckout.roomDiscount || 0)).toLocaleString()}
-                      </td>
-                    </tr>
-                    {detailsCheckout.advancePaid > 0 && (
-                      <tr className="text-green-700">
-                        <td className="px-4 py-2">Advance Paid</td>
-                        <td className="px-4 py-2 text-right">({detailsCheckout.advancePaid?.toLocaleString()})</td>
-                      </tr>
-                    )}
-                    <tr className="font-extrabold text-lg bg-gray-200">
-                      <td className="px-4 py-2">Grand Total</td>
-                      <td className="px-4 py-2 text-right">₹{detailsCheckout.totalBill?.toLocaleString()}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                {/* Footer */}
+                <div className="bill-footer">
+                  <p>Thank you for staying with us!</p>
+                  <p>For any queries, please contact hotel management</p>
+                </div>
               </div>
-
-              {/* Footer */}
-              <div className="bill-footer">
-                <p>Thank you for staying with us!</p>
-                <p>For any queries, please contact hotel management</p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
