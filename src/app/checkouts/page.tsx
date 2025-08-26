@@ -1,6 +1,6 @@
 "use client";
 
-import { getCheckouts, getCheckoutById } from "@/lib/api"; 
+import { getCheckouts, getCheckoutById } from "@/lib/api";
 import { updateCheckoutPayment, updateCheckout } from "@/lib/checkoutApi";
 import { useEffect, useState, useCallback } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -33,11 +33,11 @@ export default function CheckoutsPage() {
   });
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 500);
-  const [pagination, setPagination] = useState({ 
-    page: 1, 
-    limit: 10, 
-    totalPages: 1, 
-    totalCount: 0 
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+    totalCount: 0
   });
   const [showEdit, setShowEdit] = useState(false);
   const [editCheckout, setEditCheckout] = useState<any>(null);
@@ -46,10 +46,15 @@ export default function CheckoutsPage() {
   const [editStatus, setEditStatus] = useState<string>("");
   const [showDetails, setShowDetails] = useState(false);
   const [detailsCheckout, setDetailsCheckout] = useState<any>(null);
-  const [detailsLoading, setDetailsLoading] = useState(false); // Added loading state for details
+  const [detailsLoading, setDetailsLoading] = useState(false);
+
+  // States for VAT editing
+  const [showVatEdit, setShowVatEdit] = useState(false);
+  const [vatEditLoading, setVatEditLoading] = useState(false);
+  const [vatEditError, setVatEditError] = useState("");
   const [editVatPercent, setEditVatPercent] = useState<string>("");
   const [editVatAmount, setEditVatAmount] = useState<string>("");
-  
+
   // New states for enhanced edit modal
   const [clientVatNumber, setClientVatNumber] = useState<string>("");
   const [clientVatCompany, setClientVatCompany] = useState<string>("");
@@ -77,23 +82,23 @@ export default function CheckoutsPage() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const params: any = { 
-        page, 
+      const params: any = {
+        page,
         limit,
         sortBy: 'updatedAt',
         sortOrder: 'desc'
       };
-      
+
       if (filters.status) params.status = filters.status;
       if (debouncedSearch) params.search = debouncedSearch;
-      
+
       const res = await getCheckouts(params);
       setCheckouts(res?.data || []);
-      setPagination(res?.pagination || { 
-        page: 1, 
-        limit: 10, 
-        totalPages: 1, 
-        totalCount: 0 
+      setPagination(res?.pagination || {
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+        totalCount: 0
       });
     } catch (e: any) {
       setError(e.message);
@@ -115,9 +120,11 @@ export default function CheckoutsPage() {
     }
   };
 
+
+
   // Reset page to 1 on filter change
-  useEffect(() => { 
-    setPage(1); 
+  useEffect(() => {
+    setPage(1);
   }, [filters.status, debouncedSearch]);
 
   const handleSearchInputChange = (value: string) => {
@@ -126,7 +133,6 @@ export default function CheckoutsPage() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // This will trigger the debounced search to update immediately
     setFilters(prev => ({ ...prev, search: searchInput }));
   };
 
@@ -227,6 +233,12 @@ export default function CheckoutsPage() {
                   background-color: #f9f9f9;
                   font-weight: bold;
                 }
+                .vat-info {
+                  margin-top: 10px;
+                  padding: 8px;
+                  border: 1px solid #ddd;
+                  background-color: #f9f9f9;
+                }
                 @media print {
                   body { 
                     margin: 10mm; 
@@ -249,6 +261,9 @@ export default function CheckoutsPage() {
                   .order-table {
                     font-size: 9px;
                   }
+                  .vat-info {
+                    border: 1px solid #999;
+                  }
                 }
               </style>
             </head>
@@ -264,6 +279,8 @@ export default function CheckoutsPage() {
     }
   };
 
+
+
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editCheckout) return;
@@ -272,7 +289,7 @@ export default function CheckoutsPage() {
     setEditError("");
 
     try {
-      // 1. Prepare the payload for the main checkout update
+      // Prepare the payload for the main checkout update including VAT
       const payload: any = {
         status: editStatus,
         advancePaid: parseFloat(advanceAmount) || 0,
@@ -280,36 +297,35 @@ export default function CheckoutsPage() {
         checkOutDate,
       };
 
+      // Add VAT information if provided
+      if (editVatPercent !== "") {
+        payload.vatPercent = parseFloat(editVatPercent);
+      } else if (editVatPercent === "") {
+        // Clear VAT percent if field is empty
+        payload.vatPercent = null;
+      }
+
+      if (editVatAmount !== "") {
+        payload.vatAmount = parseFloat(editVatAmount);
+      } else if (editVatAmount === "") {
+        // Clear VAT amount if field is empty
+        payload.vatAmount = null;
+      }
+
+      // Add client VAT info if provided
       if (clientVatNumber || clientVatCompany || clientVatAddress) {
         payload.clientVatInfo = {
           vatNumber: clientVatNumber,
           companyName: clientVatCompany,
           address: clientVatAddress,
         };
+      } else {
+        // Clear client VAT info if all fields are empty
+        payload.clientVatInfo = null;
       }
 
-      // 2. Prepare the payload for the separate payment update (VAT)
-      const vatUpdatePayload: any = {};
-      
-      // Check if editVatPercent is a valid number before adding it to the payload
-      if (editVatPercent !== "") {
-        vatUpdatePayload.vatPercent = parseFloat(editVatPercent);
-      } else {
-        // If the user clears the field, we should send null to clear it on the server
-        vatUpdatePayload.vatPercent = null;
-      }
-      
-      // Check if editVatAmount is a valid number before adding it to the payload
-      if (editVatAmount !== "") {
-        vatUpdatePayload.vatAmount = parseFloat(editVatAmount);
-      } else {
-        // Send null to clear the value on the server
-        vatUpdatePayload.vatAmount = null;
-      }
-
-      // 3. Execute both API calls
+      // Execute API call using the main PUT endpoint
       await updateCheckout(editCheckout._id, payload);
-      //await updateCheckoutPayment(editCheckout._id, vatUpdatePayload);
 
       // Reload data and close modal
       loadData();
@@ -319,6 +335,57 @@ export default function CheckoutsPage() {
       setEditError(e.message || "Failed to update checkout.");
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleVatEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editCheckout) return;
+
+    setVatEditLoading(true);
+    setVatEditError("");
+
+    try {
+      // Prepare the payload for VAT update according to the endpoint
+      const vatUpdatePayload: any = {};
+
+      // Check if editVatPercent is a valid number before adding it to the payload
+      if (editVatPercent !== "") {
+        vatUpdatePayload.vatPercent = parseFloat(editVatPercent);
+      } else {
+        // If the user clears the field, we should send null to clear it on the server
+        vatUpdatePayload.vatPercent = null;
+      }
+
+      // Check if editVatAmount is a valid number before adding it to the payload
+      if (editVatAmount !== "") {
+        vatUpdatePayload.vatAmount = parseFloat(editVatAmount);
+      } else {
+        // Send null to clear the value on the server
+        vatUpdatePayload.vatAmount = null;
+      }
+
+      // Include client VAT info if available
+      if (clientVatNumber || clientVatCompany || clientVatAddress) {
+        vatUpdatePayload.clientVatInfo = {
+          vatNumber: clientVatNumber,
+          companyName: clientVatCompany,
+          address: clientVatAddress,
+        };
+      }
+
+      // Execute API call for VAT update using the correct endpoint
+      // This should call the PATCH /api/checkouts/:id/vat endpoint
+      await updateCheckoutPayment(editCheckout._id, vatUpdatePayload);
+
+      // Reload data and close modal
+      loadData();
+      setShowVatEdit(false);
+      setEditCheckout(null);
+    } catch (e: any) {
+      setVatEditError(e.message || "Failed to update VAT information.");
+    } finally {
+      setVatEditLoading(false);
     }
   };
 
@@ -337,7 +404,7 @@ export default function CheckoutsPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Checkouts Management</h1>
         </div>
-        
+
         {/* Search and Filter Section */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -367,7 +434,7 @@ export default function CheckoutsPage() {
               </div>
               <p className="text-xs text-gray-500 mt-1">Press Enter or wait to search</p>
             </div>
-            
+
             {/* Status Filter */}
             <div>
               <label className="block text-sm font-medium mb-2">Status</label>
@@ -381,7 +448,7 @@ export default function CheckoutsPage() {
                 <option value="completed">Completed</option>
               </select>
             </div>
-            
+
             {/* Clear Filters Button */}
             <div className="flex items-end space-x-2">
               <button
@@ -399,10 +466,10 @@ export default function CheckoutsPage() {
               </button>
             </div>
           </form>
-          
+
           {/* Results Count */}
           <div className="text-sm text-gray-600">
-            {pagination.totalCount === 0 ? 'No results' : 
+            {pagination.totalCount === 0 ? 'No results' :
               `Showing ${((pagination.page - 1) * pagination.limit) + 1}-${Math.min(pagination.page * pagination.limit, pagination.totalCount)} of ${pagination.totalCount} checkouts`}
           </div>
         </div>
@@ -410,7 +477,7 @@ export default function CheckoutsPage() {
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
             {error}
-            <button 
+            <button
               onClick={() => setError("")}
               className="float-right text-red-700 hover:text-red-900"
             >
@@ -418,7 +485,7 @@ export default function CheckoutsPage() {
             </button>
           </div>
         )}
-        
+
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             {checkouts.length > 0 ? (
@@ -437,8 +504,8 @@ export default function CheckoutsPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {checkouts.map((checkout: any) => (
                       <tr key={checkout._id} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { 
-                          setDetailsCheckout(checkout); 
+                        <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => {
+                          setDetailsCheckout(checkout);
                           setShowDetails(true);
                           loadCheckoutDetails(checkout._id);
                         }}>
@@ -448,43 +515,42 @@ export default function CheckoutsPage() {
                             <div className="text-xs text-gray-500">{checkout.guest.phone}</div>
                           )}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => { 
-                          setDetailsCheckout(checkout); 
+                        <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => {
+                          setDetailsCheckout(checkout);
                           setShowDetails(true);
                           loadCheckoutDetails(checkout._id);
                         }}>
-                          {checkout.rooms && checkout.rooms.length > 0 
+                          {checkout.rooms && checkout.rooms.length > 0
                             ? checkout.rooms.map((r: any) => `#${r.roomNumber}`).join(', ')
                             : "-"}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap capitalize cursor-pointer" onClick={() => { 
-                          setDetailsCheckout(checkout); 
+                        <td className="px-4 py-4 whitespace-nowrap capitalize cursor-pointer" onClick={() => {
+                          setDetailsCheckout(checkout);
                           setShowDetails(true);
                           loadCheckoutDetails(checkout._id);
                         }}>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            checkout.status === 'completed' 
-                              ? 'bg-green-100 text-green-800' 
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${checkout.status === 'completed'
+                              ? 'bg-green-100 text-green-800'
                               : 'bg-yellow-100 text-yellow-800'
-                          }`}>
+                            }`}>
                             {checkout.status}
                           </span>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap font-semibold cursor-pointer" onClick={() => { 
-                          setDetailsCheckout(checkout); 
+                        <td className="px-4 py-4 whitespace-nowrap font-semibold cursor-pointer" onClick={() => {
+                          setDetailsCheckout(checkout);
                           setShowDetails(true);
                           loadCheckoutDetails(checkout._id);
                         }}>₹{checkout.totalBill?.toLocaleString()}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-xs cursor-pointer" onClick={() => { 
-                          setDetailsCheckout(checkout); 
+                        <td className="px-4 py-4 whitespace-nowrap text-xs cursor-pointer" onClick={() => {
+                          setDetailsCheckout(checkout);
                           setShowDetails(true);
                           loadCheckoutDetails(checkout._id);
                         }}>{checkout.createdAt ? new Date(checkout.createdAt).toLocaleString() : ""}</td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <button
                             className="text-blue-600 hover:underline text-sm mr-3"
-                            onClick={() => { 
-                              setDetailsCheckout(checkout); 
+                            onClick={() => {
+                              setDetailsCheckout(checkout);
                               setShowDetails(true);
                               loadCheckoutDetails(checkout._id);
                             }}
@@ -492,7 +558,7 @@ export default function CheckoutsPage() {
                             View
                           </button>
                           <button
-                            className="text-green-600 hover:underline text-sm"
+                            className="text-green-600 hover:underline text-sm mr-3"
                             onClick={() => {
                               setEditCheckout(checkout);
                               setEditStatus(checkout.status);
@@ -530,7 +596,7 @@ export default function CheckoutsPage() {
               </div>
             )}
           </div>
-          
+
           {/* Pagination Controls */}
           <div className="flex justify-between items-center p-4 bg-white border-t border-gray-200">
             <button
@@ -554,6 +620,7 @@ export default function CheckoutsPage() {
         </div>
       </div>
 
+      {/* Edit Modal */}
       {/* Edit Modal */}
       {showEdit && editCheckout && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
@@ -594,30 +661,6 @@ export default function CheckoutsPage() {
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-                {/* VAT Percent */}
-                <div>
-                  <label htmlFor="editVatPercent" className="block text-sm font-medium text-gray-700">VAT Percent (%)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    id="editVatPercent"
-                    value={editVatPercent}
-                    onChange={(e) => setEditVatPercent(e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                {/* VAT Amount */}
-                <div>
-                  <label htmlFor="editVatAmount" className="block text-sm font-medium text-gray-700">VAT Amount (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    id="editVatAmount"
-                    value={editVatAmount}
-                    onChange={(e) => setEditVatAmount(e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
                 {/* Check-in Date */}
                 <div>
                   <label htmlFor="checkInDate" className="block text-sm font-medium text-gray-700">Check-in Date</label>
@@ -642,7 +685,40 @@ export default function CheckoutsPage() {
                 </div>
               </div>
 
-              <h4 className="text-lg font-semibold mt-4 mb-2">Client VAT Information</h4>
+              {/* VAT Information Section */}
+              <h4 className="text-lg font-semibold mt-6 mb-2">VAT Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* VAT Percent */}
+                <div>
+                  <label htmlFor="editVatPercent" className="block text-sm font-medium text-gray-700">VAT Percent (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="editVatPercent"
+                    value={editVatPercent}
+                    onChange={(e) => setEditVatPercent(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter VAT percentage"
+                  />
+                </div>
+                {/* VAT Amount */}
+                <div>
+                  <label htmlFor="editVatAmount" className="block text-sm font-medium text-gray-700">VAT Amount (₹)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="editVatAmount"
+                    value={editVatAmount}
+                    onChange={(e) => setEditVatAmount(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter VAT amount"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Note: Enter either percentage or amount, not both</p>
+                </div>
+              </div>
+
+              {/* Client VAT Information Section */}
+              <h4 className="text-lg font-semibold mt-6 mb-2">Client VAT Information</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 {/* Client VAT Number */}
                 <div>
@@ -701,6 +777,75 @@ export default function CheckoutsPage() {
         </div>
       )}
 
+      {/* VAT Edit Modal */}
+      {showVatEdit && editCheckout && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
+            <div className="flex justify-between items-center border-b pb-3 mb-4">
+              <h3 className="text-xl font-semibold">Edit VAT Information</h3>
+              <button
+                onClick={() => setShowVatEdit(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                &times;
+              </button>
+            </div>
+            {vatEditError && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{vatEditError}</div>}
+            <form onSubmit={handleVatEditSubmit}>
+              <div className="grid grid-cols-1 gap-4 mb-4">
+                {/* VAT Percent */}
+                <div>
+                  <label htmlFor="editVatPercent" className="block text-sm font-medium text-gray-700">VAT Percent (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="editVatPercent"
+                    value={editVatPercent}
+                    onChange={(e) => setEditVatPercent(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter VAT percentage"
+                  />
+                </div>
+                {/* VAT Amount */}
+                <div>
+                  <label htmlFor="editVatAmount" className="block text-sm font-medium text-gray-700">VAT Amount (₹)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    id="editVatAmount"
+                    value={editVatAmount}
+                    onChange={(e) => setEditVatAmount(e.target.value)}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter VAT amount"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Note: Enter either percentage or amount, not both</p>
+                </div>
+              </div>
+
+
+
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowVatEdit(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+                  disabled={vatEditLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className={`px-4 py-2 rounded-md text-white ${vatEditLoading ? 'bg-purple-400' : 'bg-purple-600 hover:bg-purple-700'}`}
+                  disabled={vatEditLoading}
+                >
+                  {vatEditLoading ? 'Updating...' : 'Update VAT'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* View Details Modal */}
       {showDetails && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
@@ -731,7 +876,7 @@ export default function CheckoutsPage() {
               <div id="bill-content">
                 {/* Bill Header */}
                 <div className="bill-header">
-                  <h1 className="text-xl font-bold">${hotelName.toUpperCase()}</h1>
+                  <h1 className="text-xl font-bold">{hotelName.toUpperCase()}</h1>
                   <h2 className="text-lg">HOTEL BILL</h2>
                   <p>Date: {new Date().toLocaleDateString()}</p>
                   <p>Invoice #: {detailsCheckout?._id?.slice(-8)}</p>
@@ -751,12 +896,14 @@ export default function CheckoutsPage() {
                     <h3 className="font-semibold text-lg">Stay Information</h3>
                     <p><strong>Rooms:</strong> {detailsCheckout?.rooms?.map((r: any) => `#${r.roomNumber}`).join(', ') || 'N/A'}</p>
                     <p><strong>Nights:</strong> {detailsCheckout?.nights || 1}</p>
+                    <p><strong>Check-in:</strong> {detailsCheckout?.checkInDate ? new Date(detailsCheckout.checkInDate).toLocaleDateString() : 'N/A'}</p>
+                    <p><strong>Check-out:</strong> {detailsCheckout?.checkOutDate ? new Date(detailsCheckout.checkOutDate).toLocaleDateString() : 'N/A'}</p>
                   </div>
                 </div>
 
                 {/* Client VAT Info (if available) */}
                 {detailsCheckout?.clientVatInfo?.vatNumber && (
-                  <div className="bill-section text-sm">
+                  <div className="bill-section text-sm vat-info">
                     <h3 className="font-semibold text-lg">Client VAT Information</h3>
                     <p><strong>VAT Number:</strong> {detailsCheckout.clientVatInfo.vatNumber}</p>
                     <p><strong>Company:</strong> {detailsCheckout.clientVatInfo.companyName}</p>
@@ -846,48 +993,57 @@ export default function CheckoutsPage() {
                     <tbody>
                       <tr>
                         <td className="px-4 py-2">Room Charges ({detailsCheckout?.nights || 1} nights)</td>
-                        <td className="px-4 py-2 text-right">{detailsCheckout?.calculatedRoomCharge?.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right">{detailsCheckout?.breakdown?.roomCharges?.toLocaleString()}</td>
                       </tr>
-                      {detailsCheckout?.roomDiscount > 0 && (
+                      {detailsCheckout?.breakdown?.roomDiscount > 0 && (
                         <tr>
                           <td className="px-4 py-2 text-red-600">Room Discount</td>
-                          <td className="px-4 py-2 text-right text-red-600">-{detailsCheckout.roomDiscount?.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-right text-red-600">-{detailsCheckout.breakdown.roomDiscount?.toLocaleString()}</td>
                         </tr>
                       )}
-    
-                      {detailsCheckout?.totalOrderCharge > 0 && (
+                      <tr>
+                        <td className="px-4 py-2">Net Room Charges</td>
+                        <td className="px-4 py-2 text-right">{detailsCheckout?.breakdown?.roomNet?.toLocaleString()}</td>
+                      </tr>
+                      {detailsCheckout?.breakdown?.orderCharges > 0 && (
                         <tr>
                           <td className="px-4 py-2">Food & Beverage Orders</td>
-                          <td className="px-4 py-2 text-right">{detailsCheckout.totalOrderCharge?.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-right">{detailsCheckout.breakdown.orderCharges?.toLocaleString()}</td>
                         </tr>
                       )}
-                      {detailsCheckout?.totalExtraCharge > 0 && (
+                      {detailsCheckout?.breakdown?.extraCharges > 0 && (
                         <tr>
                           <td className="px-4 py-2">Other Charges</td>
-                          <td className="px-4 py-2 text-right">{detailsCheckout.totalExtraCharge?.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-right">{detailsCheckout.breakdown.extraCharges?.toLocaleString()}</td>
                         </tr>
                       )}
-                      {detailsCheckout?.vatAmount > 0 && (
+                      <tr className="font-bold">
+                        <td className="px-4 py-2">Subtotal</td>
+                        <td className="px-4 py-2 text-right">
+                          {detailsCheckout?.breakdown?.subtotal?.toLocaleString()}
+                        </td>
+                      </tr>
+                      {detailsCheckout?.breakdown?.vatAmount > 0 && (
                         <tr>
-                          <td className="px-4 py-2">VAT ({detailsCheckout.vatPercent || 0}%)</td>
-                          <td className="px-4 py-2 text-right">{detailsCheckout.vatAmount?.toLocaleString()}</td>
+                          <td className="px-4 py-2">VAT ({detailsCheckout.breakdown.vatPercent || 0}%)</td>
+                          <td className="px-4 py-2 text-right">{detailsCheckout.breakdown.vatAmount?.toLocaleString()}</td>
                         </tr>
                       )}
                       <tr className="font-bold">
                         <td className="px-4 py-2">Total Before Advance</td>
                         <td className="px-4 py-2 text-right">
-                          {detailsCheckout?.totalBeforeAdvance?.toLocaleString()}
+                          {detailsCheckout?.breakdown?.totalBeforeAdvance?.toLocaleString()}
                         </td>
                       </tr>
-                      {detailsCheckout?.advancePaid > 0 && (
+                      {detailsCheckout?.breakdown?.advancePaid > 0 && (
                         <tr className="text-green-700">
                           <td className="px-4 py-2">Advance Paid</td>
-                          <td className="px-4 py-2 text-right">-{detailsCheckout.advancePaid?.toLocaleString()}</td>
+                          <td className="px-4 py-2 text-right">-{detailsCheckout.breakdown.advancePaid?.toLocaleString()}</td>
                         </tr>
                       )}
                       <tr className="font-extrabold text-lg bg-gray-200">
                         <td className="px-4 py-2">Grand Total</td>
-                        <td className="px-4 py-2 text-right">₹{detailsCheckout?.totalBill?.toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right">₹{detailsCheckout?.breakdown?.finalBill?.toLocaleString()}</td>
                       </tr>
                     </tbody>
                   </table>
