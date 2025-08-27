@@ -1,7 +1,7 @@
 import { Expenditure, ExpenditureFilters } from "@/types/expenditure";
 import { API_URL, getAuthHeaders, mergeHeaders } from "./api";
 
-export const createExpenditure = async (data: Omit<Expenditure, '_id' | 'createdAt' | 'updatedAt' | 'status' | 'approvedBy' | 'approvedAt' | 'createdBy' | 'hotel'> & { createdBy: string }) => {
+export const createExpenditure = async (data: Omit<Expenditure, '_id' | 'createdAt' | 'updatedAt' | 'status' | 'approvedBy' | 'approvedAt' | 'createdBy' | 'hotel'>) => {
   const response = await fetch(`${API_URL}/expenditures`, {
     method: 'POST',
     headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
@@ -10,8 +10,7 @@ export const createExpenditure = async (data: Omit<Expenditure, '_id' | 'created
       description: data.description,
       category: data.category,
       date: data.date,
-      notes: data.notes,
-      createdBy: data.createdBy
+      notes: data.notes
     }),
   });
 

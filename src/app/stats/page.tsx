@@ -29,7 +29,6 @@ const navLinks = [
   { label: "Users", href: "/users" },
 ];
 
-const ITEM_CATEGORIES = ["food", "beverage", "laundry", "spa"];
 const ROOM_TYPES = ["deluxe", "suite", "standard"];
 const EXPENDITURE_CATEGORIES = ["supplies", "maintenance", "utilities", "salaries", "marketing", "other"];
 
@@ -38,7 +37,13 @@ function getToken() {
   return localStorage.getItem("token") || sessionStorage.getItem("token");
 }
 
-type TabType = 'item' | 'room' | 'expenditure' | 'financial' | 'summary';
+type TabType = 'item' | 'room' | 'expenditure' | 'financial' | 'summary' | 'daily';
+
+interface Category {
+  _id: string;
+  name: string;
+  description?: string;
+}
 
 export default function StatsPage() {
   const { user, logout } = useAuth();
@@ -60,6 +65,9 @@ export default function StatsPage() {
   const [expenditureStats, setExpenditureStats] = useState<ExpenditureStats | null>(null);
   const [financialOverview, setFinancialOverview] = useState<FinancialOverview | null>(null);
   const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
+  const [dailySummary, setDailySummary] = useState<any>(null);
+  const [daysFilter, setDaysFilter] = useState(1);
+  const [itemCategories, setItemCategories] = useState<Category[]>([]);
   
   // UI states
   const [loading, setLoading] = useState(false);
@@ -82,6 +90,28 @@ export default function StatsPage() {
   const [selectedExpenditure, setSelectedExpenditure] = useState<Expenditure | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
+  // Fetch item categories
+  const fetchItemCategories = async () => {
+    try {
+      const token = getToken();
+      if (!token) return;
+      
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/categories?type=item&isActive=true`, {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setItemCategories(data.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch item categories:", error);
+    }
+  };
+
   // Hide notification after 3s
   useEffect(() => {
     if (notification) {
@@ -93,6 +123,7 @@ export default function StatsPage() {
   // Fetch initial data
   useEffect(() => {
     fetchAllData();
+    fetchItemCategories();
   }, []);
 
   const fetchAllData = async () => {
@@ -118,7 +149,7 @@ export default function StatsPage() {
         localStorage.setItem("user", JSON.stringify(meData.data || null));
       
       // 2. Fetch all stats data
-      const [itemRes, roomRes, expendituresRes, expenditureStatsRes, financialRes, summaryRes] = await Promise.all([
+      const [itemRes, roomRes, expendituresRes, expenditureStatsRes, financialRes, summaryRes, dailyRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/item-sales`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
@@ -128,26 +159,31 @@ export default function StatsPage() {
         getExpenditures(),
         getExpenditureStats(),
         getFinancialOverview(),
-        getSummaryStats(7)
+        getSummaryStats(7),
+        fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/summary?days=${daysFilter}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
         ]);
 
-        if (itemRes.status === 401 || roomRes.status === 401) {
+        if (itemRes.status === 401 || roomRes.status === 401 || dailyRes.status === 401) {
           localStorage.removeItem("token");
           window.location.href = "/login";
           return;
         }
 
-        if (!itemRes.ok || !roomRes.ok) throw new Error("Failed to fetch stats");
+        if (!itemRes.ok || !roomRes.ok || !dailyRes.ok) throw new Error("Failed to fetch stats");
 
         const itemJson = await itemRes.json();
         const roomJson = await roomRes.json();
+        const dailyJson = await dailyRes.json();
       
         setItemStats(itemJson.data || itemJson);
         setRoomStats(roomJson.data || roomJson);
-       setExpenditures(expendituresRes?.data || []);
-       setExpenditureStats(expendituresRes?.summary || null);
-       setFinancialOverview(financialRes?.data || financialRes);
-       setSummaryStats(summaryRes?.data || summaryRes);
+        setExpenditures(expendituresRes?.data || []);
+        setExpenditureStats(expendituresRes?.summary || null);
+        setFinancialOverview(financialRes?.data || financialRes);
+        setSummaryStats(summaryRes?.data || summaryRes);
+        setDailySummary(dailyJson.data || dailyJson);
       } catch (err: any) {
         setError(err.message || "Error fetching stats");
       } finally {
@@ -162,12 +198,12 @@ export default function StatsPage() {
     const token = getToken();
     
     try {
-      const itemUrl = new URL("${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/item-sales");
+      const itemUrl = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/item-sales`);
       if (itemCategory) itemUrl.searchParams.append("category", itemCategory);
       if (startDate) itemUrl.searchParams.append("startDate", startDate);
       if (endDate) itemUrl.searchParams.append("endDate", endDate);
 
-      const roomUrl = new URL("${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/room-sales");
+      const roomUrl = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/room-sales`);
       if (roomType) roomUrl.searchParams.append("type", roomType);
       if (startDate) roomUrl.searchParams.append("startDate", startDate);
       if (endDate) roomUrl.searchParams.append("endDate", endDate);
@@ -202,9 +238,9 @@ export default function StatsPage() {
       
       setItemStats(itemJson.data || itemJson);
       setRoomStats(roomJson.data || roomJson);
-       setExpenditures(expendituresRes?.data || []);
-       setExpenditureStats(expendituresRes?.summary || null);
-       setFinancialOverview(financialRes?.data || financialRes);
+      setExpenditures(expendituresRes?.data || []);
+      setExpenditureStats(expendituresRes?.summary || null);
+      setFinancialOverview(financialRes?.data || financialRes);
     } catch (err: any) {
       setError(err.message || "Error fetching filtered stats");
     } finally {
@@ -223,8 +259,8 @@ export default function StatsPage() {
         description: expenditureForm.description,
         category: expenditureForm.category,
         date: expenditureForm.date,
-        notes: expenditureForm.notes,
-        createdBy: user?._id || "",
+        notes: expenditureForm.notes
+       
       });
       
       setNotification({ type: 'success', message: 'Expenditure created successfully' });
@@ -276,9 +312,9 @@ export default function StatsPage() {
   };
 
   // Calculate totals
-  const totalItemSales = itemStats?.totalSales ?? 0;
-  const totalRoomEarnings = roomStats?.totalEarnings ?? 0;
-  const totalCombined = totalItemSales + totalRoomEarnings;
+  const totalItemSales = itemStats?.totalItemSales ?? 0;
+  const totalRoomRevenue = roomStats?.totalRoomRevenue ?? 0;
+  const totalCombined = totalItemSales + totalRoomRevenue;
   const totalRoomCount = roomStats?.totalCount ?? 0;
   
   const itemBreakdown = itemStats?.breakdown || [];
@@ -288,15 +324,8 @@ export default function StatsPage() {
 
    // Helper function to get category name from ID
    const getCategoryName = (categoryId: string) => {
-     // This is a simple mapping - in a real app, you'd fetch categories from API
-     const categoryMap: { [key: string]: string } = {
-       '68a3686d27e63dc402df776c': 'Food',
-       '68a3686d27e63dc402df7771': 'Beverage',
-       '68a3686d27e63dc402df7767': 'Main Course',
-       '68a3686d27e63dc402df776a': 'Sandwiches',
-       // Add more mappings as needed
-     };
-     return categoryMap[categoryId] || categoryId;
+     const category = itemCategories.find(cat => cat._id === categoryId);
+     return category ? category.name : categoryId;
    };
 
   return (
@@ -333,8 +362,8 @@ export default function StatsPage() {
                   onChange={e => setItemCategory(e.target.value)}
                 >
                   <option value="">All</option>
-                  {ITEM_CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                  {itemCategories.map(cat => (
+                    <option key={cat._id} value={cat._id}>{cat.name}</option>
                   ))}
                 </select>
               </div>
@@ -423,7 +452,7 @@ export default function StatsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-blue-600">₹{totalItemSales.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">Total Items Sold: {itemStats?.totalCount ?? 0}</div>
+                  <div className="text-sm text-gray-600">Total Items Sold: {itemStats?.totalQuantity ?? 0}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -431,8 +460,8 @@ export default function StatsPage() {
                   <CardTitle className="text-sm">Room Sales</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">₹{totalRoomEarnings.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">Total Rooms Sold: {totalRoomCount}</div>
+                  <div className="text-2xl font-bold text-green-600">₹{totalRoomRevenue.toLocaleString()}</div>
+                  <div className="text-sm text-gray-600">Total Checkouts: {roomStats?.totalCount ?? 0}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -440,8 +469,8 @@ export default function StatsPage() {
                    <CardTitle className="text-sm">Total Expenditures</CardTitle>
                 </CardHeader>
                 <CardContent>
-                   <div className="text-2xl font-bold text-red-600">₹{financialOverview?.expenditures?.approved?.total?.toLocaleString() ?? 0}</div>
-                   <div className="text-sm text-gray-600">Pending: ₹{financialOverview?.expenditures?.pending?.total?.toLocaleString() ?? 0}</div>
+                   <div className="text-2xl font-bold text-red-600">₹{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</div>
+                   <div className="text-sm text-gray-600">Pending: ₹{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -449,13 +478,13 @@ export default function StatsPage() {
                   <CardTitle className="text-sm">Net Profit/Loss</CardTitle>
                 </CardHeader>
                 <CardContent>
-                                     <div className={`text-2xl font-bold ${financialOverview?.financial?.netProfit && financialOverview.financial.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                     ₹{financialOverview?.financial?.netProfit?.toLocaleString() ?? 0}
+                                     <div className={`text-2xl font-bold ${financialOverview?.summary?.netProfit && financialOverview.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                     ₹{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
                    </div>
                    <div className="text-sm text-gray-600">
-                     Margin: {typeof financialOverview?.financial?.profitMargin === 'string' 
-                       ? financialOverview.financial.profitMargin 
-                       : (financialOverview?.financial?.profitMargin?.toFixed(1) ?? 0) + '%'}
+                     Margin: {typeof financialOverview?.summary?.profitMargin === 'string' 
+                       ? financialOverview.summary.profitMargin 
+                       : (financialOverview?.summary?.profitMargin?.toFixed(1) ?? 0) + '%'}
                    </div>
                 </CardContent>
               </Card>
@@ -515,6 +544,16 @@ export default function StatsPage() {
                   >
                     Financial Overview
                   </button>
+                  <button
+                    className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
+                      activeTab === 'daily' 
+                        ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                    onClick={() => setActiveTab('daily')}
+                  >
+                    Daily Summary
+                  </button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -530,11 +569,11 @@ export default function StatsPage() {
                           <div className="space-y-2">
                                                          <div className="flex justify-between">
                                <span>Total Sales:</span>
-                               <span className="font-semibold">₹{financialOverview?.sales?.totalSales?.toLocaleString() ?? 0}</span>
+                               <span className="font-semibold">₹{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
                              </div>
                              <div className="flex justify-between">
                                <span>Total Expenditures:</span>
-                               <span className="font-semibold">₹{financialOverview?.expenditures?.totalExpenditures?.toLocaleString() ?? 0}</span>
+                               <span className="font-semibold">₹{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
                              </div>
                           </div>
                         </CardContent>
@@ -547,11 +586,11 @@ export default function StatsPage() {
                           <div className="space-y-2">
                                                          <div className="flex justify-between">
                                <span>Room Sales:</span>
-                               <span className="font-semibold text-green-600">₹{financialOverview?.sales?.roomSales?.total?.toLocaleString() ?? 0}</span>
+                               <span className="font-semibold text-green-600">₹{financialOverview?.summary?.totalRoomRevenue?.toLocaleString() ?? 0}</span>
                              </div>
                              <div className="flex justify-between">
                                <span>Item Sales:</span>
-                               <span className="font-semibold text-blue-600">₹{financialOverview?.sales?.itemSales?.total?.toLocaleString() ?? 0}</span>
+                               <span className="font-semibold text-blue-600">₹{financialOverview?.summary?.totalItemSales.toLocaleString() ?? 0}</span>
                              </div>
                             <div className="flex justify-between border-t pt-2">
                               <span>Total Sales:</span>
@@ -568,15 +607,15 @@ export default function StatsPage() {
                           <div className="space-y-2">
                                                          <div className="flex justify-between">
                                <span>Net Profit/Loss:</span>
-                               <span className={`font-semibold ${financialOverview?.financial?.netProfit && financialOverview.financial.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                 ₹{financialOverview?.financial?.netProfit?.toLocaleString() ?? 0}
+                               <span className={`font-semibold ${financialOverview?.summary?.netProfit && financialOverview.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                 ₹{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
                                </span>
                              </div>
                              <div className="flex justify-between">
                                <span>Profit Margin:</span>
-                               <span className="font-semibold">{typeof financialOverview?.financial?.profitMargin === 'string' 
-                                 ? financialOverview.financial.profitMargin 
-                                 : (financialOverview?.financial?.profitMargin?.toFixed(1) ?? 0) + '%'}</span>
+                               <span className="font-semibold">{typeof financialOverview?.summary?.profitMargin === 'string' 
+                                 ? financialOverview.summary.profitMargin 
+                                 : (financialOverview?.summary?.profitMargin?.toFixed(1) ?? 0) + '%'}</span>
                              </div>
                           </div>
                         </CardContent>
@@ -610,6 +649,11 @@ export default function StatsPage() {
                                 <td className="px-3 py-2 border text-right">₹{row.sales?.toFixed(2)}</td>
                             </tr>
                           ))}
+                          <tr className="bg-gray-50 font-bold">
+                            <td colSpan={2} className="px-3 py-2 border text-right">Total Item Sales:</td>
+                            <td className="px-3 py-2 border text-center">{itemStats?.totalQuantity || 0}</td>
+                            <td className="px-3 py-2 border text-right">₹{totalItemSales.toFixed(2)}</td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
@@ -630,20 +674,26 @@ export default function StatsPage() {
                               <th className="px-3 py-2 border text-left">Room Number</th>
                               <th className="px-3 py-2 border text-left">Type</th>
                               <th className="px-3 py-2 border text-center">Nights Sold</th>
-                              <th className="px-3 py-2 border text-right">Earnings</th>
+                              <th className="px-3 py-2 border text-center">Checkouts</th>
+                              <th className="px-3 py-2 border text-right">Revenue</th>
                           </tr>
                         </thead>
                         <tbody>
                           {roomBreakdown.map((row: any, idx: number) => (
-                              <tr key={row.roomId || idx} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 border">{row.roomNumber || row.name || '-'}</td>
+                              <tr key={row.roomNumber || idx} className="hover:bg-gray-50">
+                              <td className="px-3 py-2 border">{row.roomNumber || '-'}</td>
                               <td className="px-3 py-2 border">{row.type || '-'}</td>
-                              <td className="px-3 py-2 border text-center">{row.nights || row.quantity || '-'}</td>
-                              <td className="px-3 py-2 border text-right">
-                                  ₹{(row.roomEarnings ?? row.earnings ?? row.sales ?? 0).toFixed(2)}
-                              </td>
+                              <td className="px-3 py-2 border text-center">{row.totalNights || '-'}</td>
+                              <td className="px-3 py-2 border text-center">{row.checkoutCount || '-'}</td>
+                              <td className="px-3 py-2 border text-right">₹{row.actualRoomRevenue?.toFixed(2) || 0}</td>
                             </tr>
                           ))}
+                          <tr className="bg-gray-50 font-bold">
+                            <td colSpan={2} className="px-3 py-2 border text-right">Total Room Revenue:</td>
+                            <td className="px-3 py-2 border text-center">{roomStats?.totalNights || 0}</td>
+                            <td className="px-3 py-2 border text-center">{roomStats?.totalCount || 0}</td>
+                            <td className="px-3 py-2 border text-right">₹{totalRoomRevenue.toFixed(2)}</td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
@@ -665,11 +715,11 @@ export default function StatsPage() {
                     </div>
 
                                          {/* Expenditure Stats Cards */}
-                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                     {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                        <Card>
                          <CardContent className="p-4">
                            <div className="text-sm text-gray-600">Total Expenditures</div>
-                           <div className="text-2xl font-bold text-red-600">₹{financialOverview?.financial?.totalExpenditures?.toLocaleString() ?? 0}</div>
+                           <div className="text-2xl font-bold text-red-600">₹{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</div>
                          </CardContent>
                        </Card>
                        <Card>
@@ -690,7 +740,7 @@ export default function StatsPage() {
                            <div className="text-2xl font-bold text-red-600">₹{(financialOverview?.financial?.totalExpenditures ?? 0) - (financialOverview?.expenditures?.approved?.total ?? 0) - (financialOverview?.financial?.pendingExpenditures ?? 0)}</div>
                          </CardContent>
                        </Card>
-                     </div>
+                     </div> */}
 
                     {/* Expenditures Table */}
                     <div className="overflow-x-auto">
@@ -780,22 +830,36 @@ export default function StatsPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-4">
-                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                              <span className="font-medium">Initial Amount</span>
-                              <span className="text-lg font-bold">₹{financialOverview?.hotelBalance?.initialAmount?.toLocaleString() ?? 0}</span>
-                            </div>
+                          
                             <div className="flex justify-between items-center p-3 bg-green-50 rounded">
-                              <span className="font-medium">Total Sales</span>
-                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.sales?.totalSales?.toLocaleString() ?? 0}</span>
+                              <span className="font-medium">Total Sales without Vat</span>
+                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
+                            </div>
+                              <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                              <span className="font-medium">Total Vat Amount</span>
+                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalVatAmount?.toLocaleString() ?? 0}</span>
+                            </div>
+                              <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                              <span className="font-medium">Total Advance Paid </span>
+                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalAdvancePaid?.toLocaleString() ?? 0}</span>
+                            </div>
+                             <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                              <span className="font-medium">Total Bill Without Advance</span>
+                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalBilledAmountWithoutAdvance?.toLocaleString() ?? 0}</span>
+                            </div>
+                             <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                              <span className="font-medium">Total Room Discounts </span>
+                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalRoomDiscount?.toLocaleString() ?? 0}</span>
+                            </div>
+                             <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                              <span className="font-medium">Total Money Collected </span>
+                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
                             </div>
                             <div className="flex justify-between items-center p-3 bg-red-50 rounded">
                               <span className="font-medium">Total Expenditures</span>
-                              <span className="text-lg font-bold text-red-600">₹{financialOverview?.expenditures?.totalExpenditures?.toLocaleString() ?? 0}</span>
+                              <span className="text-lg font-bold text-red-600">₹{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
                             </div>
-                                                         <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
-                               <span className="font-medium">Current Balance</span>
-                               <span className="text-lg font-bold text-blue-600">₹{(financialOverview?.sales?.totalSales ?? 0) - (financialOverview?.expenditures?.totalExpenditures ?? 0)}</span>
-                             </div>
+                                                         
                           </div>
                         </CardContent>
                       </Card>
@@ -805,26 +869,123 @@ export default function StatsPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-4">
+                              <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                              <span className="font-medium">Initial Amount</span>
+                              <span className="text-lg font-bold">₹{financialOverview?.hotel?.initialAmount?.toLocaleString() ?? 0}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
+                               <span className="font-medium">Current Balance</span>
+                               <span className="text-lg font-bold text-blue-600">₹{financialOverview?.hotel?.currentBalance?.toLocaleString() ?? 0}</span>
+                             </div>
                             <div className="flex justify-between items-center p-3 bg-green-50 rounded">
-                              <span className="font-medium">Gross Profit</span>
-                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.profitLoss?.grossProfit?.toLocaleString() ?? 0}</span>
+                              <span className="font-medium">Actual Company Profit(withoutVat)</span>
+                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
                             </div>
                             <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
                               <span className="font-medium">Net Profit/Loss</span>
-                              <span className={`text-lg font-bold ${financialOverview?.profitLoss?.netProfit && financialOverview.profitLoss.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                ₹{financialOverview?.profitLoss?.netProfit?.toLocaleString() ?? 0}
+                              <span className={`text-lg font-bold ${financialOverview?.summary?.netProfit && financialOverview.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                ₹{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
                               </span>
                             </div>
                             <div className="flex justify-between items-center p-3 bg-purple-50 rounded">
                               <span className="font-medium">Profit Margin</span>
-                                                             <span className="text-lg font-bold text-purple-600">{typeof financialOverview?.financial?.profitMargin === 'string' 
-                                 ? financialOverview.financial.profitMargin 
-                                 : (financialOverview?.financial?.profitMargin?.toFixed(1) ?? 0) + '%'}</span>
+                                                             <span className="text-lg font-bold text-purple-600">{financialOverview?.summary?.profitMargin ?? '0%'}</span>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
                     </div>
+                  </div>
+                )}
+
+                {/* Daily Summary Tab */}
+                {activeTab === 'daily' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <h3 className="text-lg font-semibold">Daily Summary</h3>
+                      <select
+                        className="border rounded px-3 py-2"
+                        value={daysFilter}
+                        onChange={e => setDaysFilter(Number(e.target.value))}
+                      >
+                        <option value={1}>Today</option>
+                        <option value={7}>Last 7 Days</option>
+                        <option value={30}>Last 30 Days</option>
+                      </select>
+                      <Button onClick={() => fetchAllData()}>Refresh</Button>
+                    </div>
+
+                    {dailySummary ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-sm">Total Earnings</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold text-green-600">₹{dailySummary.earnings?.total?.toLocaleString() ?? 0}</div>
+                            <div className="text-sm text-gray-600">Checkouts: {dailySummary.earnings?.checkoutCount ?? 0}</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-sm">Room Revenue</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold text-blue-600">₹{dailySummary.earnings?.roomRevenue?.toLocaleString() ?? 0}</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-sm">Item Sales</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold text-purple-600">₹{dailySummary.earnings?.itemSales?.toLocaleString() ?? 0}</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-sm">Expenditures</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold text-red-600">₹{dailySummary.expenditures?.total?.toLocaleString() ?? 0}</div>
+                            <div className="text-sm text-gray-600">Count: {dailySummary.expenditures?.count ?? 0}</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-sm">Net Profit</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className={`text-2xl font-bold ${dailySummary.financial?.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              ₹{dailySummary.financial?.netProfit?.toLocaleString() ?? 0}
+                            </div>
+                            <div className="text-sm text-gray-600">Margin: {dailySummary.financial?.profitMargin?.toFixed(1) ?? 0}%</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-sm">Business Metrics</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold text-orange-600">{dailySummary.business?.occupiedRooms ?? 0}</div>
+                            <div className="text-sm text-gray-600">Occupied Rooms</div>
+                            <div className="text-2xl font-bold text-indigo-600 mt-2">{dailySummary.business?.totalGuests ?? 0}</div>
+                            <div className="text-sm text-gray-600">Total Guests</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-sm">Hotel Balance</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold text-teal-600">₹{dailySummary.hotel?.currentBalance?.toLocaleString() ?? 0}</div>
+                            <div className="text-sm text-gray-600">Last updated: {dailySummary.hotel?.lastBalanceUpdate ? format(new Date(dailySummary.hotel.lastBalanceUpdate), "MMM dd, yyyy") : 'N/A'}</div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    ) : (
+                      <div className="text-gray-500 text-center py-8">No daily summary data available.</div>
+                    )}
                   </div>
                 )}
               </CardContent>
