@@ -49,7 +49,7 @@ export default function HotelLandingPage() {
 
   return (
    <div className="min-h-screen bg-background">
-      <Navbar />
+      <Navbar hotel={hotel} />
 
       {/* Hero Section */}
       <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
@@ -310,7 +310,7 @@ export default function HotelLandingPage() {
               </div>
               <div className="flex items-center gap-2 text-background/80">
                 <Mail className="w-4 h-4" />
-                <span>info@nepalmountainhotel.com</span>
+                {/* <span>info@nepalmountainhotel.com</span> */}
               </div>
             </div>
 
@@ -362,7 +362,7 @@ export default function HotelLandingPage() {
           </div>
 
           <div className="border-t border-background/20 pt-8 text-center text-background/60">
-            <p>&copy; 2024 Nepal Mountain Hotel. All rights reserved.</p>
+            <p>&copy; 2024 {hotel?.name}. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -5,7 +5,7 @@ import { Menu, X } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation";
 
-export default function Navbar() {
+export default function Navbar({hotel}) {
     const router = useRouter();
     const handleSubmit = async () => {
     
@@ -23,7 +23,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0">
-            <h1 className="text-xl font-bold text-foreground">Nepal Mountain Hotel</h1>
+            <h1 className="text-xl font-bold text-foreground">{hotel.name}</h1>
           </div>
 
           {/* Desktop Navigation */}
