@@ -37,18 +37,18 @@ function getToken() {
   return localStorage.getItem("token") || sessionStorage.getItem("token");
 }
 
-type TabType = 'item' | 'room' | 'expenditure' | 'financial' | 'summary' | 'daily';
+// type TabType = 'item' | 'room' | 'expenditure' | 'financial' | 'summary' | 'daily';
 
-interface Category {
-  _id: string;
-  name: string;
-  description?: string;
-}
+// interface Category {
+//   _id: string;
+//   name: string;
+//   description?: string;
+// }
 
 export default function StatsPage() {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('summary');
+  const [activeTab, setActiveTab] = useState('summary');
   
   // Filters
   const [itemCategory, setItemCategory] = useState("");
@@ -59,27 +59,27 @@ export default function StatsPage() {
   const [expenditureCategory, setExpenditureCategory] = useState("");
   
   // Data states
-  const [itemStats, setItemStats] = useState<any>(null);
-  const [roomStats, setRoomStats] = useState<any>(null);
-  const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
-  const [expenditureStats, setExpenditureStats] = useState<ExpenditureStats | null>(null);
-  const [financialOverview, setFinancialOverview] = useState<FinancialOverview | null>(null);
-  const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
-  const [dailySummary, setDailySummary] = useState<any>(null);
+  const [itemStats, setItemStats] = useState(null);
+  const [roomStats, setRoomStats] = useState(null);
+  const [expenditures, setExpenditures] = useState([]);
+  const [expenditureStats, setExpenditureStats] = useState(null);
+  const [financialOverview, setFinancialOverview] = useState(null);
+  const [summaryStats, setSummaryStats] = useState(null);
+  const [dailySummary, setDailySummary] = useState(null);
   const [daysFilter, setDaysFilter] = useState(1);
-  const [itemCategories, setItemCategories] = useState<Category[]>([]);
+  const [itemCategories, setItemCategories] = useState([]);
   
   // UI states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [notification, setNotification] = useState(null);
   
   // Expenditure form states
   const [showExpenditureForm, setShowExpenditureForm] = useState(false);
   const [expenditureForm, setExpenditureForm] = useState({
     amount: "",
     description: "",
-    category: "supplies" as const,
+    category: "supplies",
     date: new Date().toISOString().split('T')[0],
     notes: ""
   });
@@ -87,7 +87,7 @@ export default function StatsPage() {
   
   // Approval states
   const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [selectedExpenditure, setSelectedExpenditure] = useState<Expenditure | null>(null);
+  const [selectedExpenditure, setSelectedExpenditure] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
   // Fetch item categories
@@ -184,7 +184,7 @@ export default function StatsPage() {
         setFinancialOverview(financialRes?.data || financialRes);
         setSummaryStats(summaryRes?.data || summaryRes);
         setDailySummary(dailyJson.data || dailyJson);
-      } catch (err: any) {
+      } catch (err) {
         setError(err.message || "Error fetching stats");
       } finally {
         setLoading(false);
@@ -241,7 +241,7 @@ export default function StatsPage() {
       setExpenditures(expendituresRes?.data || []);
       setExpenditureStats(expendituresRes?.summary || null);
       setFinancialOverview(financialRes?.data || financialRes);
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message || "Error fetching filtered stats");
     } finally {
       setLoading(false);
@@ -249,7 +249,7 @@ export default function StatsPage() {
   };
 
   // Handle expenditure form submission
-  const handleExpenditureSubmit = async (e: React.FormEvent) => {
+  const handleExpenditureSubmit = async (e) => {
     e.preventDefault();
     setFormLoading(true);
     
@@ -273,7 +273,7 @@ export default function StatsPage() {
         notes: ""
       });
       fetchAllData(); // Refresh data
-    } catch (err: any) {
+    } catch (err) {
       setNotification({ type: 'error', message: err.message || 'Failed to create expenditure' });
     } finally {
       setFormLoading(false);
@@ -290,7 +290,7 @@ export default function StatsPage() {
       setShowApprovalModal(false);
       setSelectedExpenditure(null);
       fetchAllData(); // Refresh data
-    } catch (err: any) {
+    } catch (err) {
       setNotification({ type: 'error', message: err.message || 'Failed to approve expenditure' });
     }
   };
@@ -306,7 +306,7 @@ export default function StatsPage() {
       setSelectedExpenditure(null);
       setRejectionReason("");
       fetchAllData(); // Refresh data
-    } catch (err: any) {
+    } catch (err) {
       setNotification({ type: 'error', message: err.message || 'Failed to reject expenditure' });
     }
   };
@@ -323,7 +323,7 @@ export default function StatsPage() {
      const isManager = user?.role === 'manager' || user?.role === 'super_admin';
 
    // Helper function to get category name from ID
-   const getCategoryName = (categoryId: string) => {
+   const getCategoryName = (categoryId) => {
      const category = itemCategories.find(cat => cat._id === categoryId);
      return category ? category.name : categoryId;
    };
@@ -641,7 +641,7 @@ export default function StatsPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {itemBreakdown.map((row: any) => (
+                          {itemBreakdown.map((row) => (
                               <tr key={row.itemId} className="hover:bg-gray-50">
                               <td className="px-3 py-2 border">{row.name}</td>
                                  <td className="px-3 py-2 border">{getCategoryName(row.category)}</td>
@@ -679,7 +679,7 @@ export default function StatsPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {roomBreakdown.map((row: any, idx: number) => (
+                          {roomBreakdown.map((row, idx) => (
                               <tr key={row.roomNumber || idx} className="hover:bg-gray-50">
                               <td className="px-3 py-2 border">{row.roomNumber || '-'}</td>
                               <td className="px-3 py-2 border">{row.type || '-'}</td>
@@ -1031,7 +1031,7 @@ export default function StatsPage() {
                   <select
                     required
                     value={expenditureForm.category}
-                    onChange={e => setExpenditureForm(prev => ({ ...prev, category: e.target.value as any }))}
+                    onChange={e => setExpenditureForm(prev => ({ ...prev, category: e.target.value}))}
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   >
                     {EXPENDITURE_CATEGORIES.map(cat => (
