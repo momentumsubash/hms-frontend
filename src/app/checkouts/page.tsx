@@ -14,7 +14,7 @@ export default function CheckoutsPage() {
   const { user, loading: userLoading, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const navLinks = [
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Dashboardss", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
     { label: "Guests", href: "/guests" },
     { label: "Hotels", href: "/hotels", superAdminOnly: true },

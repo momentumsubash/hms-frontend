@@ -15,17 +15,7 @@ interface NavBarProps {
   navLinks?: NavLink[];
 }
 
-const defaultNavLinks: NavLink[] = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Checkouts", href: "/checkouts" },
-  { label: "Guests", href: "/guests" },
-  { label: "Hotels", href: "/hotels", superAdminOnly: true },
-  { label: "Items", href: "/items" },
-  { label: "Orders", href: "/orders" },
-  { label: "Rooms", href: "/rooms" },
-  { label: "Stats", href: "/stats" },
-  { label: "Users", href: "/users" },
-];
+
 
 
 import { useEffect, useState } from "react";
@@ -42,11 +32,35 @@ export const NavBar: React.FC<NavBarProps> = ({ user, showUserMenu, setShowUserM
       } catch {}
     }
   }, []);
+type Role = "staff" | "manager" | "super_admin";
 
-  const displayUser = localUser || user;
-  const links = (navLinks || defaultNavLinks).filter(
-    (link) => !link.superAdminOnly || displayUser?.role === "super_admin"
-  );
+interface NavLink {
+  label: string;
+  href: string;
+  roles?: Role[]; // allowed roles
+}
+
+const displayUser = localUser || user;
+
+const defaultNavLinks: NavLink[] = [
+  { label: "Dashboard", href: "/dashboard" }, // open to all
+  { label: "Checkouts", href: "/checkouts" }, // open to all
+  { label: "Guests", href: "/guests" },       // open to all
+  { label: "Hotels", href: "/hotels", roles: ["super_admin","manager"] },
+  { label: "Items", href: "/items" , roles: ["super_admin","manager"]},         // open to all
+  { label: "Orders", href: "/orders" },       // open to all
+  { label: "Rooms", href: "/rooms" , roles: ["super_admin","manager"] },         // open to all
+  { label: "Stats", href: "/stats", roles: ["super_admin","manager"] },
+  { label: "Users", href: "/users", roles: ["manager", "super_admin"] },
+];
+
+// filter by role
+const links = defaultNavLinks.filter(
+  (link) =>
+    !link.roles || link.roles.includes(displayUser?.role as Role)
+);
+
+console.log(links);
   return (
     <nav className="bg-white shadow mb-6">
       <div className="max-w-7xl mx-auto px-4">
