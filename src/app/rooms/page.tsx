@@ -131,9 +131,6 @@ export default function RoomsPage() {
       }
 
       const data = await response.json();
-      
-      console.log('API Response:', data); // Debug log
-      
       // Handle the specific response structure from your API
       let roomsData = [];
       let totalCount = 0;

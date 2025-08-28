@@ -519,14 +519,14 @@ const handleFormSubmit = async (e: React.FormEvent) => {
 };
 const handleEdit = async (guest: Guest) => {
   try {
-    console.log("Editing guest:", guest);
+
     
     setEditingGuest(guest);
     
     // Normalize room IDs for this guest
     const normalizedRooms = normalizeGuestRoomIds(guest);
-    console.log("Normalized rooms:", normalizedRooms);
-    
+
+  
     // Basic guest info
     const formDataUpdate = {
       firstName: guest.firstName || "",

@@ -61,7 +61,6 @@ const links = defaultNavLinks.filter(
     !link.roles || link.roles.includes(displayUser?.role as Role)
 );
 
-console.log(links);
   return (
     <nav className="bg-white shadow mb-6">
       <div className="max-w-7xl mx-auto px-4">

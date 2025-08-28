@@ -560,8 +560,6 @@ export async function addGuest(guest: any) {
     advancePaid: guest.advancePaid || 0
   };
 
-  console.log('Creating guest with payload:', payload);
-  console.log('Hotel ID from payload:', guest.hotel);
 
   const res = await fetch(`${API_URL}/guests`, {
     method: "POST",
@@ -614,8 +612,6 @@ export async function updateGuest(id: string, guest: any) {
     advancePaid: guest.advancePaid || 0
   };
 
-  console.log('Updating guest with payload:', payload);
-  console.log('Hotel ID from payload:', guest.hotel);
 
   const res = await fetch(`${API_URL}/guests/${id}`, {
     method: "PUT",

@@ -241,7 +241,7 @@ export default function OrdersPage() {
         params.set('search', debouncedSearch);
       }
       
-      console.log("API Request:", `${apiBase}/orders?${params.toString()}`);
+
       
       const res = await fetch(`${apiBase}/orders?${params.toString()}`, {
         headers: {

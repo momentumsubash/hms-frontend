@@ -21,12 +21,37 @@ import {
 import { getMyHotel, getGuests, getRooms, getOrders } from "@/lib/api";
 export function HotelDashboard() {
 	// Notes state
-	const [notes, setNotes] = useState<any[]>([]);
+	const [notes, setNotes] = useState([]);
 	const [noteText, setNoteText] = useState("");
 	const [notesLoading, setNotesLoading] = useState(false);
 	const [notesError, setNotesError] = useState("");
+	const [guests, setGuests] = useState([]);
+	const [rooms, setRooms] = useState([]);
+	const [orders, setOrders] = useState([]);
+	const [loading, setLoading] = useState(true);
+	const [currentImageIndex, setCurrentImageIndex] = useState(0);
+	const [currentFoodIndex, setCurrentFoodIndex] = useState(0);
+	const [showUserMenu, setShowUserMenu] = useState(false);
 
 	// Fetch notes
+		const [hotel, setHotel] = useState(null);
+	// Notes hotelId/token must be after hotel is defined
+	const hotelId = hotel?._id
+	const notesToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+	const hotelImages = [
+		"/luxury-hotel-lobby.png",
+		"/elegant-hotel-room.png",
+		"/hotel-pool-lounge.png",
+		"/elegant-hotel-dining.png",
+		"/hotel-spa-wellness.png",
+	];
+	const foodImages = [
+		"/gourmet-breakfast-buffet.png",
+		"/artistic-fine-dining.png",
+		"/placeholder-p9aiz.png",
+		"/placeholder-u7zdt.png",
+	];
 	const fetchNotes = async () => {
 		if (!hotelId || !notesToken) return;
 		setNotesLoading(true);
@@ -38,7 +63,7 @@ export function HotelDashboard() {
 			if (!res.ok) throw new Error("Failed to fetch notes");
 			const data = await res.json();
 			setNotes(data.data || []);
-		} catch (e: any) {
+		} catch (e) {
 			setNotesError(e.message);
 		} finally {
 			setNotesLoading(false);
@@ -46,7 +71,7 @@ export function HotelDashboard() {
 	};
 
 	// Create note
-	const handleCreateNote = async (e: React.FormEvent) => {
+	const handleCreateNote = async (e) => {
 		e.preventDefault();
 		if (!noteText.trim()) return;
 		setNotesLoading(true);
@@ -63,7 +88,7 @@ export function HotelDashboard() {
 			if (!res.ok) throw new Error("Failed to create note");
 			setNoteText("");
 			await fetchNotes();
-		} catch (e: any) {
+		} catch (e) {
 			setNotesError(e.message);
 		} finally {
 			setNotesLoading(false);
@@ -71,7 +96,7 @@ export function HotelDashboard() {
 	};
 
 	// Delete note
-	const handleDeleteNote = async (noteId: string) => {
+	const handleDeleteNote = async (noteId) => {
 		setNotesLoading(true);
 		setNotesError("");
 		try {
@@ -81,12 +106,13 @@ export function HotelDashboard() {
 			});
 			if (!res.ok) throw new Error("Failed to delete note");
 			await fetchNotes();
-		} catch (e: any) {
+		} catch (e) {
 			setNotesError(e.message);
 		} finally {
 			setNotesLoading(false);
 		}
 	};
+
 
 	// ...existing code...
 
@@ -97,37 +123,13 @@ export function HotelDashboard() {
 	// so move this useEffect below those declarations
 
 	const { logout, loading: authLoading } = useAuth();
-	const [user, setUser] = useState<any>(() => {
+	const [user, setUser] = useState(() => {
 		if (typeof window !== 'undefined') {
 			const stored = localStorage.getItem('user');
 			return stored ? JSON.parse(stored) : null;
 		}
 		return null;
 	});
-	const [hotel, setHotel] = useState<any>(null);
-	// Notes hotelId/token must be after hotel is defined
-	const hotelId = hotel?._id || "689eb71bb0c676b3fc821ae9";
-	const notesToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-	const [guests, setGuests] = useState<any[]>([]);
-	const [rooms, setRooms] = useState<any[]>([]);
-	const [orders, setOrders] = useState<any[]>([]);
-	const [loading, setLoading] = useState(true);
-	const [currentImageIndex, setCurrentImageIndex] = useState(0);
-	const [currentFoodIndex, setCurrentFoodIndex] = useState(0);
-	const [showUserMenu, setShowUserMenu] = useState(false);
-	const hotelImages = [
-		"/luxury-hotel-lobby.png",
-		"/elegant-hotel-room.png",
-		"/hotel-pool-lounge.png",
-		"/elegant-hotel-dining.png",
-		"/hotel-spa-wellness.png",
-	];
-	const foodImages = [
-		"/gourmet-breakfast-buffet.png",
-		"/artistic-fine-dining.png",
-		"/placeholder-p9aiz.png",
-		"/placeholder-u7zdt.png",
-	];
 
 		// Fetch notes when hotel/user is loaded (must be after hotelId/notesToken are defined)
 		useEffect(() => {
@@ -170,14 +172,15 @@ export function HotelDashboard() {
 					}
 				}
 				// const [hotelRes, guestsRes, roomsRes, ordersRes] = await Promise.all([
-					const [hotelRes] = await Promise.all([
+					const [hotelRes,guestRes] = await Promise.all([
 					getMyHotel(),
 					getGuests(),
 					// getRooms(),
 					// getOrders(),
 				]);
+	
 				setHotel(hotelRes?.data || null);
-				// setGuests(guestsRes?.data || []);
+				setGuests(guestRes?.data || []);
 				// setRooms(roomsRes?.data || []);
 				// setOrders(ordersRes?.data || []);
 			} finally {
@@ -268,7 +271,7 @@ const navLinks = [
 							 ) : (
 								 <ul className="space-y-2 w-full">
 									 {notes.length === 0 && <li className="text-gray-500">No notes yet.</li>}
-											 {notes.map((note: any) => (
+											 {notes.map((note) => (
 												 <li key={note._id} className="flex items-center gap-2 bg-slate-100 rounded px-3 py-2 w-full">
 													 <span className="flex-1 break-words">{note.text}</span>
 																	 <Button
@@ -295,7 +298,7 @@ const navLinks = [
 								</div>
 								<div>
 									<p className="text-sm text-gray-600">Total Guests</p>
-									<p className="text-2xl font-bold text-gray-800">{guests}</p>
+									<p className="text-2xl font-bold text-gray-800">{guests?.totalGuests}</p>
 								</div>
 							</div>
 						</CardContent>
@@ -308,7 +311,7 @@ const navLinks = [
 								</div>
 								<div>
 									<p className="text-sm text-gray-600">Occupied Rooms</p>
-									<p className="text-2xl font-bold text-gray-800">{occupiedRooms}/{totalRooms}</p>
+									<p className="text-2xl font-bold text-gray-800">{guests?.occupiedRooms}/{guests?.totalRooms}</p>
 								</div>
 							</div>
 						</CardContent>
@@ -320,8 +323,8 @@ const navLinks = [
 									<Star className="h-6 w-6 text-green-600" />
 								</div>
 								<div>
-									<p className="text-sm text-gray-600">Average Rating</p>
-									<p className="text-2xl font-bold text-gray-800">{hotel?.rating || "-"}</p>
+									<p className="text-sm text-gray-600">Checked Out</p>
+									<p className="text-2xl font-bold text-gray-800">{guests?.checkedOut || "-"}</p>
 								</div>
 							</div>
 						</CardContent>
@@ -369,7 +372,7 @@ const navLinks = [
 									<div>
 										<h4 className="font-semibold mb-3">Amenities</h4>
 										<div className="flex flex-wrap gap-2">
-											{hotelAmenities.map((am: string, i: number) => (
+											{hotelAmenities.map((am, i) => (
 												<Badge key={i} variant="secondary" className="flex items-center gap-1">
 													{am}
 												</Badge>
@@ -434,21 +437,21 @@ const navLinks = [
 								<div className="flex items-center space-x-3">
 									<Phone className="h-5 w-5 text-gray-500" />
 									<div>
-										<p className="font-medium">{hotelPhone}</p>
+										<p className="font-medium">{hotel?.contact?.phone}</p>
 										<p className="text-sm text-gray-600">Main Reception</p>
 									</div>
 								</div>
 								<div className="flex items-center space-x-3">
 									<Mail className="h-5 w-5 text-gray-500" />
 									<div>
-										<p className="font-medium">{hotelEmail}</p>
+										<p className="font-medium">{hotel?.contact?.email}</p>
 										<p className="text-sm text-gray-600">General Inquiries</p>
 									</div>
 								</div>
 								<div className="flex items-center space-x-3">
 									<Globe className="h-5 w-5 text-gray-500" />
 									<div>
-										<p className="font-medium">{hotelWebsite}</p>
+										<p className="font-medium">{hotel?.contact?.website}</p>
 										<p className="text-sm text-gray-600">Official Website</p>
 									</div>
 								</div>
@@ -476,11 +479,7 @@ const navLinks = [
 										className="w-full h-32 object-cover rounded"
 									/>
 								</div>
-								<div className="text-sm text-gray-600">
-									<p>• 5 min walk to Central Park</p>
-									<p>• 10 min drive to Times Square</p>
-									<p>• 15 min to JFK Airport</p>
-								</div>
+								
 							</CardContent>
 						</Card>
 					</div>
