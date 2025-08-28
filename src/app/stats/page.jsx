@@ -11,7 +11,7 @@ import {
   getExpenditures, 
   approveExpenditure, 
   rejectExpenditure,
-  getExpenditureStats,
+  // getExpenditureStats,
   getFinancialOverview,
   getSummaryStats
 } from "@/lib/expenditure";
@@ -30,7 +30,7 @@ const navLinks = [
 ];
 
 const ROOM_TYPES = ["deluxe", "suite", "standard"];
-const EXPENDITURE_CATEGORIES = ["supplies", "maintenance", "utilities", "salaries", "marketing", "other"];
+const EXPENDITURE_CATEGORIES = ["supplies", "maintenance", "utilities", "salary", "marketing", "other"];
 
 function getToken() {
   if (typeof window === "undefined") return null;
@@ -123,7 +123,7 @@ export default function StatsPage() {
   // Fetch initial data
   useEffect(() => {
     fetchAllData();
-    fetchItemCategories();
+    // fetchItemCategories();
   }, []);
 
   const fetchAllData = async () => {
@@ -149,7 +149,7 @@ export default function StatsPage() {
         localStorage.setItem("user", JSON.stringify(meData.data || null));
       
       // 2. Fetch all stats data
-      const [itemRes, roomRes, expendituresRes, expenditureStatsRes, financialRes, summaryRes, dailyRes] = await Promise.all([
+      const [itemRes, roomRes, expendituresRes, financialRes, summaryRes, dailyRes] = await Promise.all([
           fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/item-sales`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
@@ -157,9 +157,9 @@ export default function StatsPage() {
             headers: { Authorization: `Bearer ${token}` },
           }),
         getExpenditures(),
-        getExpenditureStats(),
+        // getExpenditureStats(),
         getFinancialOverview(),
-        getSummaryStats(7),
+        getSummaryStats(30),
         fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/summary?days=${daysFilter}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
@@ -221,7 +221,7 @@ export default function StatsPage() {
           category: expenditureCategory || undefined,
           status: expenditureStatus || undefined
         }),
-        getExpenditureStats({ startDate, endDate }),
+        // getExpenditureStats({ startDate, endDate }),
         getFinancialOverview({ startDate, endDate })
       ]);
 
@@ -342,94 +342,7 @@ export default function StatsPage() {
         <h1 className="text-3xl font-bold mb-6 text-center">Statistics & Financial Management</h1>
         
         {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form
-              className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end"
-              onSubmit={e => {
-                e.preventDefault();
-                fetchStatsWithFilters();
-              }}
-            >
-              <div>
-                <label className="block text-sm font-medium mb-1">Item Category</label>
-                <select
-                  className="w-full border rounded px-3 py-2"
-                  value={itemCategory}
-                  onChange={e => setItemCategory(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {itemCategories.map(cat => (
-                    <option key={cat._id} value={cat._id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Room Type</label>
-                <select
-                  className="w-full border rounded px-3 py-2"
-                  value={roomType}
-                  onChange={e => setRoomType(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {ROOM_TYPES.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Expenditure Status</label>
-                <select
-                  className="w-full border rounded px-3 py-2"
-                  value={expenditureStatus}
-                  onChange={e => setExpenditureStatus(e.target.value)}
-                >
-                  <option value="">All</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Expenditure Category</label>
-                <select
-                  className="w-full border rounded px-3 py-2"
-                  value={expenditureCategory}
-                  onChange={e => setExpenditureCategory(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {EXPENDITURE_CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Start Date</label>
-                <input
-                  type="date"
-                  className="w-full border rounded px-3 py-2"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">End Date</label>
-                <input
-                  type="date"
-                  className="w-full border rounded px-3 py-2"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                />
-              </div>
-              <div className="md:col-span-3 lg:col-span-6">
-                <Button type="submit" className="w-full md:w-auto">Apply Filters</Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+       
 
         {error && <div className="text-red-600 text-center bg-red-50 p-4 rounded">{error}</div>}
 
@@ -594,7 +507,7 @@ export default function StatsPage() {
                              </div>
                             <div className="flex justify-between border-t pt-2">
                               <span>Total Sales:</span>
-                              <span className="font-semibold">₹{financialOverview?.sales?.totalSales?.toLocaleString() ?? 0}</span>
+                              <span className="font-semibold">₹{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
                             </div>
                           </div>
                         </CardContent>

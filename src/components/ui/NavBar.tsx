@@ -52,6 +52,7 @@ const defaultNavLinks: NavLink[] = [
   { label: "Rooms", href: "/rooms" , roles: ["super_admin","manager"] },         // open to all
   { label: "Stats", href: "/stats", roles: ["super_admin","manager"] },
   { label: "Users", href: "/users", roles: ["manager", "super_admin"] },
+  { label: "RecordBook", href: "/recordbook", roles: ["manager", "super_admin"] },
 ];
 
 // filter by role

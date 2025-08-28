@@ -285,32 +285,25 @@ export default function GuestsPage() {
       }
       try {
         // 1. Fetch /auth/me
-        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-          headers: getRequestHeaders(token),
-        });
-        if (!meRes.ok) throw new Error("Not authenticated");
-        const meData = await meRes.json();
-        localStorage.setItem("user", JSON.stringify(meData.data || null));
+      
         
         // 2. Fetch rooms data
-        const [roomsRes, allRoomsRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
-            headers: getRequestHeaders(token),
-          }),
-          fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
-            headers: getRequestHeaders(token),
-          })
-        ]);
+        // const [roomsRes] = await Promise.all([
+        //   fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
+        //     headers: getRequestHeaders(token),
+        //   })
+        
+        // ]);
 
-        if (roomsRes.ok) {
-          const roomsData = await roomsRes.json();
-          setAvailableRooms(roomsData.data || roomsData || []);
-        }
+        // if (roomsRes.ok) {
+        //   const roomsData = await roomsRes.json();
+        //   setAvailableRooms(roomsData.data || roomsData || []);
+        // }
 
-        if (allRoomsRes.ok) {
-          const allRoomsData = await allRoomsRes.json();
-          setAllRooms(allRoomsData.data || allRoomsData || []);
-        }
+        // if (allRoomsRes.ok) {
+        //   const allRoomsData = await allRoomsRes.json();
+        //   setAllRooms(allRoomsData.data || allRoomsData || []);
+        // }
 
         // 3. Load guests with initial filters
         await loadData();
@@ -368,14 +361,16 @@ const resetForm = () => {
     if (!formData.checkInDate) {
       errors.checkInDate = "Check-in date is required";
     } else {
-      const checkInDate = new Date(formData.checkInDate);
+      const originalDate = new Date(formData.checkInDate);
+      const checkInDate = new Date(originalDate.getTime() + (5 * 60 * 1000));
       if (!editingGuest && checkInDate < now) {
         errors.checkInDate = "Check-in date cannot be in the past";
       }
     }
 
     if (formData.checkOutDate && formData.checkInDate) {
-      const checkInDate = new Date(formData.checkInDate);
+      const originalDate = new Date(formData.checkInDate);
+      const checkInDate = new Date(originalDate.getTime() + (5 * 60 * 1000));
       const checkOutDate = new Date(formData.checkOutDate);
       if (checkOutDate <= checkInDate) {
         errors.checkOutDate = "Check-out date must be after check-in date";
@@ -980,7 +975,7 @@ const handleEdit = async (guest: Guest) => {
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
+                        
                         disabled={!!editingGuest}
                       />
                       {formErrors.email && <p className="text-red-500 text-sm">{formErrors.email}</p>}

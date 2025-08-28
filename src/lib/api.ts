@@ -1,5 +1,6 @@
 // Create a new user
 import { Hotel } from '@/types/hotel';
+// import { Hotel } from 'lucide-react';
 export async function createUser(user: any) {
   const res = await fetch(`${API_URL}/users`, {
     method: "POST",
@@ -278,17 +279,269 @@ export async function deleteRoom(roomNumber: string) {
 
 // GUESTS
 export async function getGuests(params: Record<string, any> = {}) {
-  const query = new URLSearchParams(params).toString();
-  const res = await fetch(`${API_URL}/guests${query ? `?${query}` : ""}`,
-    { headers: mergeHeaders({}, getAuthHeaders()) }
-  );
-  if (res.status === 401) {
-    localStorage.removeItem('token');
-    window.location.href = '/login';
-    return;
+  try {
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    
+    // Handle hotel parameter - prioritize from params, fallback to current user's hotel
+    let hotelId = params.hotel;
+    if (!hotelId) {
+      try {
+        const myHotel = await getMyHotel();
+        hotelId = myHotel?.data?.hotel?._id || myHotel?.data?._id;
+      } catch (error) {
+        console.warn('Could not fetch user hotel, proceeding without hotel filter:', error);
+      }
+    }
+    
+    if (hotelId) {
+      queryParams.append('hotel', hotelId);
+    }
+    
+    // Handle date parameter
+    if (params.date) {
+      queryParams.append('date', params.date);
+    }
+    
+    // Handle detailed parameter - default to true for comprehensive data
+    const detailed = params.detailed !== undefined ? params.detailed : true;
+    queryParams.append('detailed', detailed.toString());
+    
+    // Add any additional parameters passed in
+    Object.keys(params).forEach(key => {
+      if (!['hotel', 'date', 'detailed'].includes(key) && params[key] !== undefined) {
+        queryParams.append(key, params[key]);
+      }
+    });
+    
+    // Build the final URL
+    const url = `${API_URL}/guests/stats/count?${hotelId}`;
+    
+    const res = await fetch(url, {
+      headers: mergeHeaders({}, getAuthHeaders()),
+      method: 'GET'
+    });
+    
+    // Handle authentication error
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      return;
+    }
+    
+    // Handle other HTTP errors
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch guests: ${res.status} ${res.statusText}`);
+    }
+    
+    const data = await res.json();
+    
+    // Return the data with additional metadata for easier consumption
+    return {
+      ...data,
+      // Add computed fields for easier access
+      meta: {
+        hotelId: hotelId || null,
+        requestedDate: params.date || null,
+        isDetailed: detailed,
+        hasBreakdown: !!(data.data?.breakdown),
+        timestamp: new Date().toISOString()
+      }
+    };
+    
+  } catch (error) {
+    console.error('Error fetching guest statistics:', error);
+    throw error;
   }
-  if (!res.ok) throw new Error("Failed to fetch guests");
-  return res.json();
+}
+
+// Alternative quick count function for simple use cases
+export async function getGuestsQuickCount(hotelId?: string) {
+  try {
+    const queryParams = new URLSearchParams();
+    
+    // Use provided hotelId or fetch current user's hotel
+    let effectiveHotelId = hotelId;
+    if (!effectiveHotelId) {
+      try {
+        const myHotel = await getMyHotel();
+        effectiveHotelId = myHotel?.data?.hotel?._id || myHotel?.data?._id;
+      } catch (error) {
+        console.warn('Could not fetch user hotel for quick count:', error);
+      }
+    }
+    
+    if (effectiveHotelId) {
+      queryParams.append('hotel', effectiveHotelId);
+    }
+    
+    const url = `${API_URL}/guests/stats/quick-count${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    
+    const res = await fetch(url, {
+      headers: mergeHeaders({}, getAuthHeaders()),
+      method: 'GET'
+    });
+    
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      return;
+    }
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch guest count: ${res.status} ${res.statusText}`);
+    }
+    
+    return res.json();
+    
+  } catch (error) {
+    console.error('Error fetching guest quick count:', error);
+    throw error;
+  }
+}
+
+// Utility functions for common use cases
+export async function getCurrentStayingGuests(hotelId?: string) {
+  const result = await getGuests({ hotel: hotelId, detailed: false });
+  return result?.data?.currentlyStaying || 0;
+}
+
+export async function getHotelOccupancyRate(hotelId?: string) {
+  const result = await getGuests({ hotel: hotelId, detailed: false });
+  return result?.data?.occupancyRate || 0;
+}
+
+export async function getGuestStatsByDate(date: string, hotelId?: string) {
+  return getGuests({ hotel: hotelId, date, detailed: true });
+}
+
+export async function getDetailedHotelBreakdown() {
+  // This will only work for super_admin users - don't fetch hotel ID for this
+  return getGuests({ detailed: true }); // No hotel filter to get all hotels
+}
+
+// New utility function to get current user's hotel guest stats
+export async function getMyHotelGuestStats(params: Record<string, any> = {}) {
+  try {
+    const myHotel = await getMyHotel();
+    const hotelId = myHotel?.data?.hotel?._id || myHotel?.data?._id;
+    
+    if (!hotelId) {
+      throw new Error('Could not determine user hotel ID');
+    }
+    
+    return getGuests({ 
+      ...params, 
+      hotel: hotelId 
+    });
+  } catch (error) {
+    console.error('Error fetching my hotel guest stats:', error);
+    throw error;
+  }
+}
+
+// Cached version to avoid multiple hotel API calls
+let cachedHotelId: string | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+async function getCachedHotelId(): Promise<string | null> {
+  const now = Date.now();
+  
+  // Use cached value if it's still valid
+  if (cachedHotelId && (now - cacheTimestamp) < CACHE_DURATION) {
+    return cachedHotelId;
+  }
+  
+  try {
+    const myHotel = await getMyHotel();
+    cachedHotelId = myHotel?.data?.hotel?._id || myHotel?.data?._id || null;
+    cacheTimestamp = now;
+    return cachedHotelId;
+  } catch (error) {
+    console.warn('Could not fetch hotel ID:', error);
+    return null;
+  }
+}
+
+// Optimized functions using cached hotel ID
+export async function getGuestsOptimized(params: Record<string, any> = {}) {
+  try {
+    // Build query parameters
+    const queryParams = new URLSearchParams();
+    
+    // Handle hotel parameter - prioritize from params, fallback to cached hotel ID
+    let hotelId = params.hotel;
+    if (!hotelId) {
+      hotelId = await getCachedHotelId();
+    }
+    
+    if (hotelId) {
+      queryParams.append('hotel', hotelId);
+    }
+    
+    // Handle date parameter
+    if (params.date) {
+      queryParams.append('date', params.date);
+    }
+    
+    // Handle detailed parameter - default to true for comprehensive data
+    const detailed = params.detailed !== undefined ? params.detailed : true;
+    queryParams.append('detailed', detailed.toString());
+    
+    // Add any additional parameters passed in
+    Object.keys(params).forEach(key => {
+      if (!['hotel', 'date', 'detailed'].includes(key) && params[key] !== undefined) {
+        queryParams.append(key, params[key]);
+      }
+    });
+    
+    // Build the final URL
+    const url = `${API_URL}/guests/stats/count${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    
+    const res = await fetch(url, {
+      headers: mergeHeaders({}, getAuthHeaders()),
+      method: 'GET'
+    });
+    
+    // Handle authentication error
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      // Clear cache on auth error
+      cachedHotelId = null;
+      cacheTimestamp = 0;
+      window.location.href = '/login';
+      return;
+    }
+    
+    // Handle other HTTP errors
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch guests: ${res.status} ${res.statusText}`);
+    }
+    
+    const data = await res.json();
+    
+    // Return the data with additional metadata for easier consumption
+    return {
+      ...data,
+      // Add computed fields for easier access
+      meta: {
+        hotelId: hotelId || null,
+        requestedDate: params.date || null,
+        isDetailed: detailed,
+        hasBreakdown: !!(data.data?.breakdown),
+        timestamp: new Date().toISOString(),
+        usedCache: !!cachedHotelId
+      }
+    };
+    
+  } catch (error) {
+    console.error('Error fetching guest statistics:', error);
+    throw error;
+  }
 }
 
 export async function addGuest(guest: any) {

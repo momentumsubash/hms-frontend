@@ -169,15 +169,15 @@ export default function ItemsPage() {
 
       try {
         // 1. Fetch /auth/me
-        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
-        if (!meRes.ok) throw new Error("Not authenticated");
-        const meData = await meRes.json();
-        localStorage.setItem("user", JSON.stringify(meData.data || null));
+        // const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+        //   headers: {
+        //     Authorization: `Bearer ${token}`,
+        //     Accept: "application/json",
+        //   },
+        // });
+        // if (!meRes.ok) throw new Error("Not authenticated");
+        // const meData = await meRes.json();
+        // localStorage.setItem("user", JSON.stringify(meData.data || null));
 
         // 2. Fetch /hotels/me
         const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, {

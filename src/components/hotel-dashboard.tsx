@@ -5,6 +5,7 @@ import { useAuth } from "@/components/ui/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { NavBar } from "@/components/ui/NavBar";
 import {
 		MapPin,
 		Phone,
@@ -94,16 +95,7 @@ export function HotelDashboard() {
 	// Fetch notes when hotel/user is loaded (must be after hotelId/notesToken are defined)
 	// This must be after hotel, hotelId, and notesToken are declared
 	// so move this useEffect below those declarations
-	const navLinks = [
-	       { label: "Checkouts", href: "/checkouts" },
-	       { label: "Guests", href: "/guests" },
-	       { label: "Hotels", href: "/hotels" },
-	       { label: "Items", href: "/items" },
-	       { label: "Orders", href: "/orders" },
-	       { label: "Rooms", href: "/rooms" },
-	       { label: "Stats", href: "/stats" },
-	       { label: "Users", href: "/users" },
-       ];
+
 	const { logout, loading: authLoading } = useAuth();
 	const [user, setUser] = useState<any>(() => {
 		if (typeof window !== 'undefined') {
@@ -177,16 +169,17 @@ export function HotelDashboard() {
 						}
 					}
 				}
-				const [hotelRes, guestsRes, roomsRes, ordersRes] = await Promise.all([
+				// const [hotelRes, guestsRes, roomsRes, ordersRes] = await Promise.all([
+					const [hotelRes] = await Promise.all([
 					getMyHotel(),
 					getGuests(),
-					getRooms(),
-					getOrders(),
+					// getRooms(),
+					// getOrders(),
 				]);
 				setHotel(hotelRes?.data || null);
-				setGuests(guestsRes?.data || []);
-				setRooms(roomsRes?.data || []);
-				setOrders(ordersRes?.data || []);
+				// setGuests(guestsRes?.data || []);
+				// setRooms(roomsRes?.data || []);
+				// setOrders(ordersRes?.data || []);
 			} finally {
 				setLoading(false);
 			}
@@ -205,7 +198,17 @@ export function HotelDashboard() {
 	if (!user) {
 		return <div className="min-h-screen flex items-center justify-center text-xl">Please log in to access the dashboard.</div>;
 	}
-
+const navLinks = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Checkouts", href: "/checkouts" },
+  { label: "Guests", href: "/guests" },
+  { label: "Hotels", href: "/hotels", superAdminOnly: true },
+  { label: "Items", href: "/items" },
+  { label: "Orders", href: "/orders" },
+  { label: "Rooms", href: "/rooms" },
+  { label: "Stats", href: "/stats" },
+  { label: "Users", href: "/users" },
+];
 	const occupiedRooms = rooms.filter((r) => r.isOccupied).length;
 	const totalRooms = rooms.length;
 	const hotelName = hotel?.name || "Hotel Name";
@@ -219,50 +222,13 @@ export function HotelDashboard() {
 			   return (
 		       <div className="min-h-screen bg-slate-50">
 					{/* Navigation Bar */}
-			       <nav className="bg-white shadow mb-6">
-				       <div className="max-w-7xl mx-auto px-4">
-					       <div className="flex h-16 items-center justify-between">
-						       <span className="font-bold text-xl text-primary">HMS</span>
-						       <div className="flex items-center space-x-4">
-							       {navLinks.map((link) => (
-								       <a
-									       key={link.href}
-									       href={link.href}
-									       className="text-gray-700 hover:text-primary font-medium px-3 py-2 rounded transition-colors"
-								       >
-									       {link.label}
-								       </a>
-							       ))}
-						       </div>
-						       {/* User button in nav bar, now at far right */}
-						       <div className="relative">
-							       <button
-								       className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100 border border-gray-200"
-								       onClick={() => setShowUserMenu((v) => !v)}
-							       >
-								       <span className="font-medium text-gray-700">
-		{user?.firstName || user?.lastName ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim() : user?.email || "User"}
-	</span>
-								       <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-							       </button>
-							       {showUserMenu && (
-								       <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow z-50">
-									       <button
-										       className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-										       onClick={async () => {
-										   setShowUserMenu(false);
-										   localStorage.removeItem('user');
-										   await logout();
-									       }}
-									       >
-									       Sign out
-									       </button>
-								       </div>
-							       )}
-						       </div>
-					       </div>
-				       </div>
-			       </nav>
+			      <NavBar
+        user={user}
+        showUserMenu={showUserMenu}
+        setShowUserMenu={setShowUserMenu}
+        logout={logout}
+        navLinks={navLinks}
+      />
 				<div className="max-w-7xl mx-auto space-y-8 p-6">
 				{/* Header */}
 				<div className="text-center space-y-4">
@@ -329,7 +295,7 @@ export function HotelDashboard() {
 								</div>
 								<div>
 									<p className="text-sm text-gray-600">Total Guests</p>
-									<p className="text-2xl font-bold text-gray-800">{guests.length}</p>
+									<p className="text-2xl font-bold text-gray-800">{guests}</p>
 								</div>
 							</div>
 						</CardContent>

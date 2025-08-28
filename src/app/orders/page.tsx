@@ -175,25 +175,25 @@ export default function OrdersPage() {
       setOrders([]);
       return;
     }
-    try {
-      const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-      });
-      if (!meRes.ok) throw new Error("Not authenticated");
-      const meData = await meRes.json();
-      setUser(meData.data || null);
-      localStorage.setItem("user", JSON.stringify(meData.data || null));
-      await loadData(token);
-    } catch (e: any) {
-      setUser(null);
-      setOrders([]);
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      setError("Authentication failed. Please login again.");
-    }
+    // try {
+    //   const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
+    //     headers: {
+    //       Authorization: `Bearer ${token}`,
+    //       Accept: "application/json",
+    //     },
+    //   });
+    //   if (!meRes.ok) throw new Error("Not authenticated");
+    //   const meData = await meRes.json();
+    //   setUser(meData.data || null);
+    //   localStorage.setItem("user", JSON.stringify(meData.data || null));
+    //   await loadData(token);
+    // } catch (e: any) {
+    //   setUser(null);
+    //   setOrders([]);
+    //   localStorage.removeItem("user");
+    //   localStorage.removeItem("token");
+    //   setError("Authentication failed. Please login again.");
+    // }
   };
 
   useEffect(() => {
