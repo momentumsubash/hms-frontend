@@ -340,13 +340,13 @@ const resetForm = () => {
     idNo: "",
     occupation: "",
     vehicleNo: "",
-    noOfAdditionalGuests: "0", // Set to "0" initially
+    noOfAdditionalGuests: "0",
     additionalGuests: [],
     purposeOfStay: "",
     rooms: [],
     roomDiscount: "0",
     advancePaid: "0",
-    checkInDate: "",
+    checkInDate: getCurrentDateTimeLocal(),
     checkOutDate: ""
   });
   setEditingGuest(null);
@@ -354,54 +354,57 @@ const resetForm = () => {
   setFormErrors({});
 };
   // Validation function
-  const validateForm = () => {
-    const errors: {[key: string]: string} = {};
-    const now = new Date();
+const validateForm = () => {
+  const errors: {[key: string]: string} = {};
+  const now = new Date();
 
-    if (!formData.checkInDate) {
-      errors.checkInDate = "Check-in date is required";
-    } else {
-      const originalDate = new Date(formData.checkInDate);
-      const checkInDate = new Date(originalDate.getTime() + (5 * 60 * 1000));
-      if (!editingGuest && checkInDate < now) {
-        errors.checkInDate = "Check-in date cannot be in the past";
-      }
+  if (!formData.checkInDate) {
+    errors.checkInDate = "Check-in date is required";
+  } else {
+    const originalDate = new Date(formData.checkInDate);
+    const checkInDate = new Date(originalDate.getTime() + (5 * 60 * 1000));
+    if (!editingGuest && checkInDate < now) {
+      errors.checkInDate = "Check-in date cannot be in the past";
     }
+  }
 
-    if (formData.checkOutDate && formData.checkInDate) {
-      const originalDate = new Date(formData.checkInDate);
-      const checkInDate = new Date(originalDate.getTime() + (5 * 60 * 1000));
-      const checkOutDate = new Date(formData.checkOutDate);
-      if (checkOutDate <= checkInDate) {
-        errors.checkOutDate = "Check-out date must be after check-in date";
-      }
+  if (formData.checkOutDate && formData.checkInDate) {
+    const originalDate = new Date(formData.checkInDate);
+    const checkInDate = new Date(originalDate.getTime() + (5 * 60 * 1000));
+    const checkOutDate = new Date(formData.checkOutDate);
+    if (checkOutDate <= checkInDate) {
+      errors.checkOutDate = "Check-out date must be after check-in date";
     }
+  }
 
-    if (!formData.rooms || formData.rooms.length === 0) {
-      errors.rooms = "At least one room must be selected";
-    }
+  if (!formData.rooms || formData.rooms.length === 0) {
+    errors.rooms = "At least one room must be selected";
+  }
 
-    const roomDiscountValue = parseFloat(formData.roomDiscount || '0');
-    const advancePaidValue = parseFloat(formData.advancePaid || '0');
-    if (isNaN(roomDiscountValue) || roomDiscountValue < 0) {
-      errors.roomDiscount = "Room discount must be a non-negative number";
-    }
-    if (isNaN(advancePaidValue) || advancePaidValue < 0) {
-      errors.advancePaid = "Advance paid must be a non-negative number";
-    }
+  const roomDiscountValue = parseFloat(formData.roomDiscount || '0');
+  const advancePaidValue = parseFloat(formData.advancePaid || '0');
+  if (isNaN(roomDiscountValue) || roomDiscountValue < 0) {
+    errors.roomDiscount = "Room discount must be a non-negative number";
+  }
+  if (isNaN(advancePaidValue) || advancePaidValue < 0) {
+    errors.advancePaid = "Advance paid must be a non-negative number";
+  }
 
+  // Email is now optional, only validate if provided
+  if (formData.email && formData.email.trim() !== '') {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       errors.email = "Please enter a valid email address";
     }
+  }
 
-    if (formData.phone.length < 10) {
-      errors.phone = "Phone number should be at least 10 digits";
-    }
+  if (formData.phone.length < 10) {
+    errors.phone = "Phone number should be at least 10 digits";
+  }
 
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+  setFormErrors(errors);
+  return Object.keys(errors).length === 0;
+};
 
 const handleFormSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
@@ -416,7 +419,6 @@ const handleFormSubmit = async (e: React.FormEvent) => {
     let resp;
     
     // Calculate the correct number of additional guests (non-empty ones)
-    // This will override any manually entered value in the form
     const validAdditionalGuests = formData.additionalGuests.filter(
       guest => guest.name.trim() !== '' && guest.relationship.trim() !== ''
     );
@@ -451,8 +453,8 @@ const handleFormSubmit = async (e: React.FormEvent) => {
         idNo: formData.idNo || undefined,
         occupation: formData.occupation || undefined,
         vehicleNo: formData.vehicleNo || undefined,
-        noOfAdditionalGuests: additionalGuestsCount, // Use calculated count
-        additionalGuests: validAdditionalGuests, // Use filtered guests
+        noOfAdditionalGuests: additionalGuestsCount,
+        additionalGuests: validAdditionalGuests,
         purposeOfStay: formData.purposeOfStay || undefined,
         rooms: roomNumbers,
         hotel: hotelId,
@@ -460,6 +462,11 @@ const handleFormSubmit = async (e: React.FormEvent) => {
         roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
         advancePaid: parseFloat(formData.advancePaid || '0') || 0,
       };
+      
+      // Only include email if it's not empty
+      if (formData.email.trim() !== '') {
+        updatePayload.email = formData.email;
+      }
       
       resp = await updateGuest(editingGuest._id, updatePayload);
     } else {
@@ -486,14 +493,13 @@ const handleFormSubmit = async (e: React.FormEvent) => {
       const createPayload: any = {
         firstName: formData.firstName,
         lastName: formData.lastName,
-        email: formData.email,
         phone: formData.phone,
         address: formData.address,
         idNo: formData.idNo || undefined,
         occupation: formData.occupation || undefined,
         vehicleNo: formData.vehicleNo || undefined,
-        noOfAdditionalGuests: additionalGuestsCount, // Use calculated count
-        additionalGuests: validAdditionalGuests, // Use filtered guests
+        noOfAdditionalGuests: additionalGuestsCount,
+        additionalGuests: validAdditionalGuests,
         purposeOfStay: formData.purposeOfStay || undefined,
         rooms: roomNumbers,
         hotel: hotelId,
@@ -502,6 +508,9 @@ const handleFormSubmit = async (e: React.FormEvent) => {
         roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
         advancePaid: parseFloat(formData.advancePaid || '0') || 0,
       };
+      
+      // FIX: Always include email, use "noemail@gmail.com" if empty
+      createPayload.email = formData.email.trim() !== '' ? formData.email : 'noemail@gmail.com';
       
       resp = await createGuest(createPayload);
     }
@@ -519,13 +528,10 @@ const handleFormSubmit = async (e: React.FormEvent) => {
 };
 const handleEdit = async (guest: Guest) => {
   try {
-
-    
     setEditingGuest(guest);
     
     // Normalize room IDs for this guest
     const normalizedRooms = normalizeGuestRoomIds(guest);
-
   
     // Basic guest info
     const formDataUpdate = {
@@ -542,7 +548,7 @@ const handleEdit = async (guest: Guest) => {
       advancePaid: guest.advancePaid ? guest.advancePaid.toString() : "0",
       checkInDate: guest.checkInDate ? format(new Date(guest.checkInDate), "yyyy-MM-dd'T'HH:mm") : "",
       checkOutDate: guest.checkOutDate ? format(new Date(guest.checkOutDate), "yyyy-MM-dd'T'HH:mm") : "",
-      rooms: normalizedRooms, // Set the rooms to currently allocated ones
+      rooms: normalizedRooms,
     };
     
     // Handle additional guests
@@ -561,7 +567,7 @@ const handleEdit = async (guest: Guest) => {
     // Fetch ALL rooms (not just available ones) for editing
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (token) {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100`, {
         headers: getRequestHeaders(token),
       });
       if (res.ok) {
@@ -572,7 +578,7 @@ const handleEdit = async (guest: Guest) => {
         } else if (Array.isArray(response)) {
           allRoomsData = response;
         }
-        setAvailableRooms(allRoomsData); // Show all rooms during edit
+        setAvailableRooms(allRoomsData);
         setAllRooms(allRoomsData);
       }
     }
@@ -584,47 +590,47 @@ const handleEdit = async (guest: Guest) => {
   }
 };
 
-  const handleAddNewGuest = async () => {
-    setFormData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      address: "",
-      idNo: "",
-      occupation: "",
-      vehicleNo: "",
-      noOfAdditionalGuests: "0",
-      additionalGuests: [],
-      purposeOfStay: "",
-      rooms: [],
-      roomDiscount: "0",
-      advancePaid: "0",
-      checkInDate: getCurrentDateTimeLocal(),
-      checkOutDate: ""
+const handleAddNewGuest = async () => {
+  setFormData({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    idNo: "",
+    occupation: "",
+    vehicleNo: "",
+    noOfAdditionalGuests: "0",
+    additionalGuests: [],
+    purposeOfStay: "",
+    rooms: [],
+    roomDiscount: "0",
+    advancePaid: "0",
+    checkInDate: getCurrentDateTimeLocal(),
+    checkOutDate: ""
+  });
+  setFormErrors({});
+  try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) throw new Error("No authentication token");
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
+      headers: getRequestHeaders(token),
     });
-    setFormErrors({});
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) throw new Error("No authentication token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
-        headers: getRequestHeaders(token),
-      });
-      if (!res.ok) throw new Error("Failed to fetch available rooms");
-      const response = await res.json();
-      
-      let availableRoomsData: Room[] = [];
-      if (response && isAPIResponse<Room[]>(response)) {
-        availableRoomsData = Array.isArray(response.data) ? response.data : [];
-      } else if (Array.isArray(response)) {
-        availableRoomsData = response;
-      }
-      setAvailableRooms(availableRoomsData);
-    } catch (e) {
-      setAvailableRooms([]);
+    if (!res.ok) throw new Error("Failed to fetch available rooms");
+    const response = await res.json();
+    
+    let availableRoomsData: Room[] = [];
+    if (response && isAPIResponse<Room[]>(response)) {
+      availableRoomsData = Array.isArray(response.data) ? response.data : [];
+    } else if (Array.isArray(response)) {
+      availableRoomsData = response;
     }
-    setShowForm(true);
-  };
+    setAvailableRooms(availableRoomsData);
+  } catch (e) {
+    setAvailableRooms([]);
+  }
+  setShowForm(true);
+};
 
   const handleCheckInDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newCheckInDate = e.target.value;
@@ -645,28 +651,30 @@ const handleEdit = async (guest: Guest) => {
     }
   };
 
-  const handleAdditionalGuestChange = (index: number, field: keyof AdditionalGuest, value: string) => {
-    const updatedGuests = [...formData.additionalGuests];
-    if (!updatedGuests[index]) {
-      updatedGuests[index] = { name: '', gender: 'male', relationship: '' };
-    }
-    updatedGuests[index] = { ...updatedGuests[index], [field]: value };
-    setFormData(prev => ({ ...prev, additionalGuests: updatedGuests }));
-  };
+const handleAdditionalGuestChange = (index: number, field: keyof AdditionalGuest, value: string) => {
+  const updatedGuests = [...formData.additionalGuests];
+  if (!updatedGuests[index]) {
+    updatedGuests[index] = { name: '', gender: 'male', relationship: '' };
+  }
+  updatedGuests[index] = { ...updatedGuests[index], [field]: value };
+  setFormData(prev => ({ ...prev, additionalGuests: updatedGuests }));
+};
 
-  const addAdditionalGuest = () => {
-    setFormData(prev => ({
-      ...prev,
-      additionalGuests: [...prev.additionalGuests, { name: '', gender: 'male', relationship: '' }]
-    }));
-  };
+const addAdditionalGuest = () => {
+  setFormData(prev => ({
+    ...prev,
+    additionalGuests: [...prev.additionalGuests, { name: '', gender: 'male', relationship: '' }],
+    noOfAdditionalGuests: (parseInt(prev.noOfAdditionalGuests) + 1).toString()
+  }));
+};
 
-  const removeAdditionalGuest = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      additionalGuests: prev.additionalGuests.filter((_, i) => i !== index)
-    }));
-  };
+const removeAdditionalGuest = (index: number) => {
+  setFormData(prev => ({
+    ...prev,
+    additionalGuests: prev.additionalGuests.filter((_, i) => i !== index),
+    noOfAdditionalGuests: Math.max(0, parseInt(prev.noOfAdditionalGuests) - 1).toString()
+  }));
+};
 
   const getMinCheckOutDateTime = () => {
     if (!formData.checkInDate) return getCurrentDateTimeLocal();
@@ -933,301 +941,311 @@ const handleEdit = async (guest: Guest) => {
         )}
 
         {/* Guest Form Modal */}
-        {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold mb-4">
-                {editingGuest ? "Edit Guest" : "Add New Guest"}
-              </h2>
-              
-              <form onSubmit={handleFormSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Basic Information */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Basic Information</h3>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">First Name *</label>
-                      <input
-                        type="text"
-                        value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Last Name *</label>
-                      <input
-                        type="text"
-                        value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Email *</label>
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        
-                        disabled={!!editingGuest}
-                      />
-                      {formErrors.email && <p className="text-red-500 text-sm">{formErrors.email}</p>}
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Phone *</label>
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      />
-                      {formErrors.phone && <p className="text-red-500 text-sm">{formErrors.phone}</p>}
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Address</label>
-                      <textarea
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        rows={2}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Optional Fields */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Additional Information</h3>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">ID Number</label>
-                      <input
-                        type="text"
-                        value={formData.idNo}
-                        onChange={(e) => setFormData({ ...formData, idNo: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Occupation</label>
-                      <input
-                        type="text"
-                        value={formData.occupation}
-                        onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Vehicle Number</label>
-                      <input
-                        type="text"
-                        value={formData.vehicleNo}
-                        onChange={(e) => setFormData({ ...formData, vehicleNo: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Purpose of Stay</label>
-                      <input
-                        type="text"
-                        value={formData.purposeOfStay}
-                        onChange={(e) => setFormData({ ...formData, purposeOfStay: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Guests Section */}
-                <div className="border-t pt-4">
-                  <div className="text-sm text-gray-500 mt-2">
-  Total additional guests: {formData.additionalGuests.filter(
-    guest => guest.name.trim() !== '' && guest.relationship.trim() !== ''
-  ).length}
-</div>
-                  
-                  {formData.additionalGuests.map((guest, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-3 border rounded">
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Name</label>
-                        <input
-                          type="text"
-                          value={guest.name}
-                          onChange={(e) => handleAdditionalGuestChange(index, 'name', e.target.value)}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
-                          placeholder="Guest name"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Gender</label>
-                        <select
-                          value={guest.gender}
-                          onChange={(e) => handleAdditionalGuestChange(index, 'gender', e.target.value)}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
-                        >
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium mb-1">Relationship</label>
-                        <input
-                          type="text"
-                          value={guest.relationship}
-                          onChange={(e) => handleAdditionalGuestChange(index, 'relationship', e.target.value)}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
-                          placeholder="Relationship to main guest"
-                        />
-                      </div>
-                      
-                      <div className="md:col-span-3 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => removeAdditionalGuest(index)}
-                          className="text-red-600 hover:text-red-800 text-sm"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Room and Stay Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Room Information</h3>
-                    
-                   <div>
-  <label className="block text-sm font-medium mb-1">Select Rooms *</label>
-  <select
-    multiple
-    value={formData.rooms}
-    onChange={(e) => {
-      const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-      setFormData({ ...formData, rooms: selectedOptions });
-    }}
-    className="w-full border border-gray-300 rounded px-3 py-2 h-32"
-    required
-  >
-    {/* Show all rooms when editing, available rooms when creating */}
-    {(editingGuest ? allRooms : availableRooms).map((room) => (
-      <option 
-        key={room._id} 
-        value={room._id}
-        className={room.isOccupied && !formData.rooms.includes(room._id) ? 'text-gray-400' : ''}
-      >
-        {room.roomNumber} - {room.type} (₹{room.rate}/night)
-        {room.isOccupied && !formData.rooms.includes(room._id) && ' - Occupied'}
-        {formData.rooms.includes(room._id) && ' - Selected'}
-      </option>
-    ))}
-  </select>
-  {formErrors.rooms && <p className="text-red-500 text-sm">{formErrors.rooms}</p>}
-  <p className="text-sm text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
-  
-  {/* Show room status information */}
-  <div className="mt-2 text-sm text-gray-600">
-    {editingGuest && (
-      <p>
-        <span className="font-semibold">Note:</span> You can deselect rooms to de-allocate them from this guest.
-        Grayed out rooms are currently occupied by other guests.
-      </p>
-    )}
-  </div>
-</div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Room Discount (₹)</label>
-                      <input
-                        type="number"
-                        value={formData.roomDiscount}
-                        onChange={(e) => setFormData({ ...formData, roomDiscount: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        min="0"
-                        step="0.01"
-                      />
-                      {formErrors.roomDiscount && <p className="text-red-500 text-sm">{formErrors.roomDiscount}</p>}
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Advance Paid (₹)</label>
-                      <input
-                        type="number"
-                        value={formData.advancePaid}
-                        onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        min="0"
-                        step="0.01"
-                      />
-                      {formErrors.advancePaid && <p className="text-red-500 text-sm">{formErrors.advancePaid}</p>}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Stay Information</h3>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Check-in Date *</label>
-                      <input
-                        type="datetime-local"
-                        value={formData.checkInDate}
-                        onChange={handleCheckInDateChange}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                      />
-                      {formErrors.checkInDate && <p className="text-red-500 text-sm">{formErrors.checkInDate}</p>}
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Check-out Date</label>
-                      <input
-                        type="datetime-local"
-                        value={formData.checkOutDate || ''}
-                        onChange={handleCheckOutDateChange}
-                        min={getMinCheckOutDateTime()}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                      />
-                      {formErrors.checkOutDate && <p className="text-red-500 text-sm">{formErrors.checkOutDate}</p>}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={formLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {formLoading ? "Saving..." : editingGuest ? "Update Guest" : "Add Guest"}
-                  </button>
-                </div>
-              </form>
+     {showForm && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <h2 className="text-2xl font-bold mb-4">
+        {editingGuest ? "Edit Guest" : "Add New Guest"}
+      </h2>
+      
+      <form onSubmit={handleFormSubmit} className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Basic Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Basic Information</h3>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">First Name *</label>
+              <input
+                type="text"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Last Name *</label>
+              <input
+                type="text"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                placeholder="Optional"
+              />
+              {formErrors.email && <p className="text-red-500 text-sm">{formErrors.email}</p>}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone *</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
+              />
+              {formErrors.phone && <p className="text-red-500 text-sm">{formErrors.phone}</p>}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Address</label>
+              <textarea
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                rows={2}
+              />
             </div>
           </div>
-        )}
+
+          {/* Optional Fields */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Additional Information</h3>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">ID Number</label>
+              <input
+                type="text"
+                value={formData.idNo}
+                onChange={(e) => setFormData({ ...formData, idNo: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Occupation</label>
+              <input
+                type="text"
+                value={formData.occupation}
+                onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Vehicle Number</label>
+              <input
+                type="text"
+                value={formData.vehicleNo}
+                onChange={(e) => setFormData({ ...formData, vehicleNo: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Purpose of Stay</label>
+              <input
+                type="text"
+                value={formData.purposeOfStay}
+                onChange={(e) => setFormData({ ...formData, purposeOfStay: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Guests Section */}
+        <div className="border-t pt-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Additional Guests</h3>
+            <button
+              type="button"
+              onClick={addAdditionalGuest}
+              className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
+            >
+              + Add Guest
+            </button>
+          </div>
+          
+          <div className="text-sm text-gray-500 mb-2">
+            Total additional guests: {formData.additionalGuests.filter(
+              guest => guest.name.trim() !== '' && guest.relationship.trim() !== ''
+            ).length}
+          </div>
+          
+          {formData.additionalGuests.map((guest, index) => (
+            <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-3 border rounded">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <input
+                  type="text"
+                  value={guest.name}
+                  onChange={(e) => handleAdditionalGuestChange(index, 'name', e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Guest name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Gender</label>
+                <select
+                  value={guest.gender}
+                  onChange={(e) => handleAdditionalGuestChange(index, 'gender', e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                >
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Relationship</label>
+                <input
+                  type="text"
+                  value={guest.relationship}
+                  onChange={(e) => handleAdditionalGuestChange(index, 'relationship', e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Relationship to main guest"
+                />
+              </div>
+              
+              <div className="md:col-span-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => removeAdditionalGuest(index)}
+                  className="text-red-600 hover:text-red-800 text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Room and Stay Information */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Room Information</h3>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Select Rooms *</label>
+              <select
+                multiple
+                value={formData.rooms}
+                onChange={(e) => {
+                  const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                  setFormData({ ...formData, rooms: selectedOptions });
+                }}
+                className="w-full border border-gray-300 rounded px-3 py-2 h-32"
+                required
+              >
+                {/* Show all rooms when editing, available rooms when creating */}
+                {(editingGuest ? allRooms : availableRooms).map((room) => (
+                  <option 
+                    key={room._id} 
+                    value={room._id}
+                    className={room.isOccupied && !formData.rooms.includes(room._id) ? 'text-gray-400' : ''}
+                  >
+                    {room.roomNumber} - {room.type} (₹{room.rate}/night)
+                    {room.isOccupied && !formData.rooms.includes(room._id) && ' - Occupied'}
+                    {formData.rooms.includes(room._id) && ' - Selected'}
+                  </option>
+                ))}
+              </select>
+              {formErrors.rooms && <p className="text-red-500 text-sm">{formErrors.rooms}</p>}
+              <p className="text-sm text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
+              
+              {/* Show room status information */}
+              <div className="mt-2 text-sm text-gray-600">
+                {editingGuest && (
+                  <p>
+                    <span className="font-semibold">Note:</span> You can deselect rooms to de-allocate them from this guest.
+                    Grayed out rooms are currently occupied by other guests.
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Room Discount (₹)</label>
+              <input
+                type="number"
+                value={formData.roomDiscount}
+                onChange={(e) => setFormData({ ...formData, roomDiscount: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                min="0"
+                step="0.01"
+              />
+              {formErrors.roomDiscount && <p className="text-red-500 text-sm">{formErrors.roomDiscount}</p>}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Advance Paid (₹)</label>
+              <input
+                type="number"
+                value={formData.advancePaid}
+                onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                min="0"
+                step="0.01"
+              />
+              {formErrors.advancePaid && <p className="text-red-500 text-sm">{formErrors.advancePaid}</p>}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Stay Information</h3>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Check-in Date *</label>
+              <input
+                type="datetime-local"
+                value={formData.checkInDate}
+                onChange={handleCheckInDateChange}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                required
+              />
+              {formErrors.checkInDate && <p className="text-red-500 text-sm">{formErrors.checkInDate}</p>}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-1">Check-out Date</label>
+              <input
+                type="datetime-local"
+                value={formData.checkOutDate || ''}
+                onChange={handleCheckOutDateChange}
+                min={getMinCheckOutDateTime()}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+              {formErrors.checkOutDate && <p className="text-red-500 text-sm">{formErrors.checkOutDate}</p>}
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex justify-end space-x-3 pt-4">
+          <button
+            type="button"
+            onClick={resetForm}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={formLoading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {formLoading ? "Saving..." : editingGuest ? "Update Guest" : "Add Guest"}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
 
         {/* Notification Toast */}
         {notification && (
