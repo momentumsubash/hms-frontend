@@ -341,7 +341,7 @@ const resetForm = () => {
     occupation: "",
     vehicleNo: "",
     noOfAdditionalGuests: "0",
-    additionalGuests: [],
+    additionalGuests: [], // Ensure this is always an array
     purposeOfStay: "",
     rooms: [],
     roomDiscount: "0",
@@ -390,10 +390,11 @@ const validateForm = () => {
     errors.advancePaid = "Advance paid must be a non-negative number";
   }
 
-  // Email is now optional, only validate if provided
-  if (formData.email && formData.email.trim() !== '') {
+  // FIXED: Handle undefined/null email values safely
+  const emailValue = formData.email || '';
+  if (emailValue.trim() !== '') {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
+    if (!emailRegex.test(emailValue)) {
       errors.email = "Please enter a valid email address";
     }
   }
@@ -418,12 +419,35 @@ const handleFormSubmit = async (e: React.FormEvent) => {
   try {
     let resp;
     
-    // Calculate the correct number of additional guests (non-empty ones)
-    const validAdditionalGuests = formData.additionalGuests.filter(
-      guest => guest.name.trim() !== '' && guest.relationship.trim() !== ''
-    );
+    // FIXED: Completely safe additional guests filtering
+    const validAdditionalGuests: AdditionalGuest[] = [];
+    
+    // Safely iterate through additional guests
+    if (formData.additionalGuests && Array.isArray(formData.additionalGuests)) {
+      for (const guest of formData.additionalGuests) {
+        // Check if guest exists and has the required properties
+        if (guest && typeof guest === 'object') {
+          const name = guest.name || '';
+          const relationship = guest.relationship || '';
+          
+          // Only include if both name and relationship are not empty after trimming
+          if (typeof name === 'string' && 
+              typeof relationship === 'string' && 
+              name.trim() !== '' && 
+              relationship.trim() !== '') {
+            validAdditionalGuests.push({
+              name: name.trim(),
+              gender: guest.gender || 'male',
+              relationship: relationship.trim()
+            });
+          }
+        }
+      }
+    }
+    
     const additionalGuestsCount = validAdditionalGuests.length;
     
+    // ... rest of your handleFormSubmit function remains the same
     if (editingGuest) {
       const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
       const storedUser = localStorage.getItem('user');
@@ -463,9 +487,10 @@ const handleFormSubmit = async (e: React.FormEvent) => {
         advancePaid: parseFloat(formData.advancePaid || '0') || 0,
       };
       
-      // Only include email if it's not empty
-      if (formData.email.trim() !== '') {
-        updatePayload.email = formData.email;
+      // Handle email safely - only include if not empty
+      const emailValue = formData.email || '';
+      if (emailValue.trim() !== '') {
+        updatePayload.email = emailValue;
       }
       
       resp = await updateGuest(editingGuest._id, updatePayload);
@@ -509,8 +534,9 @@ const handleFormSubmit = async (e: React.FormEvent) => {
         advancePaid: parseFloat(formData.advancePaid || '0') || 0,
       };
       
-      // FIX: Always include email, use "noemail@gmail.com" if empty
-      createPayload.email = formData.email.trim() !== '' ? formData.email : 'noemail@gmail.com';
+      // Always include email, use "noemail@gmail.com" if empty
+      const emailValue = formData.email || '';
+      createPayload.email = emailValue.trim() !== '' ? emailValue : 'noemail@gmail.com';
       
       resp = await createGuest(createPayload);
     }
@@ -533,11 +559,11 @@ const handleEdit = async (guest: Guest) => {
     // Normalize room IDs for this guest
     const normalizedRooms = normalizeGuestRoomIds(guest);
   
-    // Basic guest info
+    // Basic guest info with safe email handling
     const formDataUpdate = {
       firstName: guest.firstName || "",
       lastName: guest.lastName || "",
-      email: guest.email || "",
+      email: guest.email || "", // Ensure email is never undefined
       phone: guest.phone || "",
       address: guest.address || "",
       idNo: guest.idNo || "",
@@ -551,7 +577,7 @@ const handleEdit = async (guest: Guest) => {
       rooms: normalizedRooms,
     };
     
-    // Handle additional guests
+    // FIXED: Handle additional guests safely
     const additionalGuests = guest.additionalGuests || [];
     const noOfAdditionalGuests = additionalGuests.length.toString();
     
@@ -652,10 +678,18 @@ const handleAddNewGuest = async () => {
   };
 
 const handleAdditionalGuestChange = (index: number, field: keyof AdditionalGuest, value: string) => {
-  const updatedGuests = [...formData.additionalGuests];
+  const updatedGuests = [...(formData.additionalGuests || [])];
+  
+  // Ensure the array is long enough
+  while (updatedGuests.length <= index) {
+    updatedGuests.push({ name: '', gender: 'male', relationship: '' });
+  }
+  
+  // Ensure the guest object exists
   if (!updatedGuests[index]) {
     updatedGuests[index] = { name: '', gender: 'male', relationship: '' };
   }
+  
   updatedGuests[index] = { ...updatedGuests[index], [field]: value };
   setFormData(prev => ({ ...prev, additionalGuests: updatedGuests }));
 };
@@ -663,7 +697,7 @@ const handleAdditionalGuestChange = (index: number, field: keyof AdditionalGuest
 const addAdditionalGuest = () => {
   setFormData(prev => ({
     ...prev,
-    additionalGuests: [...prev.additionalGuests, { name: '', gender: 'male', relationship: '' }],
+    additionalGuests: [...(prev.additionalGuests || []), { name: '', gender: 'male', relationship: '' }],
     noOfAdditionalGuests: (parseInt(prev.noOfAdditionalGuests) + 1).toString()
   }));
 };
@@ -671,7 +705,7 @@ const addAdditionalGuest = () => {
 const removeAdditionalGuest = (index: number) => {
   setFormData(prev => ({
     ...prev,
-    additionalGuests: prev.additionalGuests.filter((_, i) => i !== index),
+    additionalGuests: (prev.additionalGuests || []).filter((_, i) => i !== index),
     noOfAdditionalGuests: Math.max(0, parseInt(prev.noOfAdditionalGuests) - 1).toString()
   }));
 };
@@ -1070,60 +1104,67 @@ const removeAdditionalGuest = (index: number) => {
             </button>
           </div>
           
-          <div className="text-sm text-gray-500 mb-2">
-            Total additional guests: {formData.additionalGuests.filter(
-              guest => guest.name.trim() !== '' && guest.relationship.trim() !== ''
-            ).length}
-          </div>
+      <div className="text-sm text-gray-500 mb-2">
+  Total additional guests: {(formData.additionalGuests || []).filter(
+    guest => guest != null && 
+            typeof guest === 'object' && 
+            (guest.name || '').trim() !== '' && 
+            (guest.relationship || '').trim() !== ''
+  ).length}
+</div>
           
-          {formData.additionalGuests.map((guest, index) => (
-            <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-3 border rounded">
-              <div>
-                <label className="block text-sm font-medium mb-1">Name</label>
-                <input
-                  type="text"
-                  value={guest.name}
-                  onChange={(e) => handleAdditionalGuestChange(index, 'name', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Guest name"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">Gender</label>
-                <select
-                  value={guest.gender}
-                  onChange={(e) => handleAdditionalGuestChange(index, 'gender', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">Relationship</label>
-                <input
-                  type="text"
-                  value={guest.relationship}
-                  onChange={(e) => handleAdditionalGuestChange(index, 'relationship', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Relationship to main guest"
-                />
-              </div>
-              
-              <div className="md:col-span-3 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => removeAdditionalGuest(index)}
-                  className="text-red-600 hover:text-red-800 text-sm"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
+{(formData.additionalGuests || []).map((guest, index) => {
+  // Ensure guest object exists and has required properties
+  const safeGuest = guest || { name: '', gender: 'male', relationship: '' };
+  return (
+    <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-3 border rounded">
+      <div>
+        <label className="block text-sm font-medium mb-1">Name</label>
+        <input
+          type="text"
+          value={safeGuest.name || ''}
+          onChange={(e) => handleAdditionalGuestChange(index, 'name', e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          placeholder="Guest name"
+        />
+      </div>
+      
+      <div>
+        <label className="block text-sm font-medium mb-1">Gender</label>
+        <select
+          value={safeGuest.gender || 'male'}
+          onChange={(e) => handleAdditionalGuestChange(index, 'gender', e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+        >
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      
+      <div>
+        <label className="block text-sm font-medium mb-1">Relationship</label>
+        <input
+          type="text"
+          value={safeGuest.relationship || ''}
+          onChange={(e) => handleAdditionalGuestChange(index, 'relationship', e.target.value)}
+          className="w-full border border-gray-300 rounded px-3 py-2"
+          placeholder="Relationship to main guest"
+        />
+      </div>
+      
+      <div className="md:col-span-3 flex justify-end">
+        <button
+          type="button"
+          onClick={() => removeAdditionalGuest(index)}
+          className="text-red-600 hover:text-red-800 text-sm"
+        >
+          Remove
+        </button>
+      </div>
+    </div>
+  );
+})}
         </div>
 
         {/* Room and Stay Information */}
