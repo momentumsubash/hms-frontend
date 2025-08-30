@@ -5,6 +5,7 @@ import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 import { useDebounce } from "@/hooks/useDebounce";
 
+
 export default function OrdersPage() {
   // Pagination state
   const [page, setPage] = useState(1);
