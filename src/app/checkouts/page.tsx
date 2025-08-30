@@ -65,6 +65,18 @@ export default function CheckoutsPage() {
 
   // Hotel name state
   const [hotelName, setHotelName] = useState("Hotel");
+  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const [advancePaymentMethod, setAdvancePaymentMethod] = useState<string>("cash");
+  const [paymentDetails, setPaymentDetails] = useState({
+    transactionId: "",
+    paymentGateway: "",
+    paymentDate: ""
+  });
+  const [advancePaymentDetails, setAdvancePaymentDetails] = useState({
+    transactionId: "",
+    paymentGateway: "",
+    paymentDate: ""
+  });
 
   // Load data when page, status filter, or debounced search changes
   useEffect(() => {
@@ -152,7 +164,7 @@ export default function CheckoutsPage() {
     setPage(1);
   };
 
-  // Print bill function
+  // Print bill function - UPDATED FOR THERMAL PAPER
   const printBill = () => {
     const printContent = document.getElementById('bill-content');
     if (printContent) {
@@ -163,118 +175,119 @@ export default function CheckoutsPage() {
             <head>
               <title>Hotel Bill - ${detailsCheckout?.guest?.firstName} ${detailsCheckout?.guest?.lastName}</title>
               <style>
-                body { 
-                  font-family: Arial, sans-serif; 
-                  margin: 15px; 
-                  font-size: 12px;
-                  line-height: 1.3;
-                }
-                .bill-header { 
-                  text-align: center; 
-                  border-bottom: 2px solid #000; 
-                  padding-bottom: 8px; 
-                  margin-bottom: 12px; 
-                }
-                .bill-header h1 { margin: 0 0 5px 0; font-size: 18px; }
-                .bill-header p { margin: 2px 0; }
-                .bill-section { 
-                  margin: 8px 0; 
-                  page-break-inside: avoid;
-                }
-                .bill-section h3 { 
-                  margin: 5px 0 3px 0; 
-                  font-size: 13px; 
-                  border-bottom: 1px solid #ccc;
-                  padding-bottom: 3px;
-                }
-                .bill-table { 
-                  width: 100%; 
-                  border-collapse: collapse; 
-                  margin: 5px 0; 
-                  font-size: 11px;
-                }
-                .bill-table th, .bill-table td { 
-                  border: 1px solid #000; 
-                  padding: 4px 6px; 
-                  text-align: left; 
-                  vertical-align: top;
-                }
-                .bill-table th { 
-                  background-color: #f5f5f5; 
-                  font-weight: bold;
-                }
-                .total-row { 
-                  font-weight: bold; 
-                  background-color: #f0f0f0; 
-                }
-                .text-right { text-align: right; }
-                .text-center { text-align: center; }
-                .bill-footer {
-                  margin-top: 15px;
-                  text-align: center;
-                  border-top: 1px solid #ccc;
-                  padding-top: 8px;
-                  font-size: 11px;
-                }
-                .order-details {
-                  margin-top: 10px;
-                }
-                .order-table {
-                  width: 100%;
-                  border-collapse: collapse;
-                  margin: 5px 0;
-                  font-size: 10px;
-                }
-                .order-table th, .order-table td {
-                  border: 1px solid #ddd;
-                  padding: 3px 5px;
-                }
-                .order-header {
-                  background-color: #f9f9f9;
-                  font-weight: bold;
-                }
-                .vat-info {
-                  margin-top: 10px;
-                  padding: 8px;
-                  border: 1px solid #ddd;
-                  background-color: #f9f9f9;
-                }
                 @media print {
-                  body { 
-                    margin: 10mm; 
-                    font-size: 11px;
+                  * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                    font-family: 'Courier New', monospace;
+                  }
+                  body {
+                    width: 57mm;
+                    max-width: 57mm;
+                    padding: 2mm;
+                    font-size: 8px;
+                    line-height: 1.1;
+                  }
+                  .bill-header {
+                    text-align: center;
+                    border-bottom: 1px solid #000;
+                    padding-bottom: 2mm;
+                    margin-bottom: 2mm;
+                  }
+                  .bill-header h1 {
+                    font-size: 10px;
+                    font-weight: bold;
+                    margin-bottom: 1mm;
+                  }
+                  .bill-header h2 {
+                    font-size: 9px;
+                    margin-bottom: 1mm;
+                  }
+                  .bill-header p {
+                    font-size: 7px;
+                    margin: 0.5mm 0;
                   }
                   .bill-section {
+                    margin: 2mm 0;
                     page-break-inside: avoid;
-                    margin: 6px 0;
+                  }
+                  .bill-section h3 {
+                    font-size: 8px;
+                    font-weight: bold;
+                    border-bottom: 1px dashed #ccc;
+                    padding-bottom: 1mm;
+                    margin-bottom: 1mm;
                   }
                   .bill-table {
-                    font-size: 10px;
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 1mm 0;
+                    font-size: 7px;
                   }
                   .bill-table th, .bill-table td {
-                    padding: 3px 4px;
+                    padding: 0.5mm 0.3mm;
+                    text-align: left;
+                    vertical-align: top;
+                  }
+                  .bill-table th {
+                    font-weight: bold;
+                  }
+                  .text-right {
+                    text-align: right;
+                  }
+                  .text-center {
+                    text-align: center;
+                  }
+                  .total-row {
+                    font-weight: bold;
+                    border-top: 1px dashed #000;
                   }
                   .bill-footer {
-                    margin-top: 10px;
-                    padding-top: 5px;
+                    margin-top: 3mm;
+                    text-align: center;
+                    border-top: 1px dashed #ccc;
+                    padding-top: 2mm;
+                    font-size: 7px;
                   }
                   .order-table {
-                    font-size: 9px;
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 1mm 0;
+                    font-size: 6px;
+                  }
+                  .order-table th, .order-table td {
+                    padding: 0.3mm;
                   }
                   .vat-info {
-                    border: 1px solid #999;
+                    margin-top: 1mm;
+                    padding: 1mm;
+                    border: 1px dashed #ccc;
+                    font-size: 7px;
+                  }
+                  .payment-info {
+                    margin-top: 1mm;
+                    padding: 1mm;
+                    border: 1px dashed #ccc;
+                    font-size: 7px;
+                  }
+                  .payment-method {
+                    display: inline-block;
+                    padding: 0.5mm 1mm;
+                    background: #f0f0f0;
+                    border-radius: 2px;
+                    margin-right: 1mm;
+                    font-size: 6px;
                   }
                 }
               </style>
             </head>
-            <body>
+            <body onload="window.print(); window.close();">
               ${printContent.innerHTML}
             </body>
           </html>
         `);
         printWindow.document.close();
-        printWindow.print();
-        printWindow.close();
       }
     }
   };
@@ -295,7 +308,18 @@ export default function CheckoutsPage() {
         advancePaid: parseFloat(advanceAmount) || 0,
         checkInDate,
         checkOutDate,
+        paymentMethod,
+        advancePaymentMethod,
       };
+      // Add payment details if provided
+      if (paymentMethod === "online" && paymentDetails.transactionId) {
+        payload.paymentDetails = paymentDetails;
+      }
+
+      // Add advance payment details if provided
+      if (advancePaymentMethod === "online" && advancePaymentDetails.transactionId) {
+        payload.advancePaymentDetails = advancePaymentDetails;
+      }
 
       // Add VAT information if provided
       if (editVatPercent !== "") {
@@ -530,8 +554,8 @@ export default function CheckoutsPage() {
                           loadCheckoutDetails(checkout._id);
                         }}>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${checkout.status === 'completed'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
                             }`}>
                             {checkout.status}
                           </span>
@@ -570,6 +594,18 @@ export default function CheckoutsPage() {
                               setAdvanceAmount(checkout.advancePaid?.toString() || "0");
                               setCheckInDate(checkout.checkInDate ? checkout.checkInDate.slice(0, 10) : "");
                               setCheckOutDate(checkout.checkOutDate ? checkout.checkOutDate.slice(0, 10) : "");
+                              setPaymentMethod(checkout.paymentMethod || "cash");
+                              setAdvancePaymentMethod(checkout.advancePaymentMethod || "cash");
+                              setPaymentDetails(checkout.paymentDetails || {
+                                transactionId: "",
+                                paymentGateway: "",
+                                paymentDate: ""
+                              });
+                              setAdvancePaymentDetails(checkout.advancePaymentDetails || {
+                                transactionId: "",
+                                paymentGateway: "",
+                                paymentDate: ""
+                              });
                               setShowEdit(true);
                               setEditError("");
                             }}
@@ -661,6 +697,115 @@ export default function CheckoutsPage() {
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+                {/* Payment Method Section */}
+                <h4 className="text-lg font-semibold mt-6 mb-2">Payment Method</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label htmlFor="paymentMethod" className="block text-sm font-medium text-gray-700">Final Payment Method</label>
+                    <select
+                      id="paymentMethod"
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="online">Online</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="advancePaymentMethod" className="block text-sm font-medium text-gray-700">Advance Payment Method</label>
+                    <select
+                      id="advancePaymentMethod"
+                      value={advancePaymentMethod}
+                      onChange={(e) => setAdvancePaymentMethod(e.target.value)}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="online">Online</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Online Payment Details (Conditional) */}
+                {paymentMethod === "online" && (
+                  <div className="bg-blue-50 p-4 rounded-md mb-4">
+                    <h5 className="font-medium text-blue-800 mb-2">Final Payment Details</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="transactionId" className="block text-sm font-medium text-gray-700">Transaction ID</label>
+                        <input
+                          type="text"
+                          id="transactionId"
+                          value={paymentDetails.transactionId}
+                          onChange={(e) => setPaymentDetails({ ...paymentDetails, transactionId: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter transaction ID"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="paymentGateway" className="block text-sm font-medium text-gray-700">Payment Gateway</label>
+                        <input
+                          type="text"
+                          id="paymentGateway"
+                          value={paymentDetails.paymentGateway}
+                          onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentGateway: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="e.g., stripe, paypal"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="paymentDate" className="block text-sm font-medium text-gray-700">Payment Date</label>
+                        <input
+                          type="datetime-local"
+                          id="paymentDate"
+                          value={paymentDetails.paymentDate}
+                          onChange={(e) => setPaymentDetails({ ...paymentDetails, paymentDate: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {advancePaymentMethod === "online" && (
+                  <div className="bg-green-50 p-4 rounded-md mb-4">
+                    <h5 className="font-medium text-green-800 mb-2">Advance Payment Details</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="advanceTransactionId" className="block text-sm font-medium text-gray-700">Transaction ID</label>
+                        <input
+                          type="text"
+                          id="advanceTransactionId"
+                          value={advancePaymentDetails.transactionId}
+                          onChange={(e) => setAdvancePaymentDetails({ ...advancePaymentDetails, transactionId: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter transaction ID"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="advancePaymentGateway" className="block text-sm font-medium text-gray-700">Payment Gateway</label>
+                        <input
+                          type="text"
+                          id="advancePaymentGateway"
+                          value={advancePaymentDetails.paymentGateway}
+                          onChange={(e) => setAdvancePaymentDetails({ ...advancePaymentDetails, paymentGateway: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="e.g., stripe, paypal"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="advancePaymentDate" className="block text-sm font-medium text-gray-700">Payment Date</label>
+                        <input
+                          type="datetime-local"
+                          id="advancePaymentDate"
+                          value={advancePaymentDetails.paymentDate}
+                          onChange={(e) => setAdvancePaymentDetails({ ...advancePaymentDetails, paymentDate: e.target.value })}
+                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {/* Check-in Date */}
                 <div>
                   <label htmlFor="checkInDate" className="block text-sm font-medium text-gray-700">Check-in Date</label>
@@ -846,7 +991,7 @@ export default function CheckoutsPage() {
         </div>
       )}
 
-      {/* View Details Modal */}
+  {/* View Details Modal */}
       {showDetails && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl mx-4">
@@ -876,51 +1021,119 @@ export default function CheckoutsPage() {
               <div id="bill-content">
                 {/* Bill Header */}
                 <div className="bill-header">
-                  <h1 className="text-xl font-bold">{hotelName.toUpperCase()}</h1>
-                  <h2 className="text-lg">HOTEL BILL</h2>
+                  <h1>{hotelName.toUpperCase()}</h1>
+                  <h2>HOTEL BILL</h2>
                   <p>Date: {new Date().toLocaleDateString()}</p>
                   <p>Invoice #: {detailsCheckout?._id?.slice(-8)}</p>
                 </div>
 
                 {/* Guest & Room Details */}
-                <div className="bill-section grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <h3 className="font-semibold text-lg">Guest Information</h3>
-                    <p><strong>Name:</strong> {detailsCheckout?.guest?.firstName} {detailsCheckout?.guest?.lastName}</p>
-                    <p><strong>Email:</strong> {detailsCheckout?.guest?.email}</p>
-                    {detailsCheckout?.guest?.phone && (
-                      <p><strong>Phone:</strong> {detailsCheckout.guest.phone}</p>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">Stay Information</h3>
-                    <p><strong>Rooms:</strong> {detailsCheckout?.rooms?.map((r: any) => `#${r.roomNumber}`).join(', ') || 'N/A'}</p>
-                    <p><strong>Nights:</strong> {detailsCheckout?.nights || 1}</p>
-                    <p><strong>Check-in:</strong> {detailsCheckout?.checkInDate ? new Date(detailsCheckout.checkInDate).toLocaleDateString() : 'N/A'}</p>
-                    <p><strong>Check-out:</strong> {detailsCheckout?.checkOutDate ? new Date(detailsCheckout.checkOutDate).toLocaleDateString() : 'N/A'}</p>
-                  </div>
+                <div className="bill-section">
+                  <h3>Guest Information</h3>
+                  <p><strong>Name:</strong> {detailsCheckout?.guest?.firstName} {detailsCheckout?.guest?.lastName}</p>
+                  <p><strong>Email:</strong> {detailsCheckout?.guest?.email}</p>
+                  {detailsCheckout?.guest?.phone && (
+                    <p><strong>Phone:</strong> {detailsCheckout.guest.phone}</p>
+                  )}
+                </div>
+
+                <div className="bill-section">
+                  <h3>Stay Information</h3>
+                  <p><strong>Rooms:</strong> {detailsCheckout?.rooms?.map((r: any) => `#${r.roomNumber}`).join(', ') || 'N/A'}</p>
+                  <p><strong>Nights:</strong> {detailsCheckout?.nights || 1}</p>
+                  <p><strong>Check-in:</strong> {detailsCheckout?.checkInDate ? new Date(detailsCheckout.checkInDate).toLocaleDateString() : 'N/A'}</p>
+                  <p><strong>Check-out:</strong> {detailsCheckout?.checkOutDate ? new Date(detailsCheckout.checkOutDate).toLocaleDateString() : 'N/A'}</p>
                 </div>
 
                 {/* Client VAT Info (if available) */}
                 {detailsCheckout?.clientVatInfo?.vatNumber && (
-                  <div className="bill-section text-sm vat-info">
-                    <h3 className="font-semibold text-lg">Client VAT Information</h3>
-                    <p><strong>VAT Number:</strong> {detailsCheckout.clientVatInfo.vatNumber}</p>
+                  <div className="bill-section vat-info">
+                    <h3>Client VAT Information</h3>
+                    <p><strong>VAT No:</strong> {detailsCheckout.clientVatInfo.vatNumber}</p>
                     <p><strong>Company:</strong> {detailsCheckout.clientVatInfo.companyName}</p>
                     <p><strong>Address:</strong> {detailsCheckout.clientVatInfo.address}</p>
                   </div>
                 )}
 
+                {/* Payment Information */}
+                <div className="bill-section payment-info">
+                  <h3>Payment Information</h3>
+                  
+                  {/* Final Payment */}
+                  <p>
+                    <strong>Final Payment:</strong> 
+                    <span className="payment-method">{detailsCheckout?.paymentMethod?.toUpperCase() || 'CASH'}</span>
+                  </p>
+                  
+                  {/* Advance Payment */}
+                  {detailsCheckout?.advancePaid > 0 && (
+                    <p>
+                      <strong>Advance Paid:</strong> 
+                      <span className="payment-method">{detailsCheckout?.advancePaymentMethod?.toUpperCase() || 'CASH'}</span>
+                      ₹{detailsCheckout.advancePaid.toLocaleString()}
+                    </p>
+                  )}
+                  
+                  {/* Online Payment Details */}
+                  {detailsCheckout?.paymentMethod === 'online' && detailsCheckout?.paymentDetails?.transactionId && (
+                    <p>
+                      <strong>Transaction ID:</strong> {detailsCheckout.paymentDetails.transactionId}
+                      {detailsCheckout.paymentDetails.paymentGateway && (
+                        <span> ({detailsCheckout.paymentDetails.paymentGateway})</span>
+                      )}
+                    </p>
+                  )}
+                  
+                  {/* Advance Online Payment Details */}
+                  {detailsCheckout?.advancePaymentMethod === 'online' && detailsCheckout?.advancePaymentDetails?.transactionId && (
+                    <p>
+                      <strong>Advance Txn ID:</strong> {detailsCheckout.advancePaymentDetails.transactionId}
+                      {detailsCheckout.advancePaymentDetails.paymentGateway && (
+                        <span> ({detailsCheckout.advancePaymentDetails.paymentGateway})</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                {/* Room Charges Details */}
+                <div className="bill-section">
+                  <h3>Room Charges</h3>
+                  <table className="bill-table">
+                    <thead>
+                      <tr>
+                        <th>Room</th>
+                        <th className="text-right">Rate/Night</th>
+                        <th className="text-center">Nights</th>
+                        <th className="text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailsCheckout?.rooms?.map((room: any, index: number) => {
+                        const nights = detailsCheckout.nights || 1;
+                        const roomTotal = room.rate * nights;
+                        return (
+                          <tr key={index}>
+                            <td>#{room.roomNumber}</td>
+                            <td className="text-right">₹{room.rate?.toLocaleString()}</td>
+                            <td className="text-center">{nights}</td>
+                            <td className="text-right">₹{roomTotal.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
                 {/* Order Details */}
                 {detailsCheckout?.orders && detailsCheckout.orders.length > 0 && (
                   <div className="bill-section">
-                    <h3 className="font-semibold text-lg">Order Details</h3>
+                    <h3>Order Details</h3>
                     {detailsCheckout.orders.map((order: any, index: number) => (
                       <div key={index} className="order-details">
                         <p><strong>Order #{index + 1}</strong> - {new Date(order.createdAt).toLocaleDateString()}</p>
                         <table className="order-table">
                           <thead>
-                            <tr className="order-header">
+                            <tr>
                               <th>Item</th>
                               <th className="text-center">Qty</th>
                               <th className="text-right">Price</th>
@@ -949,101 +1162,60 @@ export default function CheckoutsPage() {
                   </div>
                 )}
 
-                {/* Room Charges Details */}
-                <div className="bill-section">
-                  <h3 className="font-semibold text-lg">Room Charges</h3>
-                  <table className="bill-table">
-                    <thead>
-                      <tr>
-                        <th>Room</th>
-                        <th>Type</th>
-                        <th className="text-right">Rate per Night</th>
-                        <th className="text-center">Nights</th>
-                        <th className="text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detailsCheckout?.rooms?.map((room: any, index: number) => {
-                        const nights = detailsCheckout.nights || 1;
-                        const roomTotal = room.rate * nights;
-                        return (
-                          <tr key={index}>
-                            <td>#{room.roomNumber}</td>
-                            <td className="capitalize">{room.type}</td>
-                            <td className="text-right">₹{room.rate?.toLocaleString()}</td>
-                            <td className="text-center">{nights}</td>
-                            <td className="text-right">₹{roomTotal.toLocaleString()}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
                 {/* Billing Summary */}
                 <div className="bill-section">
-                  <h3 className="font-semibold text-lg">Bill Summary</h3>
-                  <table className="bill-table w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="px-4 py-2 text-left">Description</th>
-                        <th className="px-4 py-2 text-right">Amount (₹)</th>
-                      </tr>
-                    </thead>
+                  <h3>Bill Summary</h3>
+                  <table className="bill-table">
                     <tbody>
                       <tr>
-                        <td className="px-4 py-2">Room Charges ({detailsCheckout?.nights || 1} nights)</td>
-                        <td className="px-4 py-2 text-right">{detailsCheckout?.breakdown?.roomCharges?.toLocaleString()}</td>
+                        <td>Room Charges</td>
+                        <td className="text-right">₹{detailsCheckout?.breakdown?.roomCharges?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.roomDiscount > 0 && (
                         <tr>
-                          <td className="px-4 py-2 text-red-600">Room Discount</td>
-                          <td className="px-4 py-2 text-right text-red-600">-{detailsCheckout.breakdown.roomDiscount?.toLocaleString()}</td>
+                          <td className="text-right">Room Discount</td>
+                          <td className="text-right">-₹{detailsCheckout.breakdown.roomDiscount?.toLocaleString()}</td>
                         </tr>
                       )}
                       <tr>
-                        <td className="px-4 py-2">Net Room Charges</td>
-                        <td className="px-4 py-2 text-right">{detailsCheckout?.breakdown?.roomNet?.toLocaleString()}</td>
+                        <td>Net Room Charges</td>
+                        <td className="text-right">₹{detailsCheckout?.breakdown?.roomNet?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.orderCharges > 0 && (
                         <tr>
-                          <td className="px-4 py-2">Food & Beverage Orders</td>
-                          <td className="px-4 py-2 text-right">{detailsCheckout.breakdown.orderCharges?.toLocaleString()}</td>
+                          <td>Food & Beverage</td>
+                          <td className="text-right">₹{detailsCheckout.breakdown.orderCharges?.toLocaleString()}</td>
                         </tr>
                       )}
                       {detailsCheckout?.breakdown?.extraCharges > 0 && (
                         <tr>
-                          <td className="px-4 py-2">Other Charges</td>
-                          <td className="px-4 py-2 text-right">{detailsCheckout.breakdown.extraCharges?.toLocaleString()}</td>
+                          <td>Other Charges</td>
+                          <td className="text-right">₹{detailsCheckout.breakdown.extraCharges?.toLocaleString()}</td>
                         </tr>
                       )}
-                      <tr className="font-bold">
-                        <td className="px-4 py-2">Subtotal</td>
-                        <td className="px-4 py-2 text-right">
-                          {detailsCheckout?.breakdown?.subtotal?.toLocaleString()}
-                        </td>
+                      <tr className="total-row">
+                        <td>Subtotal</td>
+                        <td className="text-right">₹{detailsCheckout?.breakdown?.subtotal?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.vatAmount > 0 && (
                         <tr>
-                          <td className="px-4 py-2">VAT ({detailsCheckout.breakdown.vatPercent || 0}%)</td>
-                          <td className="px-4 py-2 text-right">{detailsCheckout.breakdown.vatAmount?.toLocaleString()}</td>
+                          <td>VAT ({detailsCheckout.breakdown.vatPercent || 0}%)</td>
+                          <td className="text-right">₹{detailsCheckout.breakdown.vatAmount?.toLocaleString()}</td>
                         </tr>
                       )}
-                      <tr className="font-bold">
-                        <td className="px-4 py-2">Total Before Advance</td>
-                        <td className="px-4 py-2 text-right">
-                          {detailsCheckout?.breakdown?.totalBeforeAdvance?.toLocaleString()}
-                        </td>
+                      <tr className="total-row">
+                        <td>Total Before Advance</td>
+                        <td className="text-right">₹{detailsCheckout?.breakdown?.totalBeforeAdvance?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.advancePaid > 0 && (
-                        <tr className="text-green-700">
-                          <td className="px-4 py-2">Advance Paid</td>
-                          <td className="px-4 py-2 text-right">-{detailsCheckout.breakdown.advancePaid?.toLocaleString()}</td>
+                        <tr>
+                          <td>Advance Paid</td>
+                          <td className="text-right">-₹{detailsCheckout.breakdown.advancePaid?.toLocaleString()}</td>
                         </tr>
                       )}
-                      <tr className="font-extrabold text-lg bg-gray-200">
-                        <td className="px-4 py-2">Grand Total</td>
-                        <td className="px-4 py-2 text-right">₹{detailsCheckout?.breakdown?.finalBill?.toLocaleString()}</td>
+                      <tr className="total-row">
+                        <td><strong>GRAND TOTAL</strong></td>
+                        <td className="text-right"><strong>₹{detailsCheckout?.breakdown?.finalBill?.toLocaleString()}</strong></td>
                       </tr>
                     </tbody>
                   </table>
@@ -1052,7 +1224,7 @@ export default function CheckoutsPage() {
                 {/* Footer */}
                 <div className="bill-footer">
                   <p>Thank you for staying with us!</p>
-                  <p>For any queries, please contact hotel management</p>
+                  <p>For queries, contact hotel management</p>
                 </div>
               </div>
             )}

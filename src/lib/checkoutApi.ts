@@ -37,4 +37,6 @@ export const updateCheckout = async (id: string, data: any) => {
   return response.json();
 };
 
+
+
 // In lib/checkoutApi.ts
