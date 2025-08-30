@@ -529,7 +529,7 @@ const handleUpdateOrderItems = async () => {
                           </div>
                         </div>
                         <div className="text-sm text-gray-600">
-                          ₹{item.price * parseInt(item.quantity) || 0}
+                          रु{item.price * parseInt(item.quantity) || 0}
                         </div>
                         <button
                           type="button"
@@ -633,7 +633,7 @@ const handleUpdateOrderItems = async () => {
                         >
                           <div className="font-semibold">{item.name}</div>
                           <div className="text-xs text-gray-500">{item.category?.name || 'No category'}</div>
-                          <div className="text-xs text-gray-400">Price: ₹{item.price}</div>
+                          <div className="text-xs text-gray-400">Price: रु{item.price}</div>
                         </li>
                       ))}
                     </ul>
@@ -761,10 +761,10 @@ const handleUpdateOrderItems = async () => {
                         } else if (i.itemId) {
                           category = String(i.itemId);
                         }
-                        return `${name} (x${qty}) - ₹${price}${category ? ` [${category}]` : ''}`;
+                        return `${name} (x${qty}) - रु${price}${category ? ` [${category}]` : ''}`;
                       }).join("; ")
                     : "-";
-                  const total = order.totalAmount !== undefined ? `₹${String(order.totalAmount)}` : "-";
+                  const total = order.totalAmount !== undefined ? `रु${String(order.totalAmount)}` : "-";
                   const status = order.status ? String(order.status) : "-";
                   const createdBy = order.createdBy && typeof order.createdBy === 'object'
                     ? `${order.createdBy.firstName || ''} ${order.createdBy.lastName || ''}`.trim() || "-"

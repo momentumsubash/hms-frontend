@@ -564,7 +564,7 @@ export default function CheckoutsPage() {
                           setDetailsCheckout(checkout);
                           setShowDetails(true);
                           loadCheckoutDetails(checkout._id);
-                        }}>₹{checkout.totalBill?.toLocaleString()}</td>
+                        }}>रु{checkout.totalBill?.toLocaleString()}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-xs cursor-pointer" onClick={() => {
                           setDetailsCheckout(checkout);
                           setShowDetails(true);
@@ -688,7 +688,7 @@ export default function CheckoutsPage() {
                 </div>
                 {/* Advance Amount */}
                 <div>
-                  <label htmlFor="advanceAmount" className="block text-sm font-medium text-gray-700">Advance Paid (₹)</label>
+                  <label htmlFor="advanceAmount" className="block text-sm font-medium text-gray-700">Advance Paid (रु)</label>
                   <input
                     type="number"
                     id="advanceAmount"
@@ -848,7 +848,7 @@ export default function CheckoutsPage() {
                 </div>
                 {/* VAT Amount */}
                 <div>
-                  <label htmlFor="editVatAmount" className="block text-sm font-medium text-gray-700">VAT Amount (₹)</label>
+                  <label htmlFor="editVatAmount" className="block text-sm font-medium text-gray-700">VAT Amount (रु)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -953,7 +953,7 @@ export default function CheckoutsPage() {
                 </div>
                 {/* VAT Amount */}
                 <div>
-                  <label htmlFor="editVatAmount" className="block text-sm font-medium text-gray-700">VAT Amount (₹)</label>
+                  <label htmlFor="editVatAmount" className="block text-sm font-medium text-gray-700">VAT Amount (रु)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -1070,7 +1070,7 @@ export default function CheckoutsPage() {
                     <p>
                       <strong>Advance Paid:</strong> 
                       <span className="payment-method">{detailsCheckout?.advancePaymentMethod?.toUpperCase() || 'CASH'}</span>
-                      ₹{detailsCheckout.advancePaid.toLocaleString()}
+                      रु{detailsCheckout.advancePaid.toLocaleString()}
                     </p>
                   )}
                   
@@ -1114,9 +1114,9 @@ export default function CheckoutsPage() {
                         return (
                           <tr key={index}>
                             <td>#{room.roomNumber}</td>
-                            <td className="text-right">₹{room.rate?.toLocaleString()}</td>
+                            <td className="text-right">रु{room.rate?.toLocaleString()}</td>
                             <td className="text-center">{nights}</td>
-                            <td className="text-right">₹{roomTotal.toLocaleString()}</td>
+                            <td className="text-right">रु{roomTotal.toLocaleString()}</td>
                           </tr>
                         );
                       })}
@@ -1145,15 +1145,15 @@ export default function CheckoutsPage() {
                               <tr key={itemIndex}>
                                 <td>{item.name}</td>
                                 <td className="text-center">{item.quantity}</td>
-                                <td className="text-right">₹{item.price?.toLocaleString()}</td>
-                                <td className="text-right">₹{item.total?.toLocaleString()}</td>
+                                <td className="text-right">रु{item.price?.toLocaleString()}</td>
+                                <td className="text-right">रु{item.total?.toLocaleString()}</td>
                               </tr>
                             ))}
                           </tbody>
                           <tfoot>
                             <tr className="total-row">
                               <td colSpan={3} className="text-right">Order Total:</td>
-                              <td className="text-right">₹{order.totalAmount?.toLocaleString()}</td>
+                              <td className="text-right">रु{order.totalAmount?.toLocaleString()}</td>
                             </tr>
                           </tfoot>
                         </table>
@@ -1169,53 +1169,53 @@ export default function CheckoutsPage() {
                     <tbody>
                       <tr>
                         <td>Room Charges</td>
-                        <td className="text-right">₹{detailsCheckout?.breakdown?.roomCharges?.toLocaleString()}</td>
+                        <td className="text-right">रु{detailsCheckout?.breakdown?.roomCharges?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.roomDiscount > 0 && (
                         <tr>
                           <td className="text-right">Room Discount</td>
-                          <td className="text-right">-₹{detailsCheckout.breakdown.roomDiscount?.toLocaleString()}</td>
+                          <td className="text-right">-रु{detailsCheckout.breakdown.roomDiscount?.toLocaleString()}</td>
                         </tr>
                       )}
                       <tr>
                         <td>Net Room Charges</td>
-                        <td className="text-right">₹{detailsCheckout?.breakdown?.roomNet?.toLocaleString()}</td>
+                        <td className="text-right">रु{detailsCheckout?.breakdown?.roomNet?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.orderCharges > 0 && (
                         <tr>
                           <td>Food & Beverage</td>
-                          <td className="text-right">₹{detailsCheckout.breakdown.orderCharges?.toLocaleString()}</td>
+                          <td className="text-right">रु{detailsCheckout.breakdown.orderCharges?.toLocaleString()}</td>
                         </tr>
                       )}
                       {detailsCheckout?.breakdown?.extraCharges > 0 && (
                         <tr>
                           <td>Other Charges</td>
-                          <td className="text-right">₹{detailsCheckout.breakdown.extraCharges?.toLocaleString()}</td>
+                          <td className="text-right">रु{detailsCheckout.breakdown.extraCharges?.toLocaleString()}</td>
                         </tr>
                       )}
                       <tr className="total-row">
                         <td>Subtotal</td>
-                        <td className="text-right">₹{detailsCheckout?.breakdown?.subtotal?.toLocaleString()}</td>
+                        <td className="text-right">रु{detailsCheckout?.breakdown?.subtotal?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.vatAmount > 0 && (
                         <tr>
                           <td>VAT ({detailsCheckout.breakdown.vatPercent || 0}%)</td>
-                          <td className="text-right">₹{detailsCheckout.breakdown.vatAmount?.toLocaleString()}</td>
+                          <td className="text-right">रु{detailsCheckout.breakdown.vatAmount?.toLocaleString()}</td>
                         </tr>
                       )}
                       <tr className="total-row">
                         <td>Total Before Advance</td>
-                        <td className="text-right">₹{detailsCheckout?.breakdown?.totalBeforeAdvance?.toLocaleString()}</td>
+                        <td className="text-right">रु{detailsCheckout?.breakdown?.totalBeforeAdvance?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.advancePaid > 0 && (
                         <tr>
                           <td>Advance Paid</td>
-                          <td className="text-right">-₹{detailsCheckout.breakdown.advancePaid?.toLocaleString()}</td>
+                          <td className="text-right">-रु{detailsCheckout.breakdown.advancePaid?.toLocaleString()}</td>
                         </tr>
                       )}
                       <tr className="total-row">
                         <td><strong>GRAND TOTAL</strong></td>
-                        <td className="text-right"><strong>₹{detailsCheckout?.breakdown?.finalBill?.toLocaleString()}</strong></td>
+                        <td className="text-right"><strong>रु{detailsCheckout?.breakdown?.finalBill?.toLocaleString()}</strong></td>
                       </tr>
                     </tbody>
                   </table>

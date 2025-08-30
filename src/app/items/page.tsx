@@ -703,7 +703,7 @@ export default function ItemsPage() {
                           {typeof item.category === 'object' && item.category !== null ? item.category.name : item.category}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">₹{item.price}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">रु{item.price}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           item.isAvailable 
@@ -810,7 +810,7 @@ export default function ItemsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Price (₹)</label>
+                  <label className="block text-sm font-medium mb-1">Price (रु)</label>
                   <input
                     type="number"
                     required
@@ -905,7 +905,7 @@ export default function ItemsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Price (₹)</label>
+                  <label className="block text-sm font-medium mb-1">Price (रु)</label>
                   <input
                     type="number"
                     required

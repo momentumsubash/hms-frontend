@@ -623,7 +623,7 @@ export default function RoomsPage() {
                       <td className="px-4 py-4 whitespace-nowrap">{room.hotel?.name || '-'}</td>
                       <td className="px-4 py-4 whitespace-nowrap">{room.guestName || '-'}</td>
                       <td className="px-4 py-4 whitespace-nowrap">{room.guestPhone || '-'}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">₹{room.rate}</td>
+                      <td className="px-4 py-4 whitespace-nowrap">रु{room.rate}</td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         {room.isOccupied ? (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
@@ -758,7 +758,7 @@ export default function RoomsPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-500">Rate</label>
-                  <div className="text-lg">₹{roomDetails?.rate}</div>
+                  <div className="text-lg">रु{roomDetails?.rate}</div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1 text-gray-500">Description</label>

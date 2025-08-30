@@ -364,7 +364,7 @@ export default function StatsPage() {
                   <CardTitle className="text-sm">Item Sales</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">₹{totalItemSales.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-blue-600">रु{totalItemSales.toLocaleString()}</div>
                   <div className="text-sm text-gray-600">Total Items Sold: {itemStats?.totalQuantity ?? 0}</div>
                 </CardContent>
               </Card>
@@ -373,7 +373,7 @@ export default function StatsPage() {
                   <CardTitle className="text-sm">Room Sales</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">₹{totalRoomRevenue.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-green-600">रु{totalRoomRevenue.toLocaleString()}</div>
                   <div className="text-sm text-gray-600">Total Checkouts: {roomStats?.totalCount ?? 0}</div>
                 </CardContent>
               </Card>
@@ -382,8 +382,8 @@ export default function StatsPage() {
                    <CardTitle className="text-sm">Total Expenditures</CardTitle>
                 </CardHeader>
                 <CardContent>
-                   <div className="text-2xl font-bold text-red-600">₹{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</div>
-                   <div className="text-sm text-gray-600">Pending: ₹{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</div>
+                   <div className="text-2xl font-bold text-red-600">रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</div>
+                   <div className="text-sm text-gray-600">Pending: रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -392,7 +392,7 @@ export default function StatsPage() {
                 </CardHeader>
                 <CardContent>
                                      <div className={`text-2xl font-bold ${financialOverview?.summary?.netProfit && financialOverview.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                     ₹{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
+                     रु{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
                    </div>
                    <div className="text-sm text-gray-600">
                      Margin: {typeof financialOverview?.summary?.profitMargin === 'string' 
@@ -482,11 +482,11 @@ export default function StatsPage() {
                           <div className="space-y-2">
                                                          <div className="flex justify-between">
                                <span>Total Sales:</span>
-                               <span className="font-semibold">₹{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
+                               <span className="font-semibold">रु{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
                              </div>
                              <div className="flex justify-between">
                                <span>Total Expenditures:</span>
-                               <span className="font-semibold">₹{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
+                               <span className="font-semibold">रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
                              </div>
                           </div>
                         </CardContent>
@@ -499,15 +499,15 @@ export default function StatsPage() {
                           <div className="space-y-2">
                                                          <div className="flex justify-between">
                                <span>Room Sales:</span>
-                               <span className="font-semibold text-green-600">₹{financialOverview?.summary?.totalRoomRevenue?.toLocaleString() ?? 0}</span>
+                               <span className="font-semibold text-green-600">रु{financialOverview?.summary?.totalRoomRevenue?.toLocaleString() ?? 0}</span>
                              </div>
                              <div className="flex justify-between">
                                <span>Item Sales:</span>
-                               <span className="font-semibold text-blue-600">₹{financialOverview?.summary?.totalItemSales.toLocaleString() ?? 0}</span>
+                               <span className="font-semibold text-blue-600">रु{financialOverview?.summary?.totalItemSales.toLocaleString() ?? 0}</span>
                              </div>
                             <div className="flex justify-between border-t pt-2">
                               <span>Total Sales:</span>
-                              <span className="font-semibold">₹{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
+                              <span className="font-semibold">रु{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
                             </div>
                           </div>
                         </CardContent>
@@ -521,7 +521,7 @@ export default function StatsPage() {
                                                          <div className="flex justify-between">
                                <span>Net Profit/Loss:</span>
                                <span className={`font-semibold ${financialOverview?.summary?.netProfit && financialOverview.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                 ₹{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
+                                 रु{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
                                </span>
                              </div>
                              <div className="flex justify-between">
@@ -559,13 +559,13 @@ export default function StatsPage() {
                               <td className="px-3 py-2 border">{row.name}</td>
                                  <td className="px-3 py-2 border">{getCategoryName(row.category)}</td>
                               <td className="px-3 py-2 border text-center">{row.quantity}</td>
-                                <td className="px-3 py-2 border text-right">₹{row.sales?.toFixed(2)}</td>
+                                <td className="px-3 py-2 border text-right">रु{row.sales?.toFixed(2)}</td>
                             </tr>
                           ))}
                           <tr className="bg-gray-50 font-bold">
                             <td colSpan={2} className="px-3 py-2 border text-right">Total Item Sales:</td>
                             <td className="px-3 py-2 border text-center">{itemStats?.totalQuantity || 0}</td>
-                            <td className="px-3 py-2 border text-right">₹{totalItemSales.toFixed(2)}</td>
+                            <td className="px-3 py-2 border text-right">रु{totalItemSales.toFixed(2)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -598,14 +598,14 @@ export default function StatsPage() {
                               <td className="px-3 py-2 border">{row.type || '-'}</td>
                               <td className="px-3 py-2 border text-center">{row.totalNights || '-'}</td>
                               <td className="px-3 py-2 border text-center">{row.checkoutCount || '-'}</td>
-                              <td className="px-3 py-2 border text-right">₹{row.actualRoomRevenue?.toFixed(2) || 0}</td>
+                              <td className="px-3 py-2 border text-right">रु{row.actualRoomRevenue?.toFixed(2) || 0}</td>
                             </tr>
                           ))}
                           <tr className="bg-gray-50 font-bold">
                             <td colSpan={2} className="px-3 py-2 border text-right">Total Room Revenue:</td>
                             <td className="px-3 py-2 border text-center">{roomStats?.totalNights || 0}</td>
                             <td className="px-3 py-2 border text-center">{roomStats?.totalCount || 0}</td>
-                            <td className="px-3 py-2 border text-right">₹{totalRoomRevenue.toFixed(2)}</td>
+                            <td className="px-3 py-2 border text-right">रु{totalRoomRevenue.toFixed(2)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -632,25 +632,25 @@ export default function StatsPage() {
                        <Card>
                          <CardContent className="p-4">
                            <div className="text-sm text-gray-600">Total Expenditures</div>
-                           <div className="text-2xl font-bold text-red-600">₹{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</div>
+                           <div className="text-2xl font-bold text-red-600">रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</div>
                          </CardContent>
                        </Card>
                        <Card>
                          <CardContent className="p-4">
                            <div className="text-sm text-gray-600">Pending</div>
-                           <div className="text-2xl font-bold text-yellow-600">₹{financialOverview?.financial?.pendingExpenditures?.toLocaleString() ?? 0}</div>
+                           <div className="text-2xl font-bold text-yellow-600">रु{financialOverview?.financial?.pendingExpenditures?.toLocaleString() ?? 0}</div>
                          </CardContent>
                        </Card>
                        <Card>
                          <CardContent className="p-4">
                            <div className="text-sm text-gray-600">Approved</div>
-                           <div className="text-2xl font-bold text-green-600">₹{financialOverview?.expenditures?.approved?.total?.toLocaleString() ?? 0}</div>
+                           <div className="text-2xl font-bold text-green-600">रु{financialOverview?.expenditures?.approved?.total?.toLocaleString() ?? 0}</div>
                          </CardContent>
                        </Card>
                        <Card>
                          <CardContent className="p-4">
                            <div className="text-sm text-gray-600">Rejected</div>
-                           <div className="text-2xl font-bold text-red-600">₹{(financialOverview?.financial?.totalExpenditures ?? 0) - (financialOverview?.expenditures?.approved?.total ?? 0) - (financialOverview?.financial?.pendingExpenditures ?? 0)}</div>
+                           <div className="text-2xl font-bold text-red-600">रु{(financialOverview?.financial?.totalExpenditures ?? 0) - (financialOverview?.expenditures?.approved?.total ?? 0) - (financialOverview?.financial?.pendingExpenditures ?? 0)}</div>
                          </CardContent>
                        </Card>
                      </div> */}
@@ -684,7 +684,7 @@ export default function StatsPage() {
                                 </td>
                                 <td className="px-3 py-2 border">{expenditure.description}</td>
                                 <td className="px-3 py-2 border capitalize">{expenditure.category}</td>
-                                <td className="px-3 py-2 border text-right">₹{expenditure.amount.toLocaleString()}</td>
+                                <td className="px-3 py-2 border text-right">रु{expenditure.amount.toLocaleString()}</td>
                                 <td className="px-3 py-2 border text-center">
                                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                     expenditure.status === 'approved' 
@@ -746,31 +746,31 @@ export default function StatsPage() {
                           
                             <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                               <span className="font-medium">Total Sales without Vat</span>
-                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
+                              <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
                             </div>
                               <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                               <span className="font-medium">Total Vat Amount</span>
-                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalVatAmount?.toLocaleString() ?? 0}</span>
+                              <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalVatAmount?.toLocaleString() ?? 0}</span>
                             </div>
                               <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                               <span className="font-medium">Total Advance Paid </span>
-                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalAdvancePaid?.toLocaleString() ?? 0}</span>
+                              <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalAdvancePaid?.toLocaleString() ?? 0}</span>
                             </div>
                              <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                               <span className="font-medium">Total Bill Without Advance</span>
-                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalBilledAmountWithoutAdvance?.toLocaleString() ?? 0}</span>
+                              <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalBilledAmountWithoutAdvance?.toLocaleString() ?? 0}</span>
                             </div>
                              <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                               <span className="font-medium">Total Room Discounts </span>
-                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalRoomDiscount?.toLocaleString() ?? 0}</span>
+                              <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalRoomDiscount?.toLocaleString() ?? 0}</span>
                             </div>
                              <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                               <span className="font-medium">Total Money Collected </span>
-                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
+                              <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
                             </div>
                             <div className="flex justify-between items-center p-3 bg-red-50 rounded">
                               <span className="font-medium">Total Expenditures</span>
-                              <span className="text-lg font-bold text-red-600">₹{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
+                              <span className="text-lg font-bold text-red-600">रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
                             </div>
                                                          
                           </div>
@@ -784,20 +784,20 @@ export default function StatsPage() {
                           <div className="space-y-4">
                               <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
                               <span className="font-medium">Initial Amount</span>
-                              <span className="text-lg font-bold">₹{financialOverview?.hotel?.initialAmount?.toLocaleString() ?? 0}</span>
+                              <span className="text-lg font-bold">रु{financialOverview?.hotel?.initialAmount?.toLocaleString() ?? 0}</span>
                             </div>
                             <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
                                <span className="font-medium">Current Balance</span>
-                               <span className="text-lg font-bold text-blue-600">₹{financialOverview?.hotel?.currentBalance?.toLocaleString() ?? 0}</span>
+                               <span className="text-lg font-bold text-blue-600">रु{financialOverview?.hotel?.currentBalance?.toLocaleString() ?? 0}</span>
                              </div>
                             <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                               <span className="font-medium">Actual Company Profit(withoutVat)</span>
-                              <span className="text-lg font-bold text-green-600">₹{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
+                              <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
                             </div>
                             <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
                               <span className="font-medium">Net Profit/Loss</span>
                               <span className={`text-lg font-bold ${financialOverview?.summary?.netProfit && financialOverview.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                ₹{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
+                                रु{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
                               </span>
                             </div>
                             <div className="flex justify-between items-center p-3 bg-purple-50 rounded">
@@ -835,7 +835,7 @@ export default function StatsPage() {
                             <CardTitle className="text-sm">Total Earnings</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold text-green-600">₹{dailySummary.earnings?.total?.toLocaleString() ?? 0}</div>
+                            <div className="text-2xl font-bold text-green-600">रु{dailySummary.earnings?.total?.toLocaleString() ?? 0}</div>
                             <div className="text-sm text-gray-600">Checkouts: {dailySummary.earnings?.checkoutCount ?? 0}</div>
                           </CardContent>
                         </Card>
@@ -844,7 +844,7 @@ export default function StatsPage() {
                             <CardTitle className="text-sm">Room Revenue</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold text-blue-600">₹{dailySummary.earnings?.roomRevenue?.toLocaleString() ?? 0}</div>
+                            <div className="text-2xl font-bold text-blue-600">रु{dailySummary.earnings?.roomRevenue?.toLocaleString() ?? 0}</div>
                           </CardContent>
                         </Card>
                         <Card>
@@ -852,7 +852,7 @@ export default function StatsPage() {
                             <CardTitle className="text-sm">Item Sales</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold text-purple-600">₹{dailySummary.earnings?.itemSales?.toLocaleString() ?? 0}</div>
+                            <div className="text-2xl font-bold text-purple-600">रु{dailySummary.earnings?.itemSales?.toLocaleString() ?? 0}</div>
                           </CardContent>
                         </Card>
                         <Card>
@@ -860,7 +860,7 @@ export default function StatsPage() {
                             <CardTitle className="text-sm">Expenditures</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold text-red-600">₹{dailySummary.expenditures?.total?.toLocaleString() ?? 0}</div>
+                            <div className="text-2xl font-bold text-red-600">रु{dailySummary.expenditures?.total?.toLocaleString() ?? 0}</div>
                             <div className="text-sm text-gray-600">Count: {dailySummary.expenditures?.count ?? 0}</div>
                           </CardContent>
                         </Card>
@@ -870,7 +870,7 @@ export default function StatsPage() {
                           </CardHeader>
                           <CardContent>
                             <div className={`text-2xl font-bold ${dailySummary.financial?.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              ₹{dailySummary.financial?.netProfit?.toLocaleString() ?? 0}
+                              रु{dailySummary.financial?.netProfit?.toLocaleString() ?? 0}
                             </div>
                             <div className="text-sm text-gray-600">Margin: {dailySummary.financial?.profitMargin?.toFixed(1) ?? 0}%</div>
                           </CardContent>
@@ -891,7 +891,7 @@ export default function StatsPage() {
                             <CardTitle className="text-sm">Hotel Balance</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold text-teal-600">₹{dailySummary.hotel?.currentBalance?.toLocaleString() ?? 0}</div>
+                            <div className="text-2xl font-bold text-teal-600">रु{dailySummary.hotel?.currentBalance?.toLocaleString() ?? 0}</div>
                             <div className="text-sm text-gray-600">Last updated: {dailySummary.hotel?.lastBalanceUpdate ? format(new Date(dailySummary.hotel.lastBalanceUpdate), "MMM dd, yyyy") : 'N/A'}</div>
                           </CardContent>
                         </Card>
@@ -914,7 +914,7 @@ export default function StatsPage() {
               
               <form onSubmit={handleExpenditureSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Amount (₹) *</label>
+                  <label className="block text-sm font-medium mb-1">Amount (रु) *</label>
                   <input
                     type="number"
                     required
@@ -1004,7 +1004,7 @@ export default function StatsPage() {
               
               <div className="space-y-4 mb-6">
                 <div>
-                  <span className="font-medium">Amount:</span> ₹{selectedExpenditure.amount.toLocaleString()}
+                  <span className="font-medium">Amount:</span> रु{selectedExpenditure.amount.toLocaleString()}
                 </div>
                 <div>
                   <span className="font-medium">Description:</span> {selectedExpenditure.description}

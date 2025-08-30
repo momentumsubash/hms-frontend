@@ -1207,7 +1207,7 @@ const removeAdditionalGuest = (index: number) => {
                     value={room._id}
                     className={room.isOccupied && !formData.rooms.includes(room._id) ? 'text-gray-400' : ''}
                   >
-                    {room.roomNumber} - {room.type} (₹{room.rate}/night)
+                    {room.roomNumber} - {room.type} (रु{room.rate}/night)
                     {room.isOccupied && !formData.rooms.includes(room._id) && ' - Occupied'}
                     {formData.rooms.includes(room._id) && ' - Selected'}
                   </option>
@@ -1228,7 +1228,7 @@ const removeAdditionalGuest = (index: number) => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-1">Room Discount (₹)</label>
+              <label className="block text-sm font-medium mb-1">Room Discount (रु)</label>
               <input
                 type="number"
                 value={formData.roomDiscount}
@@ -1241,7 +1241,7 @@ const removeAdditionalGuest = (index: number) => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-1">Advance Paid (₹)</label>
+              <label className="block text-sm font-medium mb-1">Advance Paid (रु)</label>
               <input
                 type="number"
                 value={formData.advancePaid}
@@ -1400,7 +1400,7 @@ const removeAdditionalGuest = (index: number) => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ₹{guest.totalBill.toLocaleString()}
+                      रु{guest.totalBill.toLocaleString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
