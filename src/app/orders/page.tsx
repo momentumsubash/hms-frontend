@@ -16,13 +16,14 @@ export default function OrdersPage() {
   const [updateStatus, setUpdateStatus] = useState("");
   const [updateError, setUpdateError] = useState("");
   
-  // Create order modal state
+  // Create/Edit order modal state
   const [showCreate, setShowCreate] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any | null>(null);
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createForm, setCreateForm] = useState({
     roomNumber: "",
-    items: [{ itemId: "", quantity: "1" }]
+    items: [{ itemId: "", name: "", quantity: "1", price: 0 }]
   });
   const [itemSearch, setItemSearch] = useState("");
   const [itemList, setItemList] = useState<any[]>([]);
@@ -101,6 +102,20 @@ export default function OrdersPage() {
     setUpdateError("");
   };
 
+  const handleEditOrder = (order: any) => {
+    setEditingOrder(order);
+    setCreateForm({
+      roomNumber: order.roomNumber,
+      items: order.items.map((item: any) => ({
+        itemId: item.itemId?._id || item.itemId,
+        name: item.name || item.itemId?.name || "",
+        quantity: item.quantity.toString(),
+        price: item.price || item.itemId?.price || 0
+      }))
+    });
+    setShowCreate(true);
+  };
+
   const handleUpdateOrderStatus = async () => {
     if (!selectedOrder) return;
     setUpdating(true);
@@ -136,6 +151,58 @@ export default function OrdersPage() {
       setNotification({ type: 'error', message: e.message });
     } finally {
       setUpdating(false);
+    }
+  };
+
+const handleUpdateOrderItems = async () => {
+    if (!editingOrder) return;
+    setCreateLoading(true);
+    setCreateError("");
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) throw new Error("No token found");
+      
+      // Prepare items array with proper format
+      const items = createForm.items
+        .filter(item => item.itemId && item.quantity)
+        .map(item => ({
+          itemId: item.itemId,
+          quantity: parseInt(item.quantity) || 0
+        }));
+      
+      if (items.length === 0) {
+        throw new Error("Please add at least one item");
+      }
+
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+      
+      // Use the new update endpoint
+      const res = await fetch(`${apiBase}/orders/${editingOrder._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ items })
+      });
+      
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setNotification({ type: 'error', message: data?.message || 'Failed to update order' });
+        throw new Error(data?.message || "Failed to update order");
+      }
+      
+      setNotification({ type: 'success', message: data?.message || 'Order updated successfully' });
+      setShowCreate(false);
+      setEditingOrder(null);
+      setCreateForm({ roomNumber: "", items: [{ itemId: "", name: "", quantity: "1", price: 0 }] });
+      
+      // Refresh only the orders data instead of the entire page
+      await refreshOrders();
+    } catch (err: any) {
+      setCreateError(err.message);
+    } finally {
+      setCreateLoading(false);
     }
   };
   
@@ -187,25 +254,7 @@ export default function OrdersPage() {
       setOrders([]);
       return;
     }
-    // try {
-    //   const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-    //     headers: {
-    //       Authorization: `Bearer ${token}`,
-    //       Accept: "application/json",
-    //     },
-    //   });
-    //   if (!meRes.ok) throw new Error("Not authenticated");
-    //   const meData = await meRes.json();
-    //   setUser(meData.data || null);
-    //   localStorage.setItem("user", JSON.stringify(meData.data || null));
-    //   await loadData(token);
-    // } catch (e: any) {
-    //   setUser(null);
-    //   setOrders([]);
-    //   localStorage.removeItem("user");
-    //   localStorage.removeItem("token");
-    //   setError("Authentication failed. Please login again.");
-    // }
+    // Authentication logic here...
   };
 
   useEffect(() => {
@@ -248,7 +297,6 @@ export default function OrdersPage() {
       }
       
       // Use search parameter only if no specific filters are set
-      // This ensures we use the specific filter parameters for better API compatibility
       if (debouncedSearch && !debouncedRoomNumber && !debouncedGuestName && !debouncedGuestPhone) {
         params.set('search', debouncedSearch);
       }
@@ -324,77 +372,83 @@ export default function OrdersPage() {
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             onClick={() => {
               setShowCreate(true);
+              setEditingOrder(null);
               setCreateError("");
               setCreateForm({
                 roomNumber: "",
-                items: [{ itemId: "", quantity: "1" }]
+                items: [{ itemId: "", name: "", quantity: "1", price: 0 }]
               });
             }}
           >+ New Order</button>
         </div>
         
-        {/* Create Order Modal */}
-        {showCreate && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-8 w-full max-w-6xl max-h-[90vh] flex gap-8 overflow-y-auto">
-              {/* Left: Form */}
-              <div className="flex-1 min-w-[320px]">
-                <h2 className="text-2xl font-bold mb-4">Create New Order</h2>
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    setCreateLoading(true);
-                    setCreateError("");
-                    try {
-                      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-                      if (!token) throw new Error("No token found");
-                      
-                      // Prepare items array with proper format
-                      const items = createForm.items
-                        .filter(item => item.itemId && item.quantity)
-                        .map(item => ({
-                          itemId: item.itemId,
-                          quantity: parseInt(item.quantity) || 0
-                        }));
-                      
-                      if (items.length === 0) {
-                        throw new Error("Please add at least one item");
-                      }
+        {/* Create/Edit Order Modal */}
+         {/* Create/Edit Order Modal */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 w-full max-w-6xl max-h-[90vh] flex gap-8 overflow-y-auto">
+            {/* Left: Form */}
+            <div className="flex-1 min-w-[320px]">
+              <h2 className="text-2xl font-bold mb-4">
+                {editingOrder ? "Edit Order" : "Create New Order"}
+              </h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (editingOrder) {
+                    await handleUpdateOrderItems();
+                  } else {
+                      setCreateLoading(true);
+                      setCreateError("");
+                      try {
+                        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+                        if (!token) throw new Error("No token found");
+                        
+                        // Prepare items array with proper format
+                        const items = createForm.items
+                          .filter(item => item.itemId && item.quantity)
+                          .map(item => ({
+                            itemId: item.itemId,
+                            quantity: parseInt(item.quantity) || 0
+                          }));
+                        
+                        if (items.length === 0) {
+                          throw new Error("Please add at least one item");
+                        }
 
-                      if (!createForm.roomNumber) {
-                        throw new Error("Please select a room");
-                      }
+                        if (!createForm.roomNumber) {
+                          throw new Error("Please select a room");
+                        }
 
-                      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
-                      const res = await fetch(`${apiBase}/orders`, {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          Authorization: `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                          roomNumber: createForm.roomNumber,
-                          items: items
-                        })
-                      });
-                      const data = await res.json().catch(() => ({}));
-                      if (!res.ok) {
-                        setNotification({ type: 'error', message: data?.message || 'Failed to create order' });
-                        throw new Error(data?.message || "Failed to create order");
+                        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+                        const res = await fetch(`${apiBase}/orders`, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`
+                          },
+                          body: JSON.stringify({
+                            roomNumber: createForm.roomNumber,
+                            items: items
+                          })
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                          setNotification({ type: 'error', message: data?.message || 'Failed to create order' });
+                          throw new Error(data?.message || "Failed to create order");
+                        }
+                        
+                        setNotification({ type: 'success', message: data?.message || 'Order created successfully' });
+                        setShowCreate(false);
+                        setCreateForm({ roomNumber: "", items: [{ itemId: "", name: "", quantity: "1", price: 0 }] });
+                        
+                        // Refresh only the orders data instead of the entire page
+                        await refreshOrders();
+                      } catch (err: any) {
+                        setCreateError(err.message);
+                      } finally {
+                        setCreateLoading(false);
                       }
-                      
-                      // Instead of calling fetchAll(), we'll update the orders list and summary stats
-                      // by adding the new order to the state and refreshing the data
-                      setNotification({ type: 'success', message: data?.message || 'Order created successfully' });
-                      setShowCreate(false);
-                      setCreateForm({ roomNumber: "", items: [{ itemId: "", quantity: "1" }] });
-                      
-                      // Refresh only the orders data instead of the entire page
-                      await refreshOrders();
-                    } catch (err: any) {
-                      setCreateError(err.message);
-                    } finally {
-                      setCreateLoading(false);
                     }
                   }}
                   className="space-y-4"
@@ -418,6 +472,7 @@ export default function OrdersPage() {
                         onChange={e => setCreateForm(f => ({ ...f, roomNumber: e.target.value }))}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                         required
+                        disabled={!!editingOrder}
                       >
                         <option value="">Select a room</option>
                         {occupiedRooms.map((room) => (
@@ -434,32 +489,47 @@ export default function OrdersPage() {
                   <div>
                     <label className="block text-sm font-medium mb-1">Items</label>
                     {createForm.items.map((item, index) => (
-                      <div key={index} className="flex gap-2 mb-2">
-                        <input
-                          type="text"
-                          value={item.itemId}
-                          onChange={e => {
-                            const newItems = [...createForm.items];
-                            newItems[index].itemId = e.target.value;
-                            setCreateForm(f => ({ ...f, items: newItems }));
-                          }}
-                          className="flex-1 border border-gray-300 rounded px-3 py-2"
-                          placeholder="Item ID"
-                          required
-                        />
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={e => {
-                            const newItems = [...createForm.items];
-                            newItems[index].quantity = e.target.value;
-                            setCreateForm(f => ({ ...f, items: newItems }));
-                          }}
-                          className="w-20 border border-gray-300 rounded px-3 py-2"
-                          placeholder="Qty"
-                          min="1"
-                          required
-                        />
+                      <div key={index} className="flex gap-2 mb-2 items-center">
+                        <div className="flex-1">
+                          <div className="text-sm font-medium mb-1">{item.name || "Select an item"}</div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = [...createForm.items];
+                                if (parseInt(newItems[index].quantity) > 1) {
+                                  newItems[index].quantity = (parseInt(newItems[index].quantity) - 1).toString();
+                                  setCreateForm(f => ({ ...f, items: newItems }));
+                                }
+                              }}
+                              className="px-2 bg-gray-200 rounded"
+                            >-</button>
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={e => {
+                                const newItems = [...createForm.items];
+                                newItems[index].quantity = e.target.value;
+                                setCreateForm(f => ({ ...f, items: newItems }));
+                              }}
+                              className="w-16 border border-gray-300 rounded px-2 py-1 text-center"
+                              min="1"
+                              required
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newItems = [...createForm.items];
+                                newItems[index].quantity = (parseInt(newItems[index].quantity) + 1).toString();
+                                setCreateForm(f => ({ ...f, items: newItems }));
+                              }}
+                              className="px-2 bg-gray-200 rounded"
+                            >+</button>
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          ₹{item.price * parseInt(item.quantity) || 0}
+                        </div>
                         <button
                           type="button"
                           onClick={() => {
@@ -478,7 +548,7 @@ export default function OrdersPage() {
                       type="button"
                       onClick={() => setCreateForm(f => ({ 
                         ...f, 
-                        items: [...f.items, { itemId: "", quantity: "1" }] 
+                        items: [...f.items, { itemId: "", name: "", quantity: "1", price: 0 }] 
                       }))}
                       className="mt-2 text-sm text-blue-600 hover:text-blue-800"
                     >
@@ -491,7 +561,10 @@ export default function OrdersPage() {
                   <div className="flex justify-end space-x-3 pt-4">
                     <button
                       type="button"
-                      onClick={() => setShowCreate(false)}
+                      onClick={() => {
+                        setShowCreate(false);
+                        setEditingOrder(null);
+                      }}
                       className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                       disabled={createLoading}
                     >Cancel</button>
@@ -499,7 +572,12 @@ export default function OrdersPage() {
                       type="submit"
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                       disabled={createLoading || roomsLoading || occupiedRooms.length === 0}
-                    >{createLoading ? "Creating..." : "Create Order"}</button>
+                    >
+                      {createLoading 
+                        ? (editingOrder ? "Updating..." : "Creating...") 
+                        : (editingOrder ? "Update Order" : "Create Order")
+                      }
+                    </button>
                   </div>
                 </form>
               </div>
@@ -529,15 +607,24 @@ export default function OrdersPage() {
                           onClick={() => {
                             // Add this item to the form
                             const newItems = [...createForm.items];
-                            const lastIndex = newItems.length - 1;
+                            const emptyIndex = newItems.findIndex(i => !i.itemId);
                             
-                            // If the last item is empty, use it
-                            if (lastIndex >= 0 && !newItems[lastIndex].itemId) {
-                              newItems[lastIndex].itemId = item._id;
-                              newItems[lastIndex].quantity = "1";
+                            if (emptyIndex >= 0) {
+                              // Replace the first empty item
+                              newItems[emptyIndex] = {
+                                itemId: item._id,
+                                name: item.name,
+                                quantity: "1",
+                                price: item.price
+                              };
                             } else {
-                              // Otherwise add a new item
-                              newItems.push({ itemId: item._id, quantity: "1" });
+                              // Add a new item
+                              newItems.push({
+                                itemId: item._id,
+                                name: item.name,
+                                quantity: "1",
+                                price: item.price
+                              });
                             }
                             
                             setCreateForm(f => ({ ...f, items: newItems }));
@@ -545,7 +632,7 @@ export default function OrdersPage() {
                         >
                           <div className="font-semibold">{item.name}</div>
                           <div className="text-xs text-gray-500">{item.category?.name || 'No category'}</div>
-                          <div className="text-xs text-gray-400">Price: {item.price}</div>
+                          <div className="text-xs text-gray-400">Price: ₹{item.price}</div>
                         </li>
                       ))}
                     </ul>
@@ -650,6 +737,7 @@ export default function OrdersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -682,7 +770,7 @@ export default function OrdersPage() {
                     : (order.createdBy ? String(order.createdBy) : "-");
                   
                   return (
-                    <tr key={order._id} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`} onClick={() => handleSelectOrder(order)} style={{ cursor: 'pointer' }}>
+                    <tr key={order._id} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`}>
                       <td className="px-6 py-4 whitespace-nowrap">{guest}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{room}</td>
                       <td className="px-6 py-4 whitespace-nowrap max-w-xs truncate" title={items}>{items}</td>
@@ -698,6 +786,22 @@ export default function OrdersPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{createdBy}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleSelectOrder(order)}
+                            className="text-blue-600 hover:text-blue-800 text-sm"
+                          >
+                            Status
+                          </button>
+                          <button
+                            onClick={() => handleEditOrder(order)}
+                            className="text-green-600 hover:text-green-800 text-sm"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}

@@ -83,14 +83,30 @@ interface PaginationInfo {
   pages: number;
 }
 
-// Helper function to get current datetime in local format for datetime-local input
+// Update the getCurrentDateTimeLocal function to add 5-minute buffer
 const getCurrentDateTimeLocal = () => {
   const now = new Date();
+  now.setMinutes(now.getMinutes() + 5); // Add 5-minute buffer
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   const hours = String(now.getHours()).padStart(2, '0');
   const minutes = String(now.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+// Add function to calculate default check-out time (12 hours after check-in)
+const getDefaultCheckOutDateTime = (checkInDate: string) => {
+  if (!checkInDate) return '';
+  
+  const checkIn = new Date(checkInDate);
+  checkIn.setHours(checkIn.getHours() + 12); // Add 12 hours (1 night)
+  
+  const year = checkIn.getFullYear();
+  const month = String(checkIn.getMonth() + 1).padStart(2, '0');
+  const day = String(checkIn.getDate()).padStart(2, '0');
+  const hours = String(checkIn.getHours()).padStart(2, '0');
+  const minutes = String(checkIn.getMinutes()).padStart(2, '0');
+  
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
@@ -456,13 +472,13 @@ const handleFormSubmit = async (e: React.FormEvent) => {
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
-          hotelId = userData.hotel || user?.hotel || '';
+          hotelId = userData.hotel._id || user?.hotel._id || '';
         } catch (e) {
           console.error('Error parsing user data from localStorage:', e);
-          hotelId = user?.hotel || '';
+          hotelId = user?.hotel._id || '';
         }
       } else {
-        hotelId = user?.hotel || '';
+        hotelId = user?.hotel._id || '';
       }
 
       if (!hotelId) {
