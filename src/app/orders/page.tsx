@@ -118,10 +118,22 @@ export default function OrdersPage() {
         body: JSON.stringify({ status: updateStatus })
       });
       if (!res.ok) throw new Error("Failed to update order status");
-      await loadData(token);
+      
+      // Update the order in the local state instead of reloading everything
+      const updatedOrder = await res.json();
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order._id === selectedOrder._id 
+            ? {...order, status: updateStatus} 
+            : order
+        )
+      );
+      
       setSelectedOrder(null);
+      setNotification({ type: 'success', message: 'Order status updated successfully' });
     } catch (e: any) {
       setUpdateError(e.message);
+      setNotification({ type: 'error', message: e.message });
     } finally {
       setUpdating(false);
     }
@@ -241,8 +253,6 @@ export default function OrdersPage() {
         params.set('search', debouncedSearch);
       }
       
-
-      
       const res = await fetch(`${apiBase}/orders?${params.toString()}`, {
         headers: {
           Accept: "application/json",
@@ -268,6 +278,14 @@ export default function OrdersPage() {
       setLoading(false);
     }
   };
+
+  // Function to refresh only the orders data
+  const refreshOrders = useCallback(async () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      await loadData(token);
+    }
+  }, []);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -364,10 +382,15 @@ export default function OrdersPage() {
                         setNotification({ type: 'error', message: data?.message || 'Failed to create order' });
                         throw new Error(data?.message || "Failed to create order");
                       }
+                      
+                      // Instead of calling fetchAll(), we'll update the orders list and summary stats
+                      // by adding the new order to the state and refreshing the data
                       setNotification({ type: 'success', message: data?.message || 'Order created successfully' });
                       setShowCreate(false);
                       setCreateForm({ roomNumber: "", items: [{ itemId: "", quantity: "1" }] });
-                      await fetchAll();
+                      
+                      // Refresh only the orders data instead of the entire page
+                      await refreshOrders();
                     } catch (err: any) {
                       setCreateError(err.message);
                     } finally {
