@@ -192,7 +192,7 @@ export default function RoomsPage() {
     if (filterKey === 'roomNumber') {
       setSearchDebounce(setTimeout(() => {
         loadData(true, newFilters);
-      }, 500));
+      }, 1000));
     } else {
       // For other filters, apply immediately
       loadData(true, newFilters);

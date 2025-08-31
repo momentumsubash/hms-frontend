@@ -110,6 +110,7 @@ const getDefaultCheckOutDateTime = (checkInDate: string) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+
 export default function GuestsPage() {
   // Notification state
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -165,6 +166,11 @@ export default function GuestsPage() {
 
   // Form validation errors
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+
+const [isSearchingGuest, setIsSearchingGuest] = useState(false);
+const [existingGuest, setExistingGuest] = useState<Guest | null>(null);
+const [guestSearchMessage, setGuestSearchMessage] = useState("");
 
   // Filters with debouncing
   const [filters, setFilters] = useState({
@@ -264,7 +270,7 @@ export default function GuestsPage() {
     if (filterKey === 'search' || filterKey === 'roomNumber') {
       setSearchDebounce(setTimeout(() => {
         loadData(true, newFilters);
-      }, 500));
+      }, 1000));
     } else {
       // For other filters, apply immediately
       loadData(true, newFilters);
