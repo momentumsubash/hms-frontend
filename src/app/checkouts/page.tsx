@@ -78,6 +78,9 @@ export default function CheckoutsPage() {
     paymentDate: ""
   });
 
+  // Paper type selection for printing
+  const [paperType, setPaperType] = useState<"a4" | "a5" | "thermal">("a4");
+
   // Load data when page, status filter, or debounced search changes
   useEffect(() => {
     loadData();
@@ -132,8 +135,6 @@ export default function CheckoutsPage() {
     }
   };
 
-
-
   // Reset page to 1 on filter change
   useEffect(() => {
     setPage(1);
@@ -164,138 +165,414 @@ export default function CheckoutsPage() {
     setPage(1);
   };
 
-// Print bill function - UPDATED FOR THERMAL PAPER WITH PAGINATION
-  const printBill = () => {
-    const printContent = document.getElementById('bill-content');
-    if (printContent) {
-      const printWindow = window.open('', '_blank', 'width=300,height=600');
-      if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Hotel Bill - ${detailsCheckout?.guest?.firstName} ${detailsCheckout?.guest?.lastName}</title>
-              <style>
-                @media print {
-                  * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                    font-family: 'Courier New', monospace;
-                  }
-                  body {
-                    width: 57mm;
-                    max-width: 57mm;
-                    padding: 2mm;
-                    font-size: 8px;
-                    line-height: 1.1;
-                  }
-                  .bill-header {
-                    text-align: center;
-                    border-bottom: 1px solid #000;
-                    padding-bottom: 2mm;
-                    margin-bottom: 2mm;
-                  }
-                  .bill-header h1 {
-                    font-size: 10px;
-                    font-weight: bold;
-                    margin-bottom: 1mm;
-                  }
-                  .bill-header h2 {
-                    font-size: 9px;
-                    margin-bottom: 1mm;
-                  }
-                  .bill-header p {
-                    font-size: 7px;
-                    margin: 0.5mm 0;
-                  }
-                  .bill-section {
-                    margin: 2mm 0;
-                    page-break-inside: avoid;
-                  }
-                  .bill-section h3 {
-                    font-size: 8px;
-                    font-weight: bold;
-                    border-bottom: 1px dashed #ccc;
-                    padding-bottom: 1mm;
-                    margin-bottom: 1mm;
-                  }
-                  .bill-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin: 1mm 0;
-                    font-size: 7px;
-                  }
-                  .bill-table th, .bill-table td {
-                    padding: 0.5mm 0.3mm;
-                    text-align: left;
-                    vertical-align: top;
-                  }
-                  .bill-table th {
-                    font-weight: bold;
-                  }
-                  .text-right {
-                    text-align: right;
-                  }
-                  .text-center {
-                    text-align: center;
-                  }
-                  .total-row {
-                    font-weight: bold;
-                    border-top: 1px dashed #000;
-                  }
-                  .bill-footer {
-                    margin-top: 3mm;
-                    text-align: center;
-                    border-top: 1px dashed #ccc;
-                    padding-top: 2mm;
-                    font-size: 7px;
-                  }
-                  .order-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin: 1mm 0;
-                    font-size: 6px;
-                  }
-                  .order-table th, .order-table td {
-                    padding: 0.3mm;
-                  }
-                  .vat-info {
-                    margin-top: 1mm;
-                    padding: 1mm;
-                    border: 1px dashed #ccc;
-                    font-size: 7px;
-                  }
-                  .payment-info {
-                    margin-top: 1mm;
-                    padding: 1mm;
-                    border: 1px dashed #ccc;
-                    font-size: 7px;
-                  }
-                  .payment-method {
-                    display: inline-block;
-                    padding: 0.5mm 1mm;
-                    background: #f0f0f0;
-                    border-radius: 2px;
-                    margin-right: 1mm;
-                    font-size: 6px;
-                  }
-                  .page-break {
-                    page-break-before: always;
-                  }
-                }
-              </style>
-            </head>
-            <body onload="window.print(); setTimeout(() => { window.close(); }, 500);">
-              ${printContent.innerHTML}
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
+  // Print bill function with paper type selection
+const printBill = () => {
+  const printContent = document.getElementById('bill-content');
+  if (printContent) {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      let printStyles = '';
+
+      // Apply different styles based on paper type
+      if (paperType === 'thermal') {
+        printStyles = `
+          @media print {
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+              font-family: 'Courier New', monospace;
+            }
+            body {
+              width: 57mm;
+              max-width: 57mm;
+              padding: 1mm;
+              font-size: 7px;
+              line-height: 1;
+            }
+            .bill-header {
+              text-align: center;
+              border-bottom: 1px solid #000;
+              padding-bottom: 0.5mm;
+              margin-bottom: 0.5mm;
+            }
+            .bill-header h1 {
+              font-size: 8px;
+              font-weight: bold;
+              margin-bottom: 0.3mm;
+            }
+            .bill-header h2 {
+              font-size: 7px;
+              margin-bottom: 0.3mm;
+            }
+            .bill-header p {
+              font-size: 6px;
+              margin: 0.2mm 0;
+            }
+            .bill-section {
+              margin: 0.5mm 0;
+            }
+            .bill-section h3 {
+              font-size: 7px;
+              font-weight: bold;
+              border-bottom: 1px dashed #ccc;
+              padding-bottom: 0.3mm;
+              margin-bottom: 0.3mm;
+            }
+            p {
+              margin: 0.3mm 0;
+              font-size: 6px;
+            }
+            .bill-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 0.3mm 0;
+              font-size: 6px;
+            }
+            .bill-table th, .bill-table td {
+              padding: 0.2mm;
+              text-align: left;
+            }
+            .bill-table th {
+              font-weight: bold;
+            }
+            .text-right {
+              text-align: right;
+            }
+            .text-center {
+              text-align: center;
+            }
+            .total-row {
+              font-weight: bold;
+              border-top: 1px dashed #000;
+            }
+            .bill-footer {
+              margin-top: 1mm;
+              text-align: center;
+              border-top: 1px dashed #ccc;
+              padding-top: 0.5mm;
+              font-size: 6px;
+            }
+            .order-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 0.3mm 0;
+              font-size: 5px;
+            }
+            .order-table th, .order-table td {
+              padding: 0.1mm;
+            }
+            .vat-info, .payment-info {
+              margin-top: 0.3mm;
+              padding: 0.3mm;
+              border: 1px dashed #ccc;
+              font-size: 5px;
+            }
+            .payment-method {
+              display: inline-block;
+              padding: 0.2mm 0.3mm;
+              background: #f0f0f0;
+              border-radius: 1px;
+              margin-right: 0.3mm;
+              font-size: 5px;
+            }
+            /* Prevent page breaks */
+            html, body {
+              height: auto !important;
+              overflow: hidden !important;
+            }
+            /* Single page enforcement */
+            .bill-content {
+              height: auto !important;
+              page-break-inside: avoid !important;
+            }
+            /* Compact everything */
+            br {
+              display: none;
+            }
+            /* Force single column layout */
+            .two-columns {
+              display: block !important;
+            }
+            .two-columns > div {
+              width: 100% !important;
+              margin-bottom: 0.5mm;
+            }
+          }
+        `;
+      } else if (paperType === 'a5') {
+        printStyles = `
+          @media print {
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+              font-family: Arial, sans-serif;
+            }
+            html, body {
+              height: auto !important;
+              overflow: hidden !important;
+            }
+            body {
+              width: 148mm;
+              padding: 4mm;
+              font-size: 9px;
+              line-height: 1.1;
+            }
+            .bill-header {
+              text-align: center;
+              border-bottom: 1px solid #000;
+              padding-bottom: 1mm;
+              margin-bottom: 1mm;
+            }
+            .bill-header h1 {
+              font-size: 12px;
+              font-weight: bold;
+              margin-bottom: 0.5mm;
+            }
+            .bill-header h2 {
+              font-size: 11px;
+              margin-bottom: 0.5mm;
+            }
+            .bill-header p {
+              font-size: 8px;
+              margin: 0.3mm 0;
+            }
+            .bill-section {
+              margin: 1mm 0;
+            }
+            .bill-section h3 {
+              font-size: 10px;
+              font-weight: bold;
+              border-bottom: 1px dashed #ccc;
+              padding-bottom: 0.5mm;
+              margin-bottom: 0.5mm;
+            }
+            p {
+              margin: 0.5mm 0;
+              font-size: 8px;
+            }
+            .bill-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 0.5mm 0;
+              font-size: 8px;
+            }
+            .bill-table th, .bill-table td {
+              padding: 0.5mm;
+              text-align: left;
+            }
+            .bill-table th {
+              font-weight: bold;
+            }
+            .text-right {
+              text-align: right;
+            }
+            .text-center {
+              text-align: center;
+            }
+            .total-row {
+              font-weight: bold;
+              border-top: 1px dashed #000;
+            }
+            .bill-footer {
+              margin-top: 2mm;
+              text-align: center;
+              border-top: 1px dashed #ccc;
+              padding-top: 1mm;
+              font-size: 8px;
+            }
+            .order-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 0.5mm 0;
+              font-size: 7px;
+            }
+            .order-table th, .order-table td {
+              padding: 0.3mm;
+            }
+            .vat-info, .payment-info {
+              margin-top: 0.5mm;
+              padding: 0.5mm;
+              border: 1px dashed #ccc;
+              font-size: 8px;
+            }
+            .payment-method {
+              display: inline-block;
+              padding: 0.3mm 0.5mm;
+              background: #f0f0f0;
+              border-radius: 1px;
+              margin-right: 0.5mm;
+              font-size: 7px;
+            }
+            /* Single page enforcement */
+            .bill-content {
+              height: auto !important;
+              page-break-inside: avoid !important;
+            }
+            /* Prevent any page breaks */
+            h1, h2, h3, p, table, div {
+              page-break-inside: avoid !important;
+              page-break-after: avoid !important;
+            }
+            /* Compact layout */
+            br {
+              display: none;
+            }
+            /* Two columns for guest and stay info */
+            .two-columns {
+              display: flex;
+              justify-content: space-between;
+              margin: 0.5mm 0;
+            }
+            .two-columns > div {
+              width: 48%;
+            }
+          }
+        `;
+      } else { // A4 paper
+        printStyles = `
+          @media print {
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+              font-family: Arial, sans-serif;
+            }
+            html, body {
+              height: auto !important;
+              overflow: hidden !important;
+            }
+            body {
+              width: 210mm;
+              padding: 8mm;
+              font-size: 11px;
+              line-height: 1.2;
+            }
+            .bill-header {
+              text-align: center;
+              border-bottom: 2px solid #000;
+              padding-bottom: 2mm;
+              margin-bottom: 2mm;
+            }
+            .bill-header h1 {
+              font-size: 16px;
+              font-weight: bold;
+              margin-bottom: 1mm;
+            }
+            .bill-header h2 {
+              font-size: 14px;
+              margin-bottom: 1mm;
+            }
+            .bill-header p {
+              font-size: 10px;
+              margin: 0.5mm 0;
+            }
+            .bill-section {
+              margin: 1.5mm 0;
+            }
+            .bill-section h3 {
+              font-size: 13px;
+              font-weight: bold;
+              border-bottom: 1px dashed #ccc;
+              padding-bottom: 1mm;
+              margin-bottom: 1mm;
+            }
+            p {
+              margin: 0.8mm 0;
+              font-size: 10px;
+            }
+            .bill-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 1mm 0;
+              font-size: 10px;
+            }
+            .bill-table th, .bill-table td {
+              padding: 0.8mm;
+              text-align: left;
+            }
+            .bill-table th {
+              font-weight: bold;
+            }
+            .text-right {
+              text-align: right;
+            }
+            .text-center {
+              text-align: center;
+            }
+            .total-row {
+              font-weight: bold;
+              border-top: 2px dashed #000;
+            }
+            .bill-footer {
+              margin-top: 3mm;
+              text-align: center;
+              border-top: 1px dashed #ccc;
+              padding-top: 2mm;
+              font-size: 10px;
+            }
+            .order-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 1mm 0;
+              font-size: 9px;
+            }
+            .order-table th, .order-table td {
+              padding: 0.5mm;
+            }
+            .vat-info, .payment-info {
+              margin-top: 1mm;
+              padding: 1mm;
+              border: 1px dashed #ccc;
+              font-size: 10px;
+            }
+            .payment-method {
+              display: inline-block;
+              padding: 0.5mm 1mm;
+              background: #f0f0f0;
+              border-radius: 2px;
+              margin-right: 1mm;
+              font-size: 9px;
+            }
+            /* Single page enforcement */
+            .bill-content {
+              height: auto !important;
+              page-break-inside: avoid !important;
+            }
+            /* Prevent any page breaks */
+            h1, h2, h3, p, table, div {
+              page-break-inside: avoid !important;
+              page-break-after: avoid !important;
+            }
+            /* Two columns for better space usage */
+            .two-columns {
+              display: flex;
+              justify-content: space-between;
+              margin: 1mm 0;
+            }
+            .two-columns > div {
+              width: 48%;
+            }
+          }
+        `;
       }
+
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Hotel Bill - ${detailsCheckout?.guest?.firstName} ${detailsCheckout?.guest?.lastName}</title>
+            <style>${printStyles}</style>
+          </head>
+          <body onload="window.print(); setTimeout(() => { window.close(); }, 100);">
+            ${printContent.innerHTML}
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
     }
-  };
-
-
+  }
+};
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -660,7 +937,6 @@ export default function CheckoutsPage() {
       </div>
 
       {/* Edit Modal */}
-      {/* Edit Modal */}
       {showEdit && editCheckout && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl mx-4">
@@ -970,8 +1246,6 @@ export default function CheckoutsPage() {
                 </div>
               </div>
 
-
-
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
@@ -994,7 +1268,7 @@ export default function CheckoutsPage() {
         </div>
       )}
 
-  {/* View Details Modal */}
+      {/* View Details Modal */}
       {showDetails && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
@@ -1002,6 +1276,20 @@ export default function CheckoutsPage() {
             <div className="flex justify-between items-center border-b pb-3 mb-4 sticky top-0 bg-white z-10">
               <h3 className="text-2xl font-semibold">Checkout Details</h3>
               <div className="flex items-center space-x-2">
+                {/* Paper Type Selection */}
+                <div className="mr-2">
+                  <label htmlFor="paperType" className="mr-2 text-sm">Paper Type:</label>
+                  <select
+                    id="paperType"
+                    value={paperType}
+                    onChange={(e) => setPaperType(e.target.value as "a4" | "a5" | "thermal")}
+                    className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  >
+                    <option value="a4">A4</option>
+                    <option value="a5">A5</option>
+                    <option value="thermal">Thermal</option>
+                  </select>
+                </div>
                 <button
                   onClick={printBill}
                   className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
@@ -1023,18 +1311,73 @@ export default function CheckoutsPage() {
                 <div>Loading checkout details...</div>
               </div>
             ) : (
-              <div id="bill-content">
+              <div
+                id="bill-content"
+                className="mx-auto"
+                style={{
+                  ...(paperType === 'thermal' && {
+                    width: '57mm',
+                    maxWidth: '57mm',
+                    padding: '2mm',
+                    fontSize: '8px',
+                    lineHeight: '1.1',
+                    fontFamily: "'Courier New', monospace"
+                  }),
+                  ...(paperType === 'a5' && {
+                    width: '148mm',
+                    maxWidth: '148mm',
+                    padding: '5mm',
+                    fontSize: '10px',
+                    lineHeight: '1.3',
+                    fontFamily: 'Arial, sans-serif'
+                  }),
+                  ...(paperType === 'a4' && {
+                    width: '210mm',
+                    maxWidth: '210mm',
+                    padding: '10mm',
+                    fontSize: '12px',
+                    lineHeight: '1.4',
+                    fontFamily: 'Arial, sans-serif'
+                  })
+                }}
+              >
                 {/* Bill Header */}
-                <div className="bill-header">
-                  <h1>{hotelName.toUpperCase()}</h1>
-                  <h2>HOTEL BILL</h2>
-                  <p>Date: {new Date().toLocaleDateString()}</p>
-                  <p>Invoice #: {detailsCheckout?._id?.slice(-8)}</p>
+                <div style={{
+                  textAlign: 'center',
+                  borderBottom: '1px solid #000',
+                  paddingBottom: paperType === 'thermal' ? '2mm' : paperType === 'a5' ? '3mm' : '5mm',
+                  marginBottom: paperType === 'thermal' ? '2mm' : paperType === 'a5' ? '3mm' : '5mm'
+                }}>
+                  <h1 style={{
+                    fontSize: paperType === 'thermal' ? '10px' : paperType === 'a5' ? '14px' : '18px',
+                    fontWeight: 'bold',
+                    marginBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '2mm' : '3mm'
+                  }}>{hotelName.toUpperCase()}</h1>
+                  <h2 style={{
+                    fontSize: paperType === 'thermal' ? '9px' : paperType === 'a5' ? '12px' : '16px',
+                    marginBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '2mm' : '3mm'
+                  }}>HOTEL BILL</h2>
+                  <p style={{
+                    fontSize: paperType === 'thermal' ? '7px' : paperType === 'a5' ? '9px' : '11px',
+                    margin: paperType === 'thermal' ? '0.5mm 0' : paperType === 'a5' ? '1mm 0' : '1.5mm 0'
+                  }}>Date: {new Date().toLocaleDateString()}</p>
+                  <p style={{
+                    fontSize: paperType === 'thermal' ? '7px' : paperType === 'a5' ? '9px' : '11px',
+                    margin: paperType === 'thermal' ? '0.5mm 0' : paperType === 'a5' ? '1mm 0' : '1.5mm 0'
+                  }}>Invoice #: {detailsCheckout?._id?.slice(-8)}</p>
                 </div>
 
                 {/* Guest & Room Details */}
-                <div className="bill-section">
-                  <h3>Guest Information</h3>
+                <div style={{
+                  margin: paperType === 'thermal' ? '2mm 0' : paperType === 'a5' ? '3mm 0' : '4mm 0'
+                }}>
+                  <h3 style={{
+                    fontSize: paperType === 'thermal' ? '8px' : paperType === 'a5' ? '11px' : '14px',
+                    fontWeight: 'bold',
+                    borderBottom: '1px dashed #ccc',
+                    paddingBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                    marginBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm'
+                  }}>Guest Information</h3>
                   <p><strong>Name:</strong> {detailsCheckout?.guest?.firstName} {detailsCheckout?.guest?.lastName}</p>
                   <p><strong>Email:</strong> {detailsCheckout?.guest?.email}</p>
                   {detailsCheckout?.guest?.phone && (
@@ -1042,8 +1385,16 @@ export default function CheckoutsPage() {
                   )}
                 </div>
 
-                <div className="bill-section">
-                  <h3>Stay Information</h3>
+                <div style={{
+                  margin: paperType === 'thermal' ? '2mm 0' : paperType === 'a5' ? '3mm 0' : '4mm 0'
+                }}>
+                  <h3 style={{
+                    fontSize: paperType === 'thermal' ? '8px' : paperType === 'a5' ? '11px' : '14px',
+                    fontWeight: 'bold',
+                    borderBottom: '1px dashed #ccc',
+                    paddingBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                    marginBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm'
+                  }}>Stay Information</h3>
                   <p><strong>Rooms:</strong> {detailsCheckout?.rooms?.map((r: any) => `#${r.roomNumber}`).join(', ') || 'N/A'}</p>
                   <p><strong>Nights:</strong> {detailsCheckout?.nights || 1}</p>
                   <p><strong>Check-in:</strong> {detailsCheckout?.checkInDate ? new Date(detailsCheckout.checkInDate).toLocaleDateString() : 'N/A'}</p>
@@ -1052,8 +1403,19 @@ export default function CheckoutsPage() {
 
                 {/* Client VAT Info (if available) */}
                 {detailsCheckout?.clientVatInfo?.vatNumber && (
-                  <div className="bill-section vat-info">
-                    <h3>Client VAT Information</h3>
+                  <div style={{
+                    marginTop: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                    padding: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                    border: '1px dashed #ccc',
+                    fontSize: paperType === 'thermal' ? '7px' : paperType === 'a5' ? '9px' : '11px'
+                  }}>
+                    <h3 style={{
+                      fontSize: paperType === 'thermal' ? '8px' : paperType === 'a5' ? '11px' : '14px',
+                      fontWeight: 'bold',
+                      borderBottom: '1px dashed #ccc',
+                      paddingBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                      marginBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm'
+                    }}>Client VAT Information</h3>
                     <p><strong>VAT No:</strong> {detailsCheckout.clientVatInfo.vatNumber}</p>
                     <p><strong>Company:</strong> {detailsCheckout.clientVatInfo.companyName}</p>
                     <p><strong>Address:</strong> {detailsCheckout.clientVatInfo.address}</p>
@@ -1061,24 +1423,49 @@ export default function CheckoutsPage() {
                 )}
 
                 {/* Payment Information */}
-                <div className="bill-section payment-info">
-                  <h3>Payment Information</h3>
-                  
+                <div style={{
+                  marginTop: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                  padding: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                  border: '1px dashed #ccc',
+                  fontSize: paperType === 'thermal' ? '7px' : paperType === 'a5' ? '9px' : '11px'
+                }}>
+                  <h3 style={{
+                    fontSize: paperType === 'thermal' ? '8px' : paperType === 'a5' ? '11px' : '14px',
+                    fontWeight: 'bold',
+                    borderBottom: '1px dashed #ccc',
+                    paddingBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                    marginBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm'
+                  }}>Payment Information</h3>
+
                   {/* Final Payment */}
                   <p>
-                    <strong>Final Payment:</strong> 
-                    <span className="payment-method">{detailsCheckout?.paymentMethod?.toUpperCase() || 'CASH'}</span>
+                    <strong>Final Payment:</strong>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: paperType === 'thermal' ? '0.5mm 1mm' : paperType === 'a5' ? '0.8mm 1.5mm' : '1mm 2mm',
+                      background: '#f0f0f0',
+                      borderRadius: paperType === 'thermal' ? '2px' : paperType === 'a5' ? '2px' : '3px',
+                      marginRight: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                      fontSize: paperType === 'thermal' ? '6px' : paperType === 'a5' ? '8px' : '10px'
+                    }}>{detailsCheckout?.paymentMethod?.toUpperCase() || 'CASH'}</span>
                   </p>
-                  
+
                   {/* Advance Payment */}
                   {detailsCheckout?.advancePaid > 0 && (
                     <p>
-                      <strong>Advance Paid:</strong> 
-                      <span className="payment-method">{detailsCheckout?.advancePaymentMethod?.toUpperCase() || 'CASH'}</span>
+                      <strong>Advance Paid:</strong>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: paperType === 'thermal' ? '0.5mm 1mm' : paperType === 'a5' ? '0.8mm 1.5mm' : '1mm 2mm',
+                        background: '#f0f0f0',
+                        borderRadius: paperType === 'thermal' ? '2px' : paperType === 'a5' ? '2px' : '3px',
+                        marginRight: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                        fontSize: paperType === 'thermal' ? '6px' : paperType === 'a5' ? '8px' : '10px'
+                      }}>{detailsCheckout?.advancePaymentMethod?.toUpperCase() || 'CASH'}</span>
                       ₹{detailsCheckout.advancePaid.toLocaleString()}
                     </p>
                   )}
-                  
+
                   {/* Online Payment Details */}
                   {detailsCheckout?.paymentMethod === 'online' && detailsCheckout?.paymentDetails?.transactionId && (
                     <p>
@@ -1088,7 +1475,7 @@ export default function CheckoutsPage() {
                       )}
                     </p>
                   )}
-                  
+
                   {/* Advance Online Payment Details */}
                   {detailsCheckout?.advancePaymentMethod === 'online' && detailsCheckout?.advancePaymentDetails?.transactionId && (
                     <p>
@@ -1101,15 +1488,28 @@ export default function CheckoutsPage() {
                 </div>
 
                 {/* Room Charges Details */}
-                <div className="bill-section">
-                  <h3>Room Charges</h3>
-                  <table className="bill-table">
+                <div style={{
+                  margin: paperType === 'thermal' ? '2mm 0' : paperType === 'a5' ? '3mm 0' : '4mm 0'
+                }}>
+                  <h3 style={{
+                    fontSize: paperType === 'thermal' ? '8px' : paperType === 'a5' ? '11px' : '14px',
+                    fontWeight: 'bold',
+                    borderBottom: '1px dashed #ccc',
+                    paddingBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                    marginBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm'
+                  }}>Room Charges</h3>
+                  <table style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    margin: paperType === 'thermal' ? '1mm 0' : paperType === 'a5' ? '1.5mm 0' : '2mm 0',
+                    fontSize: paperType === 'thermal' ? '7px' : paperType === 'a5' ? '9px' : '11px'
+                  }}>
                     <thead>
                       <tr>
                         <th>Room</th>
-                        <th className="text-right">Rate/Night</th>
-                        <th className="text-center">Nights</th>
-                        <th className="text-right">Total</th>
+                        <th style={{ textAlign: 'right' }}>Rate/Night</th>
+                        <th style={{ textAlign: 'center' }}>Nights</th>
+                        <th style={{ textAlign: 'right' }}>Total</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1119,9 +1519,9 @@ export default function CheckoutsPage() {
                         return (
                           <tr key={index}>
                             <td>#{room.roomNumber}</td>
-                            <td className="text-right">₹{room.rate?.toLocaleString()}</td>
-                            <td className="text-center">{nights}</td>
-                            <td className="text-right">₹{roomTotal.toLocaleString()}</td>
+                            <td style={{ textAlign: 'right' }}>₹{room.rate?.toLocaleString()}</td>
+                            <td style={{ textAlign: 'center' }}>{nights}</td>
+                            <td style={{ textAlign: 'right' }}>₹{roomTotal.toLocaleString()}</td>
                           </tr>
                         );
                       })}
@@ -1131,34 +1531,50 @@ export default function CheckoutsPage() {
 
                 {/* Order Details with pagination for print */}
                 {detailsCheckout?.orders && detailsCheckout.orders.length > 0 && (
-                  <div className="bill-section">
-                    <h3>Order Details ({detailsCheckout.orders.length} orders)</h3>
+                  <div style={{
+                    margin: paperType === 'thermal' ? '2mm 0' : paperType === 'a5' ? '3mm 0' : '4mm 0'
+                  }}>
+                    <h3 style={{
+                      fontSize: paperType === 'thermal' ? '8px' : paperType === 'a5' ? '11px' : '14px',
+                      fontWeight: 'bold',
+                      borderBottom: '1px dashed #ccc',
+                      paddingBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                      marginBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm'
+                    }}>Order Details ({detailsCheckout.orders.length} orders)</h3>
                     {detailsCheckout.orders.map((order: any, index: number) => (
-                      <div key={index} className="order-details ${index > 0 ? 'page-break' : ''}">
+                      <div key={index} className={index > 0 ? 'page-break' : ''}>
                         <p><strong>Order #{index + 1}</strong> - {new Date(order.createdAt).toLocaleDateString()}</p>
-                        <table className="order-table">
+                        <table style={{
+                          width: '100%',
+                          borderCollapse: 'collapse',
+                          margin: paperType === 'thermal' ? '1mm 0' : paperType === 'a5' ? '1.5mm 0' : '2mm 0',
+                          fontSize: paperType === 'thermal' ? '6px' : paperType === 'a5' ? '8px' : '10px'
+                        }}>
                           <thead>
                             <tr>
                               <th>Item</th>
-                              <th className="text-center">Qty</th>
-                              <th className="text-right">Price</th>
-                              <th className="text-right">Total</th>
+                              <th style={{ textAlign: 'center' }}>Qty</th>
+                              <th style={{ textAlign: 'right' }}>Price</th>
+                              <th style={{ textAlign: 'right' }}>Total</th>
                             </tr>
                           </thead>
                           <tbody>
                             {order.items.map((item: any, itemIndex: number) => (
                               <tr key={itemIndex}>
-                                <td>${item.name.length > 20 ? item.name.substring(0, 17) + '...' : item.name}</td>
-                                <td className="text-center">{item.quantity}</td>
-                                <td className="text-right">₹{item.price?.toLocaleString()}</td>
-                                <td className="text-right">₹{item.total?.toLocaleString()}</td>
+                                <td>{item.name.length > 20 ? item.name.substring(0, 17) + '...' : item.name}</td>
+                                <td style={{ textAlign: 'center' }}>{item.quantity}</td>
+                                <td style={{ textAlign: 'right' }}>₹{item.price?.toLocaleString()}</td>
+                                <td style={{ textAlign: 'right' }}>₹{item.total?.toLocaleString()}</td>
                               </tr>
                             ))}
                           </tbody>
                           <tfoot>
-                            <tr className="total-row">
-                              <td colSpan={3} className="text-right">Order Total:</td>
-                              <td className="text-right">₹{order.totalAmount?.toLocaleString()}</td>
+                            <tr style={{
+                              fontWeight: 'bold',
+                              borderTop: paperType === 'thermal' ? '1px dashed #000' : paperType === 'a5' ? '1px dashed #000' : '2px dashed #000'
+                            }}>
+                              <td colSpan={3} style={{ textAlign: 'right' }}>Order Total:</td>
+                              <td style={{ textAlign: 'right' }}>₹{order.totalAmount?.toLocaleString()}</td>
                             </tr>
                           </tfoot>
                         </table>
@@ -1168,66 +1584,94 @@ export default function CheckoutsPage() {
                 )}
 
                 {/* Billing Summary */}
-                <div className="bill-section">
-                  <h3>Bill Summary</h3>
-                  <table className="bill-table">
+                <div style={{
+                  margin: paperType === 'thermal' ? '2mm 0' : paperType === 'a5' ? '3mm 0' : '4mm 0'
+                }}>
+                  <h3 style={{
+                    fontSize: paperType === 'thermal' ? '8px' : paperType === 'a5' ? '11px' : '14px',
+                    fontWeight: 'bold',
+                    borderBottom: '1px dashed #ccc',
+                    paddingBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm',
+                    marginBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm'
+                  }}>Bill Summary</h3>
+                  <table style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    margin: paperType === 'thermal' ? '1mm 0' : paperType === 'a5' ? '1.5mm 0' : '2mm 0',
+                    fontSize: paperType === 'thermal' ? '7px' : paperType === 'a5' ? '9px' : '11px'
+                  }}>
                     <tbody>
                       <tr>
                         <td>Room Charges</td>
-                        <td className="text-right">₹{detailsCheckout?.breakdown?.roomCharges?.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right' }}>₹{detailsCheckout?.breakdown?.roomCharges?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.roomDiscount > 0 && (
                         <tr>
-                          <td className="text-right">Room Discount</td>
-                          <td className="text-right">-₹{detailsCheckout.breakdown.roomDiscount?.toLocaleString()}</td>
+                          <td style={{ textAlign: 'right' }}>Room Discount</td>
+                          <td style={{ textAlign: 'right' }}>-₹{detailsCheckout.breakdown.roomDiscount?.toLocaleString()}</td>
                         </tr>
                       )}
                       <tr>
                         <td>Net Room Charges</td>
-                        <td className="text-right">₹{detailsCheckout?.breakdown?.roomNet?.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right' }}>₹{detailsCheckout?.breakdown?.roomNet?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.orderCharges > 0 && (
                         <tr>
                           <td>Food & Beverage</td>
-                          <td className="text-right">₹{detailsCheckout.breakdown.orderCharges?.toLocaleString()}</td>
+                          <td style={{ textAlign: 'right' }}>₹{detailsCheckout.breakdown.orderCharges?.toLocaleString()}</td>
                         </tr>
                       )}
                       {detailsCheckout?.breakdown?.extraCharges > 0 && (
                         <tr>
                           <td>Other Charges</td>
-                          <td className="text-right">₹{detailsCheckout.breakdown.extraCharges?.toLocaleString()}</td>
+                          <td style={{ textAlign: 'right' }}>₹{detailsCheckout.breakdown.extraCharges?.toLocaleString()}</td>
                         </tr>
                       )}
-                      <tr className="total-row">
+                      <tr style={{
+                        fontWeight: 'bold',
+                        borderTop: paperType === 'thermal' ? '1px dashed #000' : paperType === 'a5' ? '1px dashed #000' : '2px dashed #000'
+                      }}>
                         <td>Subtotal</td>
-                        <td className="text-right">₹{detailsCheckout?.breakdown?.subtotal?.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right' }}>₹{detailsCheckout?.breakdown?.subtotal?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.vatAmount > 0 && (
                         <tr>
                           <td>VAT ({detailsCheckout.breakdown.vatPercent || 0}%)</td>
-                          <td className="text-right">₹{detailsCheckout.breakdown.vatAmount?.toLocaleString()}</td>
+                          <td style={{ textAlign: 'right' }}>₹{detailsCheckout.breakdown.vatAmount?.toLocaleString()}</td>
                         </tr>
                       )}
-                      <tr className="total-row">
+                      <tr style={{
+                        fontWeight: 'bold',
+                        borderTop: paperType === 'thermal' ? '1px dashed #000' : paperType === 'a5' ? '1px dashed #000' : '2px dashed #000'
+                      }}>
                         <td>Total Before Advance</td>
-                        <td className="text-right">₹{detailsCheckout?.breakdown?.totalBeforeAdvance?.toLocaleString()}</td>
+                        <td style={{ textAlign: 'right' }}>₹{detailsCheckout?.breakdown?.totalBeforeAdvance?.toLocaleString()}</td>
                       </tr>
                       {detailsCheckout?.breakdown?.advancePaid > 0 && (
                         <tr>
                           <td>Advance Paid</td>
-                          <td className="text-right">-₹{detailsCheckout.breakdown.advancePaid?.toLocaleString()}</td>
+                          <td style={{ textAlign: 'right' }}>-₹{detailsCheckout.breakdown.advancePaid?.toLocaleString()}</td>
                         </tr>
                       )}
-                      <tr className="total-row">
+                      <tr style={{
+                        fontWeight: 'bold',
+                        borderTop: paperType === 'thermal' ? '1px dashed #000' : paperType === 'a5' ? '1px dashed #000' : '2px dashed #000'
+                      }}>
                         <td><strong>GRAND TOTAL</strong></td>
-                        <td className="text-right"><strong>₹{detailsCheckout?.breakdown?.finalBill?.toLocaleString()}</strong></td>
+                        <td style={{ textAlign: 'right' }}><strong>₹{detailsCheckout?.breakdown?.finalBill?.toLocaleString()}</strong></td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
 
                 {/* Footer */}
-                <div className="bill-footer">
+                <div style={{
+                  marginTop: paperType === 'thermal' ? '3mm' : paperType === 'a5' ? '4mm' : '6mm',
+                  textAlign: 'center',
+                  borderTop: '1px dashed #ccc',
+                  paddingTop: paperType === 'thermal' ? '2mm' : paperType === 'a5' ? '3mm' : '4mm',
+                  fontSize: paperType === 'thermal' ? '7px' : paperType === 'a5' ? '9px' : '11px'
+                }}>
                   <p>Thank you for staying with us!</p>
                   <p>For queries, contact hotel management</p>
                 </div>
