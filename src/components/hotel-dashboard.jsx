@@ -298,7 +298,7 @@ const navLinks = [
 								</div>
 								<div>
 									<p className="text-sm text-gray-600">Total Guests</p>
-									<p className="text-2xl font-bold text-gray-800">{guests?.totalGuests}</p>
+									<p className="text-2xl font-bold text-gray-800">{guests?.currentlyStaying}</p>
 								</div>
 							</div>
 						</CardContent>
