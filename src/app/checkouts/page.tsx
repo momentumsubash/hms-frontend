@@ -1379,10 +1379,8 @@ const printBill = () => {
                     marginBottom: paperType === 'thermal' ? '1mm' : paperType === 'a5' ? '1.5mm' : '2mm'
                   }}>Guest Information</h3>
                   <p><strong>Name:</strong> {detailsCheckout?.guest?.firstName} {detailsCheckout?.guest?.lastName}</p>
-                  <p><strong>Email:</strong> {detailsCheckout?.guest?.email}</p>
-                  {detailsCheckout?.guest?.phone && (
-                    <p><strong>Phone:</strong> {detailsCheckout.guest.phone}</p>
-                  )}
+                  <p><strong>Phone:</strong> {detailsCheckout?.guest?.phone}</p>
+               
                 </div>
 
                 <div style={{
