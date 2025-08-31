@@ -32,7 +32,7 @@ export default function CheckoutsPage() {
     search: ""
   });
   const [searchInput, setSearchInput] = useState("");
-  const debouncedSearch = useDebounce(searchInput, 500);
+  const debouncedSearch = useDebounce(searchInput, 1000);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
