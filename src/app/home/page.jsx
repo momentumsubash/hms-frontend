@@ -14,7 +14,7 @@ const WhatsAppIcon = ({ className }) => (
 )
 
 export default function HotelLandingPage() {
-      const handleExploreRooms = () => {
+  const handleExploreRooms = () => {
     // You can replace this with actual routing when you create the rooms page
     window.location.href = "/rooms"
   }
@@ -22,12 +22,23 @@ export default function HotelLandingPage() {
   const hotelId = process.env.NEXT_PUBLIC_HOTEL_ID // Replace with actual ID or get from URL params
 
   useEffect(() => {
+
     const fetchHotel = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/public/${hotelId}`)
-        const data = await res.json()
-        if (data.success) {
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/public/domain`, {
+          headers: {
+            'Accept': '*/*',
+            'Origin': window.location.origin
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+            if (data.success) {
           setHotel(data.data)
+        }
+        
         }
       } catch (error) {
         console.error("Error fetching hotel:", error)
@@ -36,41 +47,41 @@ export default function HotelLandingPage() {
     fetchHotel()
   }, [])
 
-const handleWhatsAppContact = () => {
-  // Clean phone number - remove spaces, dashes, and ensure proper format
-  let phoneNumber = hotel?.phone || "+9779851179962"
-  
-  // Remove all non-digit characters except the leading +
-  phoneNumber = phoneNumber.replace(/[^\d+]/g, '')
-  
-  // Ensure it starts with + if it doesn't already
-  if (!phoneNumber.startsWith('+')) {
-    phoneNumber = '+' + phoneNumber
-  }
-  
-  const message = `Hello! I would like to book a room at ${hotel?.name || "Your Hotel"}.`
-  const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
-  
-  // Add error handling for popup blockers
-  try {
-    const newWindow = window.open(whatsappUrl, "_blank")
-    if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
-      // Popup was blocked, fallback to direct navigation
+  const handleWhatsAppContact = () => {
+    // Clean phone number - remove spaces, dashes, and ensure proper format
+    let phoneNumber = hotel?.phone || "+9779851179962"
+
+    // Remove all non-digit characters except the leading +
+    phoneNumber = phoneNumber.replace(/[^\d+]/g, '')
+
+    // Ensure it starts with + if it doesn't already
+    if (!phoneNumber.startsWith('+')) {
+      phoneNumber = '+' + phoneNumber
+    }
+
+    const message = `Hello! I would like to book a room at ${hotel?.name || "Your Hotel"}.`
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
+
+    // Add error handling for popup blockers
+    try {
+      const newWindow = window.open(whatsappUrl, "_blank")
+      if (!newWindow || newWindow.closed || typeof newWindow.closed == 'undefined') {
+        // Popup was blocked, fallback to direct navigation
+        window.location.href = whatsappUrl
+      }
+    } catch (error) {
+      console.error('Error opening WhatsApp:', error)
+      // Fallback to direct navigation
       window.location.href = whatsappUrl
     }
-  } catch (error) {
-    console.error('Error opening WhatsApp:', error)
-    // Fallback to direct navigation
-    window.location.href = whatsappUrl
   }
-}
 
   if (!hotel) {
     return <div className="min-h-screen flex items-center justify-center text-lg">Loading hotel details...</div>
   }
 
   return (
-   <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <Navbar hotel={hotel} />
 
       {/* Hero Section */}

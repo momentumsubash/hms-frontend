@@ -442,6 +442,94 @@ export async function getMyHotelGuestStats(params: Record<string, any> = {}) {
   }
 }
 
+// Add these functions to your existing API file
+
+
+// Add these functions to your existing API file
+
+export const uploadHotelLogo = async (hotelId: string, formData: FormData): Promise<{ url: string }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/logo`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to upload logo');
+  }
+  
+  return response.json();
+};
+
+export const uploadHotelImages = async (hotelId: string, formData: FormData): Promise<{ urls: string[] }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/images`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to upload images');
+  }
+  
+  return response.json();
+};
+
+export const uploadHotelGallery = async (hotelId: string, formData: FormData): Promise<{ urls: string[] }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/gallery`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to upload gallery images');
+  }
+  
+  return response.json();
+};
+// Helper function to remove image
+export const removeHotelImage = async (hotelId: string, imageUrl: string, type: 'logo' | 'images' | 'gallery'): Promise<{ success: boolean; message: string }> => {
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/images/remove`, {
+    method: 'DELETE',
+    headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
+    body: JSON.stringify({ imageUrl, type }),
+  });
+  
+  if (response.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    throw new Error('Authentication required');
+  }
+  
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || 'Image removal failed');
+  }
+  
+  return response.json();
+};
+
+
+
+// Helper function for handling responses
+const handleResponse = async (response: Response) => {
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || 'Upload failed');
+  }
+  return response.json();
+};
+
 // Cached version to avoid multiple hotel API calls
 let cachedHotelId: string | null = null;
 let cacheTimestamp: number = 0;

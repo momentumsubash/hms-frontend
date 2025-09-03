@@ -2,14 +2,15 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
-import { getHotels, addHotel, updateHotel, updateHotelBalance } from "@/lib/api";
+import { getHotels, addHotel, updateHotel, updateHotelBalance,uploadHotelLogo,uploadHotelImages,uploadHotelGallery } from "@/lib/api";
 import { createExpenditure, getExpenditures, approveExpenditure, rejectExpenditure } from "@/lib/expenditure";
 import { Hotel } from "@/types/hotel";
 import { Expenditure, ExpenditureFilters } from "@/types/expenditure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { format } from "date-fns";
-import { PlusIcon, PencilIcon } from "@heroicons/react/24/outline";
+import Image from "next/image";
+import { PhotoIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
 
 export default function HotelsPage() {
   // Hotel state
@@ -33,7 +34,8 @@ export default function HotelsPage() {
   const [selectedExpenditure, setSelectedExpenditure] = useState<Expenditure | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
-  
+  const [uploading, setUploading] = useState(false);
+const [uploadProgress, setUploadProgress] = useState(0);
   const [newHotel, setNewHotel] = useState<Hotel>({
     name: "",
     description: "",
@@ -114,6 +116,7 @@ export default function HotelsPage() {
     }
   };
 
+  
   const loadExpenditures = async () => {
     try {
       const res = await getExpenditures(expenditureFilters);
@@ -175,6 +178,146 @@ export default function HotelsPage() {
     }
   };
 
+  // Add these helper functions to your component
+
+const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>, hotelId: string) => {
+  if (!e.target.files?.[0]) return;
+  
+  try {
+    setUploading(true);
+    setUploadProgress(0);
+    const file = e.target.files[0];
+    
+    // Simulate upload progress
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(interval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 200);
+    
+    const formData = new FormData();
+    formData.append('logo', file);
+    
+    const response = await uploadHotelLogo(hotelId, formData);
+    setUploadProgress(100);
+    
+    // Update the hotel in the list
+    setHotels(prev => prev.map(hotel => 
+      hotel._id === hotelId ? { ...hotel, logo: response.url } : hotel
+    ));
+    
+    if (selectedHotel?._id === hotelId) {
+      setSelectedHotel(prev => prev ? { ...prev, logo: response.url } : null);
+    }
+    
+    setTimeout(() => {
+      setUploading(false);
+      setUploadProgress(0);
+    }, 500);
+    
+  } catch (e: any) {
+    setError(e.message);
+    setUploading(false);
+    setUploadProgress(0);
+  }
+};
+
+const handleUploadImages = async (e: React.ChangeEvent<HTMLInputElement>, hotelId: string, type: 'images' | 'gallery') => {
+  if (!e.target.files?.length) return;
+  
+  try {
+    setUploading(true);
+    setUploadProgress(0);
+    const files = Array.from(e.target.files);
+    
+    // Simulate upload progress
+    const interval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(interval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 200);
+    
+    const formData = new FormData();
+    files.forEach(file => formData.append(type, file));
+    
+    const response = type === 'images' 
+      ? await uploadHotelImages(hotelId, formData)
+      : await uploadHotelGallery(hotelId, formData);
+    
+    setUploadProgress(100);
+    
+    // Update the hotel in the list
+    setHotels(prev => prev.map(hotel => 
+      hotel._id === hotelId ? { ...hotel, [type]: [...(hotel[type] || []), ...response.urls] } : hotel
+    ));
+    
+    if (selectedHotel?._id === hotelId) {
+      setSelectedHotel(prev => prev ? { 
+        ...prev, 
+        [type]: [...(prev[type] || []), ...response.urls] 
+      } : null);
+    }
+    
+    setTimeout(() => {
+      setUploading(false);
+      setUploadProgress(0);
+    }, 500);
+    
+  } catch (e: any) {
+    setError(e.message);
+    setUploading(false);
+    setUploadProgress(0);
+  }
+};
+
+const handleRemoveImage = async (hotelId: string, imageUrl: string, type: 'logo' | 'images' | 'gallery') => {
+  try {
+    // For now, we'll just remove from the UI - actual deletion from storage would require a backend endpoint
+    setHotels(prev => prev.map(hotel => {
+      if (hotel._id === hotelId) {
+        if (type === 'logo') {
+          return { ...hotel, logo: '' };
+        } else {
+          return { ...hotel, [type]: hotel[type]?.filter(img => img !== imageUrl) || [] };
+        }
+      }
+      return hotel;
+    }));
+    
+    if (selectedHotel?._id === hotelId) {
+      if (type === 'logo') {
+        setSelectedHotel(prev => prev ? { ...prev, logo: '' } : null);
+      } else {
+        setSelectedHotel(prev => prev ? { 
+          ...prev, 
+          [type]: prev[type]?.filter(img => img !== imageUrl) || [] 
+        } : null);
+      }
+    }
+    
+  } catch (e: any) {
+    setError(e.message);
+  }
+};
+
+// Safe URL validation function
+const isValidUrl = (url: string | undefined): boolean => {
+  if (!url) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
   // Filter hotels
   const filteredHotels = hotels.filter((hotel: Hotel) => {
     const matchesName = filters.name === "" || (hotel.name && hotel.name.toLowerCase().includes(filters.name.toLowerCase()));
@@ -625,278 +768,425 @@ export default function HotelsPage() {
           )}
         </div>
 
-        {/* Edit Hotel Modal */}
-        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Hotel</DialogTitle>
-            </DialogHeader>
-            {selectedHotel && (
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                if (!selectedHotel._id) return;
-                try {
-                  await updateHotel(selectedHotel._id, selectedHotel);
-                  setShowEditModal(false);
-                  loadData();
-                } catch (e: any) {
-                  setError(e.message);
-                }
-              }} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Hotel Name *</label>
-                    <input
-                      type="text"
-                      value={selectedHotel.name}
-                      onChange={(e) => setSelectedHotel({...selectedHotel, name: e.target.value})}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Type</label>
-                    <input
-                      type="text"
-                      value={selectedHotel.type}
-                      onChange={(e) => setSelectedHotel({...selectedHotel, type: e.target.value})}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="e.g., 5-Star Luxury Hotel"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Phone</label>
-                    <input
-                      type="text"
-                      value={selectedHotel.contact?.phone || selectedHotel.phone}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        contact: { ...selectedHotel.contact, phone: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="+1-555-123-4567"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Room Count</label>
-                    <input
-                      type="number"
-                      value={selectedHotel.roomCount}
-                      onChange={(e) => setSelectedHotel({...selectedHotel, roomCount: parseInt(e.target.value) || 0})}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Floors</label>
-                    <input
-                      type="number"
-                      value={selectedHotel.floors}
-                      onChange={(e) => setSelectedHotel({...selectedHotel, floors: parseInt(e.target.value) || 0})}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Established Year</label>
-                    <input
-                      type="number"
-                      value={selectedHotel.established}
-                      onChange={(e) => setSelectedHotel({...selectedHotel, established: parseInt(e.target.value) || new Date().getFullYear()})}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">VAT Number</label>
-                    <input
-                      type="text"
-                      value={selectedHotel.vatNumber}
-                      onChange={(e) => setSelectedHotel({...selectedHotel, vatNumber: e.target.value})}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Company Name</label>
-                    <input
-                      type="text"
-                      value={selectedHotel.companyName}
-                      onChange={(e) => setSelectedHotel({...selectedHotel, companyName: e.target.value})}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">VAT Address</label>
-                    <input
-                      type="text"
-                      value={selectedHotel.vatAddress}
-                      onChange={(e) => setSelectedHotel({...selectedHotel, vatAddress: e.target.value})}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                    />
-                  </div>
-                </div>
+{/* Edit Hotel Modal with Image Uploads */}
+<Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+  <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+    <DialogHeader>
+      <DialogTitle>Edit Hotel - {selectedHotel?.name}</DialogTitle>
+    </DialogHeader>
+    {selectedHotel && (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Hotel Details Form */}
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Hotel Details</h3>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!selectedHotel._id) return;
+            try {
+              await updateHotel(selectedHotel._id, selectedHotel);
+              setShowEditModal(false);
+              loadData();
+            } catch (e: any) {
+              setError(e.message);
+            }
+          }} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Hotel Name *</label>
+                <input
+                  type="text"
+                  value={selectedHotel.name}
+                  onChange={(e) => setSelectedHotel({...selectedHotel, name: e.target.value})}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Type</label>
+                <input
+                  type="text"
+                  value={selectedHotel.type}
+                  onChange={(e) => setSelectedHotel({...selectedHotel, type: e.target.value})}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="e.g., 5-Star Luxury Hotel"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Phone</label>
+                <input
+                  type="text"
+                  value={selectedHotel.contact?.phone || selectedHotel.phone || ""}
+                  onChange={(e) => setSelectedHotel({
+                    ...selectedHotel, 
+                    contact: { ...selectedHotel.contact, phone: e.target.value }
+                  })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="+1-555-123-4567"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Room Count</label>
+                <input
+                  type="number"
+                  value={selectedHotel.roomCount || ""}
+                  onChange={(e) => setSelectedHotel({...selectedHotel, roomCount: parseInt(e.target.value) || 0})}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Floors</label>
+                <input
+                  type="number"
+                  value={selectedHotel.floors || ""}
+                  onChange={(e) => setSelectedHotel({...selectedHotel, floors: parseInt(e.target.value) || 0})}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Established Year</label>
+                <input
+                  type="number"
+                  value={selectedHotel.established || ""}
+                  onChange={(e) => setSelectedHotel({...selectedHotel, established: parseInt(e.target.value) || new Date().getFullYear()})}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">VAT Number</label>
+                <input
+                  type="text"
+                  value={selectedHotel.vatNumber || ""}
+                  onChange={(e) => setSelectedHotel({...selectedHotel, vatNumber: e.target.value})}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Company Name</label>
+                <input
+                  type="text"
+                  value={selectedHotel.companyName || ""}
+                  onChange={(e) => setSelectedHotel({...selectedHotel, companyName: e.target.value})}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">VAT Address</label>
+                <input
+                  type="text"
+                  value={selectedHotel.vatAddress || ""}
+                  onChange={(e) => setSelectedHotel({...selectedHotel, vatAddress: e.target.value})}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    value={selectedHotel.description}
-                    onChange={(e) => setSelectedHotel({...selectedHotel, description: e.target.value})}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    rows={3}
-                    placeholder="A brief description of the hotel..."
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Description</label>
+              <textarea
+                value={selectedHotel.description || ""}
+                onChange={(e) => setSelectedHotel({...selectedHotel, description: e.target.value})}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                rows={3}
+                placeholder="A brief description of the hotel..."
+              />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">Address</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input
-                      type="text"
-                      value={selectedHotel.address?.street}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        address: { ...selectedHotel.address, street: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="Street"
-                    />
-                    <input
-                      type="text"
-                      value={selectedHotel.address?.area}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        address: { ...selectedHotel.address, area: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="Area"
-                    />
-                    <input
-                      type="text"
-                      value={selectedHotel.address?.city}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        address: { ...selectedHotel.address, city: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="City"
-                    />
-                    <input
-                      type="text"
-                      value={selectedHotel.address?.state}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        address: { ...selectedHotel.address, state: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="State"
-                    />
-                    <input
-                      type="text"
-                      value={selectedHotel.address?.zip}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        address: { ...selectedHotel.address, zip: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="ZIP Code"
-                    />
-                  </div>
-                </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Address</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  value={selectedHotel.address?.street || ""}
+                  onChange={(e) => setSelectedHotel({
+                    ...selectedHotel, 
+                    address: { ...selectedHotel.address, street: e.target.value }
+                  })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Street"
+                />
+                <input
+                  type="text"
+                  value={selectedHotel.address?.area || ""}
+                  onChange={(e) => setSelectedHotel({
+                    ...selectedHotel, 
+                    address: { ...selectedHotel.address, area: e.target.value }
+                  })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Area"
+                />
+                <input
+                  type="text"
+                  value={selectedHotel.address?.city || ""}
+                  onChange={(e) => setSelectedHotel({
+                    ...selectedHotel, 
+                    address: { ...selectedHotel.address, city: e.target.value }
+                  })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="City"
+                />
+                <input
+                  type="text"
+                  value={selectedHotel.address?.state || ""}
+                  onChange={(e) => setSelectedHotel({
+                    ...selectedHotel, 
+                    address: { ...selectedHotel.address, state: e.target.value }
+                  })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="State"
+                />
+                <input
+                  type="text"
+                  value={selectedHotel.address?.zip || ""}
+                  onChange={(e) => setSelectedHotel({
+                    ...selectedHotel, 
+                    address: { ...selectedHotel.address, zip: e.target.value }
+                  })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="ZIP Code"
+                />
+              </div>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">Contact Information</label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input
-                      type="text"
-                      value={selectedHotel.contact?.phone}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        contact: { ...selectedHotel.contact, phone: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="Phone"
-                    />
-                    <input
-                      type="text"
-                      value={selectedHotel.contact?.reception}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        contact: { ...selectedHotel.contact, reception: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="Reception"
-                    />
-                    <input
-                      type="email"
-                      value={selectedHotel.contact?.email}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        contact: { ...selectedHotel.contact, email: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="Email"
-                    />
-                    <input
-                      type="url"
-                      value={selectedHotel.contact?.website}
-                      onChange={(e) => setSelectedHotel({
-                        ...selectedHotel, 
-                        contact: { ...selectedHotel.contact, website: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="Website URL"
-                    />
-                  </div>
-                </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Contact Information</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  value={selectedHotel.contact?.phone || ""}
+                  onChange={(e) => setSelectedHotel({
+                    ...selectedHotel, 
+                    contact: { ...selectedHotel.contact, phone: e.target.value }
+                  })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Phone"
+                />
+                <input
+                  type="text"
+                  value={selectedHotel.contact?.reception || ""}
+                  onChange={(e) => setSelectedHotel({
+                    ...selectedHotel, 
+                    contact: { ...selectedHotel.contact, reception: e.target.value }
+                  })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Reception"
+                />
+                <input
+                  type="email"
+                  value={selectedHotel.contact?.email || ""}
+                  onChange={(e) => setSelectedHotel({
+                    ...selectedHotel, 
+                    contact: { ...selectedHotel.contact, email: e.target.value }
+                  })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Email"
+                />
+                <input
+                  type="url"
+                  value={selectedHotel.contact?.website || ""}
+                  onChange={(e) => setSelectedHotel({
+                    ...selectedHotel, 
+                    contact: { ...selectedHotel.contact, website: e.target.value }
+                  })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="Website URL"
+                />
+              </div>
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-1">Amenities (comma-separated)</label>
+            <div>
+              <label className="block text-sm font-medium mb-1">Amenities (comma-separated)</label>
+              <input
+                type="text"
+                value={selectedHotel.amenities?.join(", ") || ""}
+                onChange={(e) => setSelectedHotel({
+                  ...selectedHotel, 
+                  amenities: e.target.value.split(",").map(item => item.trim())
+                })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                placeholder="WiFi, Pool, Gym, Spa, Restaurant"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Nearby Attractions (comma-separated)</label>
+              <input
+                type="text"
+                value={selectedHotel.nearby?.join(", ") || ""}
+                onChange={(e) => setSelectedHotel({
+                  ...selectedHotel, 
+                  nearby: e.target.value.split(",").map(item => item.trim())
+                })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                placeholder="Central Park, Shopping Mall, Museum"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Location Map URL</label>
+              <input
+                type="url"
+                value={selectedHotel.locationMap || ""}
+                onChange={(e) => setSelectedHotel({...selectedHotel, locationMap: e.target.value})}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                placeholder="https://maps.google.com/..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                Update Hotel
+              </Button>
+            </div>
+          </form>
+        </div>
+
+        {/* Image Management Section */}
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold">Image Management</h3>
+          
+          {/* Logo Upload */}
+          <div className="border rounded-lg p-4">
+            <h4 className="font-medium mb-3">Hotel Logo</h4>
+            {selectedHotel.logo && isValidUrl(selectedHotel.logo) ? (
+              <div className="relative">
+                <img
+                  src={selectedHotel.logo}
+                  alt="Hotel Logo"
+                  width={120}
+                  height={120}
+                  className="rounded-lg object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+                <button
+                  onClick={() => handleRemoveImage(selectedHotel._id!, selectedHotel.logo!, 'logo')}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                >
+                  <XMarkIcon className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-500 mb-2">No logo uploaded</p>
+                <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
+                  Upload Logo
                   <input
-                    type="text"
-                    value={selectedHotel.amenities?.join(", ") || ""}
-                    onChange={(e) => setSelectedHotel({
-                      ...selectedHotel, 
-                      amenities: e.target.value.split(",").map(item => item.trim())
-                    })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="WiFi, Pool, Gym, Spa, Restaurant"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleUploadLogo(e, selectedHotel._id!)}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Nearby Attractions (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={selectedHotel.nearby?.join(", ") || ""}
-                    onChange={(e) => setSelectedHotel({
-                      ...selectedHotel, 
-                      nearby: e.target.value.split(",").map(item => item.trim())
-                    })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="Central Park, Shopping Mall, Museum"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1">Location Map URL</label>
-                  <input
-                    type="url"
-                    value={selectedHotel.locationMap}
-                    onChange={(e) => setSelectedHotel({...selectedHotel, locationMap: e.target.value})}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="https://maps.google.com/..."
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-                    Update Hotel
-                  </Button>
-                </div>
-              </form>
+                </label>
+              </div>
             )}
-          </DialogContent>
-        </Dialog>
+          </div>
+
+          {/* Main Images Upload */}
+          <div className="border rounded-lg p-4">
+            <h4 className="font-medium mb-3">Main Images</h4>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {selectedHotel.images?.filter(url => isValidUrl(url)).map((image, index) => (
+                <div key={index} className="relative">
+                  <img
+                    src={image}
+                    alt={`Hotel image ${index + 1}`}
+                    width={100}
+                    height={100}
+                    className="rounded-lg object-cover w-full h-24"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                  <button
+                    onClick={() => handleRemoveImage(selectedHotel._id!, image, 'images')}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
+              <PlusIcon className="w-4 h-4 inline mr-1" />
+              Add Images
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'images')}
+              />
+            </label>
+          </div>
+
+          {/* Gallery Images Upload */}
+          <div className="border rounded-lg p-4">
+            <h4 className="font-medium mb-3">Gallery Images</h4>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {selectedHotel.gallery?.filter(url => isValidUrl(url)).map((image, index) => (
+                <div key={index} className="relative">
+                  <img
+                    src={image}
+                    alt={`Gallery image ${index + 1}`}
+                    width={100}
+                    height={100}
+                    className="rounded-lg object-cover w-full h-24"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                  <button
+                    onClick={() => handleRemoveImage(selectedHotel._id!, image, 'gallery')}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
+              <PlusIcon className="w-4 h-4 inline mr-1" />
+              Add Gallery Images
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'gallery')}
+              />
+            </label>
+          </div>
+
+          {/* Upload Progress */}
+          {uploading && (
+            <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                <div>
+                  <p className="text-sm font-medium">Uploading...</p>
+                  <div className="w-32 h-2 bg-gray-200 rounded-full mt-1">
+                    <div 
+                      className="h-full bg-blue-600 rounded-full transition-all"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+  </DialogContent>
+</Dialog>
 
         {/* Update Balance Modal */}
         <Dialog open={showBalanceModal} onOpenChange={setShowBalanceModal}>
