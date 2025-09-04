@@ -23,27 +23,108 @@ export default function HotelLandingPage() {
 
   useEffect(() => {
 
-    const fetchHotel = async () => {
-      try {
+const fetchHotel = async () => {
+  try {
+    // Get the current domain
+    const currentDomain = window.location.hostname;
+    console.log('🌐 Fetching hotel for domain:', currentDomain);
 
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/public/domain`, {
+    // First try: Public domain endpoint
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/hotels/public/domain?domain=${encodeURIComponent(currentDomain)}`, 
+      {
+        headers: {
+          'Accept': 'application/json',
+        },
+        // signal: AbortSignal.timeout(10000) // Remove timeout for now to debug
+      }
+    );
+
+    console.log('📊 Public domain response status:', response.status);
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log('📦 Public domain response data:', data);
+      
+      if (data.success) {
+        setHotel(data.data);
+        console.log('✅ Hotel data loaded successfully from public endpoint');
+        return data.data;
+      } else {
+        throw new Error(data.message || 'Public endpoint returned unsuccessful');
+      }
+    } else {
+      // If public endpoint fails, try the authenticated endpoint
+      console.log('🔄 Public endpoint failed, trying authenticated endpoint...');
+      
+      // Get the hotel ID from environment variable
+      const hotelId = process.env.NEXT_PUBLIC_HOTEL_ID;
+      
+      if (!hotelId) {
+        throw new Error('Hotel ID not configured in environment variables');
+      }
+
+      const authResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/hotels/${hotelId}`, 
+        {
           headers: {
-            'Accept': '*/*',
-            'Origin': window.location.origin
+            'Accept': 'application/json'
           }
-        });
+        }
+      );
 
-        if (response.ok) {
-          const data = await response.json();
-            if (data.success) {
-          setHotel(data.data)
-        }
+      console.log('📊 Authenticated response status:', authResponse.status);
+
+      if (authResponse.ok) {
+        const authData = await authResponse.json();
+        console.log('📦 Authenticated response data:', authData);
         
+        if (authData.success) {
+          setHotel(authData.data);
+          console.log('✅ Hotel data loaded successfully from authenticated endpoint');
+          return authData.data;
+        } else {
+          throw new Error(authData.message || 'Authenticated endpoint returned unsuccessful');
         }
-      } catch (error) {
-        console.error("Error fetching hotel:", error)
+      } else {
+        throw new Error(`Authenticated endpoint failed: ${authResponse.status}`);
       }
     }
+    
+  } catch (error) {
+    console.error("❌ Error fetching hotel:", error.message);
+    
+    // Final fallback: Try without domain parameter
+    try {
+      console.log('🔄 Trying fallback method without domain parameter...');
+      
+      const fallbackResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/hotels/public/domain`, 
+        {
+          headers: {
+            'Accept': 'application/json',
+            'Origin': window.location.origin
+          }
+        }
+      );
+      
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        if (fallbackData.success) {
+          setHotel(fallbackData.data);
+          console.log('✅ Fallback hotel data loaded');
+          return fallbackData.data;
+        }
+      }
+    } catch (fallbackError) {
+      console.error("❌ Fallback also failed:", fallbackError.message);
+    }
+    
+    // Set a default empty hotel or error state
+    setHotel(null);
+    return null;
+  }
+}
     fetchHotel()
   }, [])
 
