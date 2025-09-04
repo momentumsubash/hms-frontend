@@ -31,7 +31,7 @@ const fetchHotel = async () => {
 
     // First try: Public domain endpoint
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/hotels/public/domain?domain=${encodeURIComponent(currentDomain)}`, 
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/public/domain?domain=${encodeURIComponent(currentDomain)}`, 
       {
         headers: {
           'Accept': 'application/json',
@@ -99,7 +99,7 @@ const fetchHotel = async () => {
       console.log('🔄 Trying fallback method without domain parameter...');
       
       const fallbackResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/hotels/public/domain`, 
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/public/domain`, 
         {
           headers: {
             'Accept': 'application/json',
