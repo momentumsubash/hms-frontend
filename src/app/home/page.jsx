@@ -65,7 +65,7 @@ const fetchHotel = async () => {
       }
 
       const authResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/hotels/${hotelId}`, 
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/public/${hotelId}`, 
         {
           headers: {
             'Accept': 'application/json'
