@@ -209,6 +209,7 @@ const navLinks = [
   { label: "Items", href: "/items" },
   { label: "Orders", href: "/orders" },
   { label: "Rooms", href: "/rooms" },
+    { label: "Referrers", href: "/referrers" },
   { label: "Stats", href: "/stats" },
   { label: "Users", href: "/users" },
 ];

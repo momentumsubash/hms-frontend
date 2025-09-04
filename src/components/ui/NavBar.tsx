@@ -50,6 +50,7 @@ const defaultNavLinks: NavLink[] = [
   { label: "Items", href: "/items" , roles: ["super_admin","manager"]},         // open to all
   { label: "Orders", href: "/orders" },       // open to all
   { label: "Rooms", href: "/rooms" , roles: ["super_admin","manager"] },         // open to all
+  { label: "Referrers", href: "/referrers" , roles: ["super_admin","manager"] }, 
   { label: "Stats", href: "/stats", roles: ["super_admin","manager"] },
   { label: "Users", href: "/users", roles: ["manager", "super_admin"] },
   { label: "RecordBook", href: "/recordbook", roles: ["manager", "super_admin"] },

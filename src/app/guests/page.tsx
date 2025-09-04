@@ -13,6 +13,20 @@ interface AdditionalGuest {
   relationship: string;
 }
 
+interface Referrer {
+  _id: string;
+  fullName: string;
+  address?: string;
+  idNo?: string;
+  taxiNo?: string;
+  referralPrice: number;
+  totalAmountToReceive: number;
+  totalAmountReceived: number;
+  status: string;
+  hotel: string;
+  createdBy: string;
+}
+
 interface Guest {
   _id: string;
   firstName: string;
@@ -26,6 +40,8 @@ interface Guest {
   noOfAdditionalGuests?: number;
   additionalGuests?: AdditionalGuest[];
   purposeOfStay?: string;
+  referrer?: string;
+  referralStatus?: string;
   rooms: string[];
   checkInDate: string;
   checkOutDate?: string;
@@ -69,6 +85,7 @@ interface GuestForm {
   noOfAdditionalGuests: string;
   additionalGuests: AdditionalGuest[];
   purposeOfStay: string;
+  referrer: string;
   rooms: string[];
   roomDiscount: string;
   advancePaid: string;
@@ -162,6 +179,8 @@ export default function GuestsPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [allRooms, setAllRooms] = useState<Room[]>([]);
+  const [referrers, setReferrers] = useState<Referrer[]>([]);
+  const [loadingReferrers, setLoadingReferrers] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -178,6 +197,7 @@ export default function GuestsPage() {
     noOfAdditionalGuests: "0",
     additionalGuests: [],
     purposeOfStay: "",
+    referrer: "",
     rooms: [],
     roomDiscount: "0",
     advancePaid: "0",
@@ -212,6 +232,30 @@ export default function GuestsPage() {
       'Accept': 'application/json',
       'Authorization': `Bearer ${token}`
     };
+  };
+
+  // Function to fetch referrers
+  const fetchReferrers = async () => {
+    try {
+      setLoadingReferrers(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) throw new Error("No authentication token");
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/referrers?status=active`, {
+        headers: getRequestHeaders(token),
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch referrers");
+
+      const data = await response.json();
+      if (data.success && Array.isArray(data.data)) {
+        setReferrers(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching referrers:", error);
+    } finally {
+      setLoadingReferrers(false);
+    }
   };
 
   // Load data with server-side filtering and pagination
@@ -334,6 +378,8 @@ export default function GuestsPage() {
       try {
         // Load guests with initial filters
         await loadData();
+        // Load referrers
+        await fetchReferrers();
       } catch (e: any) {
         setError(e.message);
       }
@@ -370,6 +416,7 @@ export default function GuestsPage() {
       noOfAdditionalGuests: "0",
       additionalGuests: [],
       purposeOfStay: "",
+      referrer: "",
       rooms: [],
       roomDiscount: "0",
       advancePaid: "0",
@@ -424,6 +471,7 @@ export default function GuestsPage() {
             occupation: foundGuest.occupation || "",
             vehicleNo: foundGuest.vehicleNo || "",
             purposeOfStay: foundGuest.purposeOfStay || "",
+            referrer: foundGuest.referrer || "",
             // Don't auto-populate room selection as it might be different
           }));
         } else {
@@ -467,6 +515,7 @@ export default function GuestsPage() {
             occupation: foundGuest.occupation || "",
             vehicleNo: foundGuest.vehicleNo || "",
             purposeOfStay: foundGuest.purposeOfStay || "",
+            referrer: foundGuest.referrer || "",
           }));
         } else {
           setGuestSearchMessage("New guest - please fill in details");
@@ -493,6 +542,7 @@ export default function GuestsPage() {
       occupation: "",
       vehicleNo: "",
       purposeOfStay: "",
+      referrer: "",
     }));
   };
 
@@ -622,6 +672,7 @@ export default function GuestsPage() {
           noOfAdditionalGuests: additionalGuestsCount,
           additionalGuests: validAdditionalGuests,
           purposeOfStay: formData.purposeOfStay || undefined,
+          referrer: formData.referrer || undefined,
           rooms: roomNumbers,
           hotel: hotelId,
           checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
@@ -668,6 +719,7 @@ export default function GuestsPage() {
           noOfAdditionalGuests: additionalGuestsCount,
           additionalGuests: validAdditionalGuests,
           purposeOfStay: formData.purposeOfStay || undefined,
+          referrer: formData.referrer || undefined,
           rooms: roomNumbers,
           hotel: hotelId,
           checkInDate: new Date(formData.checkInDate).toISOString(),
@@ -706,13 +758,14 @@ export default function GuestsPage() {
       const formDataUpdate = {
         firstName: guest.firstName || "",
         lastName: guest.lastName || "",
-        email: guest.email || "", // Ensure email is never undefined
+        email: guest.email || "",
         phone: guest.phone || "",
         address: guest.address || "",
         idNo: guest.idNo || "",
         occupation: guest.occupation || "",
         vehicleNo: guest.vehicleNo || "",
         purposeOfStay: guest.purposeOfStay || "",
+        referrer: guest.referrer || "",
         roomDiscount: guest.roomDiscount ? guest.roomDiscount.toString() : "0",
         advancePaid: guest.advancePaid ? guest.advancePaid.toString() : "0",
         checkInDate: guest.checkInDate ? format(new Date(guest.checkInDate), "yyyy-MM-dd'T'HH:mm") : "",
@@ -752,6 +805,9 @@ export default function GuestsPage() {
         }
       }
 
+      // Fetch referrers for the dropdown
+      await fetchReferrers();
+
       setShowForm(true);
     } catch (error) {
       console.error("Error in handleEdit:", error);
@@ -772,6 +828,7 @@ export default function GuestsPage() {
       noOfAdditionalGuests: "0",
       additionalGuests: [],
       purposeOfStay: "",
+      referrer: "",
       rooms: [],
       roomDiscount: "0",
       advancePaid: "0",
@@ -784,6 +841,8 @@ export default function GuestsPage() {
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
+      
+      // Fetch available rooms
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
         headers: getRequestHeaders(token),
       });
@@ -792,12 +851,14 @@ export default function GuestsPage() {
 
       let availableRoomsData: Room[] = [];
       if (response && isAPIResponse<Room[]>(response)) {
-
         availableRoomsData = Array.isArray(response.data) ? response.data : [];
       } else if (Array.isArray(response)) {
         availableRoomsData = response;
       }
       setAvailableRooms(availableRoomsData);
+
+      // Fetch referrers
+      await fetchReferrers();
     } catch (e) {
       setAvailableRooms([]);
     }
@@ -1154,7 +1215,7 @@ export default function GuestsPage() {
                   {/* Basic Information */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold">Basic Information</h3>
- <div>
+                    <div>
                       <label className="block text-sm font-medium mb-1">Phone[Search for old Guest] *</label>
                       <input
                         type="tel"
@@ -1214,8 +1275,6 @@ export default function GuestsPage() {
                       {formErrors.email && <p className="text-red-500 text-sm">{formErrors.email}</p>}
                     </div>
 
-                   
-
                     <div>
                       <label className="block text-sm font-medium mb-1">Address</label>
                       <textarea
@@ -1269,6 +1328,30 @@ export default function GuestsPage() {
                         onChange={(e) => setFormData({ ...formData, purposeOfStay: e.target.value })}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                       />
+                    </div>
+
+                    {/* Referrer Field */}
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Referrer</label>
+                      <select
+                        value={formData.referrer}
+                        onChange={(e) => setFormData({ ...formData, referrer: e.target.value })}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                      >
+                        <option value="">Select a referrer (optional)</option>
+                        {loadingReferrers ? (
+                          <option disabled>Loading referrers...</option>
+                        ) : (
+                          referrers.map((referrer) => (
+                            <option key={referrer._id} value={referrer._id}>
+                              {referrer.fullName} - {referrer.taxiNo || 'No taxi'}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      {referrers.length === 0 && !loadingReferrers && (
+                        <p className="text-sm text-gray-500 mt-1">No referrers available. Add referrers first.</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1499,6 +1582,9 @@ export default function GuestsPage() {
                     Stay Period
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Referrer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1558,6 +1644,18 @@ export default function GuestsPage() {
                           <div>Out: {format(new Date(guest.checkOutDate), "MMM dd, yyyy HH:mm")}</div>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {guest.referrer ? (
+                        <div className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">
+                          Referred
+                          {guest.referralStatus && (
+                            <span className="ml-1">({guest.referralStatus})</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">None</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${guest.isCheckedOut
