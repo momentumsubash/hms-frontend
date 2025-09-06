@@ -2,24 +2,46 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
-import { getHotels, addHotel, updateHotel, updateHotelBalance,uploadHotelLogo,uploadHotelImages,uploadHotelGallery } from "@/lib/api";
+import { 
+  getHotels, addHotel, updateHotel, updateHotelBalance,
+  uploadHotelLogo, uploadHotelImages, uploadHotelGallery,
+  getHotelLicense, updateHotelLicense,
+  getNotificationSettings, updateNotificationSettings,
+  addNotificationRecipient, removeNotificationRecipient,
+  toggleNotificationRecipient, testNotification,
+  getEmailServiceStatus
+} from "@/lib/api";
 import { createExpenditure, getExpenditures, approveExpenditure, rejectExpenditure } from "@/lib/expenditure";
 import { Hotel } from "@/types/hotel";
 import { Expenditure, ExpenditureFilters } from "@/types/expenditure";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import Image from "next/image";
-import { PhotoIcon, PlusIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { PhotoIcon, PlusIcon, XMarkIcon, BellIcon, ClockIcon, DocumentTextIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 export default function HotelsPage() {
   // Hotel state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showBalanceModal, setShowBalanceModal] = useState(false);
-  const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
+const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const [showExpenditureModal, setShowExpenditureModal] = useState(false);
   const [balanceAmount, setBalanceAmount] = useState(0);
+const [hotels, setHotels] = useState<Hotel[]>([]);
+  // Notification and License state
+  const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
+  const [showTestNotificationModal, setShowTestNotificationModal] = useState(false);
+  const [emailServiceStatus, setEmailServiceStatus] = useState<any>(null);
 
   // Expenditure state
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
@@ -35,7 +57,66 @@ export default function HotelsPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [uploading, setUploading] = useState(false);
-const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Notification settings state
+  const [notificationSettings, setNotificationSettings] = useState({
+    dailyReport: {
+      enabled: true,
+      time: "18:00",
+      recipients: []
+    },
+    licenseExpiryAlerts: {
+      enabled: true,
+      recipients: [],
+      daysBefore: [30, 15, 7, 1]
+    }
+  });
+
+  // License state
+  const [licenseInfo, setLicenseInfo] = useState({
+    licenseNumber: "",
+    expiryDate: "",
+    licenseDocument: "",
+    status: "active"
+  });
+
+  // Test notification state
+  const [testNotificationData, setTestNotificationData] = useState({
+    type: "daily_report",
+    testEmail: "",
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  // New recipient state
+  const [newRecipient, setNewRecipient] = useState({
+    email: "",
+    name: "",
+    role: "manager"
+  });
+
+  const navLinks = [
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Checkouts", href: "/checkouts" },
+    { label: "Guests", href: "/guests" },
+    { label: "Hotels", href: "/hotels" },
+    { label: "Items", href: "/items" },
+    { label: "Orders", href: "/orders" },
+    { label: "Rooms", href: "/rooms" },
+    { label: "Users", href: "/users" },
+  ];
+  
+  const { user, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [filters, setFilters] = useState({
+    name: "",
+    city: "",
+    search: ""
+  });
+
   const [newHotel, setNewHotel] = useState<Hotel>({
     name: "",
     description: "",
@@ -73,29 +154,9 @@ const [uploadProgress, setUploadProgress] = useState(0);
     createdAt: new Date().toISOString()
   });
 
-  const navLinks = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Checkouts", href: "/checkouts" },
-    { label: "Guests", href: "/guests" },
-    { label: "Hotels", href: "/hotels" },
-    { label: "Items", href: "/items" },
-    { label: "Orders", href: "/orders" },
-    { label: "Rooms", href: "/rooms" },
-    { label: "Users", href: "/users" },
-  ];
-  const { user, logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [filters, setFilters] = useState({
-    name: "",
-    city: "",
-    search: ""
-  });
-
   useEffect(() => {
     loadData();
+    checkEmailServiceStatus();
   }, []);
 
   useEffect(() => {
@@ -116,7 +177,6 @@ const [uploadProgress, setUploadProgress] = useState(0);
     }
   };
 
-  
   const loadExpenditures = async () => {
     try {
       const res = await getExpenditures(expenditureFilters);
@@ -125,6 +185,25 @@ const [uploadProgress, setUploadProgress] = useState(0);
       setError(e.message);
     }
   };
+
+const checkEmailServiceStatus = async () => {
+  try {
+    const response = await getEmailServiceStatus();
+    setEmailServiceStatus(response.data);
+  } catch (e: any) {
+    console.error("Failed to get email service status:", e.message);
+    // Set a default status that won't break the UI
+    setEmailServiceStatus({
+      global: {
+        postmark: false,
+        defaultEmail: false,
+        serviceAvailable: false,
+        fromAddress: 'not configured'
+      },
+      hotels: []
+    });
+  }
+};
 
   const handleCreateExpenditure = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,146 +257,272 @@ const [uploadProgress, setUploadProgress] = useState(0);
     }
   };
 
+const handleOpenNotificationSettings = async (hotel: Hotel) => {
+  try {
+    setSelectedHotel(hotel);
+    const response = await getNotificationSettings(hotel._id!);
+    
+    // Ensure proper structure with fallbacks
+    const settings = response.data || {
+      dailyReport: {
+        enabled: true,
+        time: "18:00",
+        recipients: []
+      },
+      licenseExpiryAlerts: {
+        enabled: true,
+        recipients: [],
+        daysBefore: [30, 15, 7, 1] // Ensure this is always an array
+      }
+    };
+    
+    // Make sure daysBefore is always an array
+    if (!settings.licenseExpiryAlerts.daysBefore || !Array.isArray(settings.licenseExpiryAlerts.daysBefore)) {
+      settings.licenseExpiryAlerts.daysBefore = [30, 15, 7, 1];
+    }
+    
+    setNotificationSettings(settings);
+    setShowNotificationSettingsModal(true);
+  } catch (e: any) {
+    setError(e.message);
+  }
+};
+
+  const handleOpenLicenseModal = async (hotel: Hotel) => {
+    try {
+      setSelectedHotel(hotel);
+      const response = await getHotelLicense(hotel._id!);
+      setLicenseInfo(response.data || {
+        licenseNumber: "",
+        expiryDate: "",
+        licenseDocument: "",
+        status: "active"
+      });
+      setShowLicenseModal(true);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleSaveNotificationSettings = async () => {
+    if (!selectedHotel?._id) return;
+    try {
+      await updateNotificationSettings(selectedHotel._id, notificationSettings);
+      setShowNotificationSettingsModal(false);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleSaveLicenseInfo = async () => {
+    if (!selectedHotel?._id) return;
+    try {
+      await updateHotelLicense(selectedHotel._id, licenseInfo);
+      setShowLicenseModal(false);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleAddRecipient = async () => {
+    if (!selectedHotel?._id || !newRecipient.email) return;
+    try {
+      await addNotificationRecipient(selectedHotel._id, newRecipient);
+      // Refresh notification settings
+      const response = await getNotificationSettings(selectedHotel._id);
+      setNotificationSettings(response.data);
+      setNewRecipient({ email: "", name: "", role: "manager" });
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleRemoveRecipient = async (email: string) => {
+    if (!selectedHotel?._id) return;
+    try {
+      await removeNotificationRecipient(selectedHotel._id, email);
+      // Refresh notification settings
+      const response = await getNotificationSettings(selectedHotel._id);
+      setNotificationSettings(response.data);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleToggleRecipient = async (email: string) => {
+    if (!selectedHotel?._id) return;
+    try {
+      await toggleNotificationRecipient(selectedHotel._id, email);
+      // Refresh notification settings
+      const response = await getNotificationSettings(selectedHotel._id);
+      setNotificationSettings(response.data);
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  const handleTestNotification = async () => {
+    if (!selectedHotel?._id) return;
+    try {
+      const response = await testNotification(
+        selectedHotel._id, 
+        testNotificationData.type, 
+        testNotificationData.testEmail,
+        testNotificationData.date
+      );
+      
+      if (response.success) {
+        alert(`Test notification sent successfully: ${response.message}`);
+        setShowTestNotificationModal(false);
+      } else {
+        setError(`Failed to send test notification: ${response.message}`);
+      }
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
   // Add these helper functions to your component
 
-const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>, hotelId: string) => {
-  if (!e.target.files?.[0]) return;
-  
-  try {
-    setUploading(true);
-    setUploadProgress(0);
-    const file = e.target.files[0];
+  const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>, hotelId: string) => {
+    if (!e.target.files?.[0]) return;
     
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(interval);
-          return 90;
-        }
-        return prev + 10;
-      });
-    }, 200);
-    
-    const formData = new FormData();
-    formData.append('logo', file);
-    
-    const response = await uploadHotelLogo(hotelId, formData);
-    setUploadProgress(100);
-    
-    // Update the hotel in the list
-    setHotels(prev => prev.map(hotel => 
-      hotel._id === hotelId ? { ...hotel, logo: response.url } : hotel
-    ));
-    
-    if (selectedHotel?._id === hotelId) {
-      setSelectedHotel(prev => prev ? { ...prev, logo: response.url } : null);
-    }
-    
-    setTimeout(() => {
-      setUploading(false);
+    try {
+      setUploading(true);
       setUploadProgress(0);
-    }, 500);
-    
-  } catch (e: any) {
-    setError(e.message);
-    setUploading(false);
-    setUploadProgress(0);
-  }
-};
-
-const handleUploadImages = async (e: React.ChangeEvent<HTMLInputElement>, hotelId: string, type: 'images' | 'gallery') => {
-  if (!e.target.files?.length) return;
-  
-  try {
-    setUploading(true);
-    setUploadProgress(0);
-    const files = Array.from(e.target.files);
-    
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(interval);
-          return 90;
-        }
-        return prev + 10;
-      });
-    }, 200);
-    
-    const formData = new FormData();
-    files.forEach(file => formData.append(type, file));
-    
-    const response = type === 'images' 
-      ? await uploadHotelImages(hotelId, formData)
-      : await uploadHotelGallery(hotelId, formData);
-    
-    setUploadProgress(100);
-    
-    // Update the hotel in the list
-    setHotels(prev => prev.map(hotel => 
-      hotel._id === hotelId ? { ...hotel, [type]: [...(hotel[type] || []), ...response.urls] } : hotel
-    ));
-    
-    if (selectedHotel?._id === hotelId) {
-      setSelectedHotel(prev => prev ? { 
-        ...prev, 
-        [type]: [...(prev[type] || []), ...response.urls] 
-      } : null);
-    }
-    
-    setTimeout(() => {
-      setUploading(false);
-      setUploadProgress(0);
-    }, 500);
-    
-  } catch (e: any) {
-    setError(e.message);
-    setUploading(false);
-    setUploadProgress(0);
-  }
-};
-
-const handleRemoveImage = async (hotelId: string, imageUrl: string, type: 'logo' | 'images' | 'gallery') => {
-  try {
-    // For now, we'll just remove from the UI - actual deletion from storage would require a backend endpoint
-    setHotels(prev => prev.map(hotel => {
-      if (hotel._id === hotelId) {
-        if (type === 'logo') {
-          return { ...hotel, logo: '' };
-        } else {
-          return { ...hotel, [type]: hotel[type]?.filter(img => img !== imageUrl) || [] };
-        }
+      const file = e.target.files[0];
+      
+      // Simulate upload progress
+      const interval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(interval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+      
+      const formData = new FormData();
+      formData.append('logo', file);
+      
+      const response = await uploadHotelLogo(hotelId, formData);
+      setUploadProgress(100);
+      
+      // Update the hotel in the list
+      setHotels(prev => prev.map(hotel => 
+        hotel._id === hotelId ? { ...hotel, logo: response.url } : hotel
+      ));
+      
+      if (selectedHotel?._id === hotelId) {
+        setSelectedHotel(prev => prev ? { ...prev, logo: response.url } : null);
       }
-      return hotel;
-    }));
+      
+      setTimeout(() => {
+        setUploading(false);
+        setUploadProgress(0);
+      }, 500);
+      
+    } catch (e: any) {
+      setError(e.message);
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleUploadImages = async (e: React.ChangeEvent<HTMLInputElement>, hotelId: string, type: 'images' | 'gallery') => {
+    if (!e.target.files?.length) return;
     
-    if (selectedHotel?._id === hotelId) {
-      if (type === 'logo') {
-        setSelectedHotel(prev => prev ? { ...prev, logo: '' } : null);
-      } else {
+    try {
+      setUploading(true);
+      setUploadProgress(0);
+      const files = Array.from(e.target.files);
+      
+      // Simulate upload progress
+      const interval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(interval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+      
+      const formData = new FormData();
+      files.forEach(file => formData.append(type, file));
+      
+      const response = type === 'images' 
+        ? await uploadHotelImages(hotelId, formData)
+        : await uploadHotelGallery(hotelId, formData);
+      
+      setUploadProgress(100);
+      
+      // Update the hotel in the list
+      setHotels(prev => prev.map(hotel => 
+        hotel._id === hotelId ? { ...hotel, [type]: [...(hotel[type] || []), ...response.urls] } : hotel
+      ));
+      
+      if (selectedHotel?._id === hotelId) {
         setSelectedHotel(prev => prev ? { 
           ...prev, 
-          [type]: prev[type]?.filter(img => img !== imageUrl) || [] 
+          [type]: [...(prev[type] || []), ...response.urls] 
         } : null);
       }
+      
+      setTimeout(() => {
+        setUploading(false);
+        setUploadProgress(0);
+      }, 500);
+      
+    } catch (e: any) {
+      setError(e.message);
+      setUploading(false);
+      setUploadProgress(0);
     }
-    
-  } catch (e: any) {
-    setError(e.message);
-  }
-};
+  };
 
-// Safe URL validation function
-const isValidUrl = (url: string | undefined): boolean => {
-  if (!url) return false;
-  try {
-    new URL(url);
-    return true;
-  } catch {
-    return false;
-  }
-};
+  const handleRemoveImage = async (hotelId: string, imageUrl: string, type: 'logo' | 'images' | 'gallery') => {
+    try {
+      // For now, we'll just remove from the UI - actual deletion from storage would require a backend endpoint
+      setHotels(prev => prev.map(hotel => {
+        if (hotel._id === hotelId) {
+          if (type === 'logo') {
+            return { ...hotel, logo: '' };
+          } else {
+            return { ...hotel, [type]: hotel[type]?.filter(img => img !== imageUrl) || [] };
+          }
+        }
+        return hotel;
+      }));
+      
+      if (selectedHotel?._id === hotelId) {
+        if (type === 'logo') {
+          setSelectedHotel(prev => prev ? { ...prev, logo: '' } : null);
+        } else {
+          setSelectedHotel(prev => prev ? { 
+            ...prev, 
+            [type]: prev[type]?.filter(img => img !== imageUrl) || [] 
+          } : null);
+        }
+      }
+      
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
+  // Safe URL validation function
+  const isValidUrl = (url: string | undefined): boolean => {
+    if (!url) return false;
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   // Filter hotels
   const filteredHotels = hotels.filter((hotel: Hotel) => {
     const matchesName = filters.name === "" || (hotel.name && hotel.name.toLowerCase().includes(filters.name.toLowerCase()));
@@ -685,13 +890,14 @@ const isValidUrl = (url: string | undefined): boolean => {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+              <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statistics</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">License</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -729,6 +935,23 @@ const isValidUrl = (url: string | undefined): boolean => {
                         Created: {hotel.createdAt ? new Date(hotel.createdAt).toLocaleDateString() : 'N/A'}
                       </div>
                     </td>
+                    <td className="px-6 py-4">
+                   {hotel.license ? (
+  <Badge 
+    variant={hotel.license.status === 'active' ? 'default' : 'destructive'}
+    className={`capitalize ${hotel.license.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
+  >
+    {hotel.license.status}
+    {hotel.license.expiryDate && (
+      <span className="ml-1">
+        ({new Date(hotel.license.expiryDate).toLocaleDateString()})
+      </span>
+    )}
+  </Badge>
+) : (
+  <Badge variant="outline">No License</Badge>
+)}
+                    </td>
                     <td className="px-6 py-4 space-y-2">
                       <Button
                         onClick={() => {
@@ -755,6 +978,28 @@ const isValidUrl = (url: string | undefined): boolean => {
                           Update Balance
                         </Button>
                       )}
+                      {user?.role === 'super_admin' && (
+                        <>
+                          <Button
+                            onClick={() => handleOpenNotificationSettings(hotel)}
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-blue-100 text-blue-800 hover:bg-blue-200"
+                          >
+                            <BellIcon className="w-4 h-4 mr-1" />
+                            Notifications
+                          </Button>
+                          <Button
+                            onClick={() => handleOpenLicenseModal(hotel)}
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-purple-100 text-purple-800 hover:bg-purple-200"
+                          >
+                            <DocumentTextIcon className="w-4 h-4 mr-1" />
+                            License
+                          </Button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -768,425 +1013,425 @@ const isValidUrl = (url: string | undefined): boolean => {
           )}
         </div>
 
-{/* Edit Hotel Modal with Image Uploads */}
-<Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-  <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-    <DialogHeader>
-      <DialogTitle>Edit Hotel - {selectedHotel?.name}</DialogTitle>
-    </DialogHeader>
-    {selectedHotel && (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Hotel Details Form */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Hotel Details</h3>
-          <form onSubmit={async (e) => {
-            e.preventDefault();
-            if (!selectedHotel._id) return;
-            try {
-              await updateHotel(selectedHotel._id, selectedHotel);
-              setShowEditModal(false);
-              loadData();
-            } catch (e: any) {
-              setError(e.message);
-            }
-          }} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Hotel Name *</label>
-                <input
-                  type="text"
-                  value={selectedHotel.name}
-                  onChange={(e) => setSelectedHotel({...selectedHotel, name: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Type</label>
-                <input
-                  type="text"
-                  value={selectedHotel.type}
-                  onChange={(e) => setSelectedHotel({...selectedHotel, type: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="e.g., 5-Star Luxury Hotel"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Phone</label>
-                <input
-                  type="text"
-                  value={selectedHotel.contact?.phone || selectedHotel.phone || ""}
-                  onChange={(e) => setSelectedHotel({
-                    ...selectedHotel, 
-                    contact: { ...selectedHotel.contact, phone: e.target.value }
-                  })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="+1-555-123-4567"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Room Count</label>
-                <input
-                  type="number"
-                  value={selectedHotel.roomCount || ""}
-                  onChange={(e) => setSelectedHotel({...selectedHotel, roomCount: parseInt(e.target.value) || 0})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Floors</label>
-                <input
-                  type="number"
-                  value={selectedHotel.floors || ""}
-                  onChange={(e) => setSelectedHotel({...selectedHotel, floors: parseInt(e.target.value) || 0})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Established Year</label>
-                <input
-                  type="number"
-                  value={selectedHotel.established || ""}
-                  onChange={(e) => setSelectedHotel({...selectedHotel, established: parseInt(e.target.value) || new Date().getFullYear()})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">VAT Number</label>
-                <input
-                  type="text"
-                  value={selectedHotel.vatNumber || ""}
-                  onChange={(e) => setSelectedHotel({...selectedHotel, vatNumber: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Company Name</label>
-                <input
-                  type="text"
-                  value={selectedHotel.companyName || ""}
-                  onChange={(e) => setSelectedHotel({...selectedHotel, companyName: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">VAT Address</label>
-                <input
-                  type="text"
-                  value={selectedHotel.vatAddress || ""}
-                  onChange={(e) => setSelectedHotel({...selectedHotel, vatAddress: e.target.value})}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                />
-              </div>
-            </div>
+        {/* Edit Hotel Modal with Image Uploads */}
+        <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Hotel - {selectedHotel?.name}</DialogTitle>
+            </DialogHeader>
+            {selectedHotel && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Hotel Details Form */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Hotel Details</h3>
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!selectedHotel._id) return;
+                    try {
+                      await updateHotel(selectedHotel._id, selectedHotel);
+                      setShowEditModal(false);
+                      loadData();
+                    } catch (e: any) {
+                      setError(e.message);
+                    }
+                  }} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Hotel Name *</label>
+                        <input
+                          type="text"
+                          value={selectedHotel.name}
+                          onChange={(e) => setSelectedHotel({...selectedHotel, name: e.target.value})}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Type</label>
+                        <input
+                          type="text"
+                          value={selectedHotel.type}
+                          onChange={(e) => setSelectedHotel({...selectedHotel, type: e.target.value})}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="e.g., 5-Star Luxury Hotel"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Phone</label>
+                        <input
+                          type="text"
+                          value={selectedHotel.contact?.phone || selectedHotel.phone || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            contact: { ...selectedHotel.contact, phone: e.target.value }
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="+1-555-123-4567"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Room Count</label>
+                        <input
+                          type="number"
+                          value={selectedHotel.roomCount || ""}
+                          onChange={(e) => setSelectedHotel({...selectedHotel, roomCount: parseInt(e.target.value) || 0})}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Floors</label>
+                        <input
+                          type="number"
+                          value={selectedHotel.floors || ""}
+                          onChange={(e) => setSelectedHotel({...selectedHotel, floors: parseInt(e.target.value) || 0})}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Established Year</label>
+                        <input
+                          type="number"
+                          value={selectedHotel.established || ""}
+                          onChange={(e) => setSelectedHotel({...selectedHotel, established: parseInt(e.target.value) || new Date().getFullYear()})}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">VAT Number</label>
+                        <input
+                          type="text"
+                          value={selectedHotel.vatNumber || ""}
+                          onChange={(e) => setSelectedHotel({...selectedHotel, vatNumber: e.target.value})}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Company Name</label>
+                        <input
+                          type="text"
+                          value={selectedHotel.companyName || ""}
+                          onChange={(e) => setSelectedHotel({...selectedHotel, companyName: e.target.value})}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">VAT Address</label>
+                        <input
+                          type="text"
+                          value={selectedHotel.vatAddress || ""}
+                          onChange={(e) => setSelectedHotel({...selectedHotel, vatAddress: e.target.value})}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                        />
+                      </div>
+                    </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Description</label>
-              <textarea
-                value={selectedHotel.description || ""}
-                onChange={(e) => setSelectedHotel({...selectedHotel, description: e.target.value})}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                rows={3}
-                placeholder="A brief description of the hotel..."
-              />
-            </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Description</label>
+                      <textarea
+                        value={selectedHotel.description || ""}
+                        onChange={(e) => setSelectedHotel({...selectedHotel, description: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        rows={3}
+                        placeholder="A brief description of the hotel..."
+                      />
+                    </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Address</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  value={selectedHotel.address?.street || ""}
-                  onChange={(e) => setSelectedHotel({
-                    ...selectedHotel, 
-                    address: { ...selectedHotel.address, street: e.target.value }
-                  })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Street"
-                />
-                <input
-                  type="text"
-                  value={selectedHotel.address?.area || ""}
-                  onChange={(e) => setSelectedHotel({
-                    ...selectedHotel, 
-                    address: { ...selectedHotel.address, area: e.target.value }
-                  })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Area"
-                />
-                <input
-                  type="text"
-                  value={selectedHotel.address?.city || ""}
-                  onChange={(e) => setSelectedHotel({
-                    ...selectedHotel, 
-                    address: { ...selectedHotel.address, city: e.target.value }
-                  })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="City"
-                />
-                <input
-                  type="text"
-                  value={selectedHotel.address?.state || ""}
-                  onChange={(e) => setSelectedHotel({
-                    ...selectedHotel, 
-                    address: { ...selectedHotel.address, state: e.target.value }
-                  })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="State"
-                />
-                <input
-                  type="text"
-                  value={selectedHotel.address?.zip || ""}
-                  onChange={(e) => setSelectedHotel({
-                    ...selectedHotel, 
-                    address: { ...selectedHotel.address, zip: e.target.value }
-                  })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="ZIP Code"
-                />
-              </div>
-            </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Address</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          value={selectedHotel.address?.street || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            address: { ...selectedHotel.address, street: e.target.value }
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="Street"
+                        />
+                        <input
+                          type="text"
+                          value={selectedHotel.address?.area || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            address: { ...selectedHotel.address, area: e.target.value }
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="Area"
+                        />
+                        <input
+                          type="text"
+                          value={selectedHotel.address?.city || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            address: { ...selectedHotel.address, city: e.target.value }
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="City"
+                        />
+                        <input
+                          type="text"
+                          value={selectedHotel.address?.state || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            address: { ...selectedHotel.address, state: e.target.value }
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="State"
+                        />
+                        <input
+                          type="text"
+                          value={selectedHotel.address?.zip || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            address: { ...selectedHotel.address, zip: e.target.value }
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="ZIP Code"
+                        />
+                      </div>
+                    </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Contact Information</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  value={selectedHotel.contact?.phone || ""}
-                  onChange={(e) => setSelectedHotel({
-                    ...selectedHotel, 
-                    contact: { ...selectedHotel.contact, phone: e.target.value }
-                  })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Phone"
-                />
-                <input
-                  type="text"
-                  value={selectedHotel.contact?.reception || ""}
-                  onChange={(e) => setSelectedHotel({
-                    ...selectedHotel, 
-                    contact: { ...selectedHotel.contact, reception: e.target.value }
-                  })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Reception"
-                />
-                <input
-                  type="email"
-                  value={selectedHotel.contact?.email || ""}
-                  onChange={(e) => setSelectedHotel({
-                    ...selectedHotel, 
-                    contact: { ...selectedHotel.contact, email: e.target.value }
-                  })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Email"
-                />
-                <input
-                  type="url"
-                  value={selectedHotel.contact?.website || ""}
-                  onChange={(e) => setSelectedHotel({
-                    ...selectedHotel, 
-                    contact: { ...selectedHotel.contact, website: e.target.value }
-                  })}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Website URL"
-                />
-              </div>
-            </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Contact Information</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                          type="text"
+                          value={selectedHotel.contact?.phone || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            contact: { ...selectedHotel.contact, phone: e.target.value }
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="Phone"
+                        />
+                        <input
+                          type="text"
+                          value={selectedHotel.contact?.reception || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            contact: { ...selectedHotel.contact, reception: e.target.value }
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="Reception"
+                        />
+                        <input
+                          type="email"
+                          value={selectedHotel.contact?.email || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            contact: { ...selectedHotel.contact, email: e.target.value }
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="Email"
+                        />
+                        <input
+                          type="url"
+                          value={selectedHotel.contact?.website || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            contact: { ...selectedHotel.contact, website: e.target.value }
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          placeholder="Website URL"
+                        />
+                      </div>
+                    </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Amenities (comma-separated)</label>
-              <input
-                type="text"
-                value={selectedHotel.amenities?.join(", ") || ""}
-                onChange={(e) => setSelectedHotel({
-                  ...selectedHotel, 
-                  amenities: e.target.value.split(",").map(item => item.trim())
-                })}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="WiFi, Pool, Gym, Spa, Restaurant"
-              />
-            </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Amenities (comma-separated)</label>
+                      <input
+                        type="text"
+                        value={selectedHotel.amenities?.join(", ") || ""}
+                        onChange={(e) => setSelectedHotel({
+                          ...selectedHotel, 
+                          amenities: e.target.value.split(",").map(item => item.trim())
+                        })}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        placeholder="WiFi, Pool, Gym, Spa, Restaurant"
+                      />
+                    </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Nearby Attractions (comma-separated)</label>
-              <input
-                type="text"
-                value={selectedHotel.nearby?.join(", ") || ""}
-                onChange={(e) => setSelectedHotel({
-                  ...selectedHotel, 
-                  nearby: e.target.value.split(",").map(item => item.trim())
-                })}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Central Park, Shopping Mall, Museum"
-              />
-            </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Nearby Attractions (comma-separated)</label>
+                      <input
+                        type="text"
+                        value={selectedHotel.nearby?.join(", ") || ""}
+                        onChange={(e) => setSelectedHotel({
+                          ...selectedHotel, 
+                          nearby: e.target.value.split(",").map(item => item.trim())
+                        })}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        placeholder="Central Park, Shopping Mall, Museum"
+                      />
+                    </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">Location Map URL</label>
-              <input
-                type="url"
-                value={selectedHotel.locationMap || ""}
-                onChange={(e) => setSelectedHotel({...selectedHotel, locationMap: e.target.value})}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="https://maps.google.com/..."
-              />
-            </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Location Map URL</label>
+                      <input
+                        type="url"
+                        value={selectedHotel.locationMap || ""}
+                        onChange={(e) => setSelectedHotel({...selectedHotel, locationMap: e.target.value})}
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        placeholder="https://maps.google.com/..."
+                      />
+                    </div>
 
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-                Update Hotel
-              </Button>
-            </div>
-          </form>
-        </div>
+                    <div className="flex justify-end space-x-2 pt-4">
+                      <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                        Update Hotel
+                      </Button>
+                    </div>
+                  </form>
+                </div>
 
-        {/* Image Management Section */}
-        <div className="space-y-6">
-          <h3 className="text-lg font-semibold">Image Management</h3>
-          
-          {/* Logo Upload */}
-          <div className="border rounded-lg p-4">
-            <h4 className="font-medium mb-3">Hotel Logo</h4>
-            {selectedHotel.logo && isValidUrl(selectedHotel.logo) ? (
-              <div className="relative">
-                <img
-                  src={selectedHotel.logo}
-                  alt="Hotel Logo"
-                  width={120}
-                  height={120}
-                  className="rounded-lg object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                  }}
-                />
-                <button
-                  onClick={() => handleRemoveImage(selectedHotel._id!, selectedHotel.logo!, 'logo')}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                >
-                  <XMarkIcon className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500 mb-2">No logo uploaded</p>
-                <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
-                  Upload Logo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleUploadLogo(e, selectedHotel._id!)}
-                  />
-                </label>
+                {/* Image Management Section */}
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold">Image Management</h3>
+                  
+                  {/* Logo Upload */}
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Hotel Logo</h4>
+                    {selectedHotel.logo && isValidUrl(selectedHotel.logo) ? (
+                      <div className="relative">
+                        <img
+                          src={selectedHotel.logo}
+                          alt="Hotel Logo"
+                          width={120}
+                          height={120}
+                          className="rounded-lg object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                        <button
+                          onClick={() => handleRemoveImage(selectedHotel._id!, selectedHotel.logo!, 'logo')}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500 mb-2">No logo uploaded</p>
+                        <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
+                          Upload Logo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleUploadLogo(e, selectedHotel._id!)}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Main Images Upload */}
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Main Images</h4>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {selectedHotel.images?.filter(url => isValidUrl(url)).map((image, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={image}
+                            alt={`Hotel image ${index + 1}`}
+                            width={100}
+                            height={100}
+                            className="rounded-lg object-cover w-full h-24"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                          <button
+                            onClick={() => handleRemoveImage(selectedHotel._id!, image, 'images')}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
+                      <PlusIcon className="w-4 h-4 inline mr-1" />
+                      Add Images
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'images')}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Gallery Images Upload */}
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Gallery Images</h4>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {selectedHotel.gallery?.filter(url => isValidUrl(url)).map((image, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={image}
+                            alt={`Gallery image ${index + 1}`}
+                            width={100}
+                            height={100}
+                            className="rounded-lg object-cover w-full h-24"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                          <button
+                            onClick={() => handleRemoveImage(selectedHotel._id!, image, 'gallery')}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
+                      <PlusIcon className="w-4 h-4 inline mr-1" />
+                      Add Gallery Images
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'gallery')}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Upload Progress */}
+                  {uploading && (
+                    <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                        <div>
+                          <p className="text-sm font-medium">Uploading...</p>
+                          <div className="w-32 h-2 bg-gray-200 rounded-full mt-1">
+                            <div 
+                              className="h-full bg-blue-600 rounded-full transition-all"
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
-          </div>
-
-          {/* Main Images Upload */}
-          <div className="border rounded-lg p-4">
-            <h4 className="font-medium mb-3">Main Images</h4>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {selectedHotel.images?.filter(url => isValidUrl(url)).map((image, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={image}
-                    alt={`Hotel image ${index + 1}`}
-                    width={100}
-                    height={100}
-                    className="rounded-lg object-cover w-full h-24"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
-                  />
-                  <button
-                    onClick={() => handleRemoveImage(selectedHotel._id!, image, 'images')}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                  >
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
-              <PlusIcon className="w-4 h-4 inline mr-1" />
-              Add Images
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'images')}
-              />
-            </label>
-          </div>
-
-          {/* Gallery Images Upload */}
-          <div className="border rounded-lg p-4">
-            <h4 className="font-medium mb-3">Gallery Images</h4>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {selectedHotel.gallery?.filter(url => isValidUrl(url)).map((image, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={image}
-                    alt={`Gallery image ${index + 1}`}
-                    width={100}
-                    height={100}
-                    className="rounded-lg object-cover w-full h-24"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                    }}
-                  />
-                  <button
-                    onClick={() => handleRemoveImage(selectedHotel._id!, image, 'gallery')}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
-                  >
-                    <XMarkIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
-              <PlusIcon className="w-4 h-4 inline mr-1" />
-              Add Gallery Images
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'gallery')}
-              />
-            </label>
-          </div>
-
-          {/* Upload Progress */}
-          {uploading && (
-            <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-                <div>
-                  <p className="text-sm font-medium">Uploading...</p>
-                  <div className="w-32 h-2 bg-gray-200 rounded-full mt-1">
-                    <div 
-                      className="h-full bg-blue-600 rounded-full transition-all"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    )}
-  </DialogContent>
-</Dialog>
+          </DialogContent>
+        </Dialog>
 
         {/* Update Balance Modal */}
         <Dialog open={showBalanceModal} onOpenChange={setShowBalanceModal}>
@@ -1217,8 +1462,387 @@ const isValidUrl = (url: string | undefined): boolean => {
           </DialogContent>
         </Dialog>
 
+        {/* Notification Settings Modal */}
+        <Dialog open={showNotificationSettingsModal} onOpenChange={setShowNotificationSettingsModal}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Notification Settings - {selectedHotel?.name}</DialogTitle>
+              <DialogDescription>
+                Configure notification preferences and recipients for this hotel.
+              </DialogDescription>
+            </DialogHeader>
+
+{emailServiceStatus && (
+  <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+    <div className="flex items-center">
+      <EnvelopeIcon className="w-5 h-5 text-blue-600 mr-2" />
+      <span className="font-medium">Email Service Status:</span>
+      <Badge 
+        variant="outline"
+        className={`ml-2 ${emailServiceStatus.global.serviceAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+      >
+        {emailServiceStatus.global.serviceAvailable ? "Available" : "Unavailable"}
+      </Badge>
+    </div>
+    {emailServiceStatus.global.fromAddress && (
+      <div className="text-sm text-blue-700 mt-1">
+        From: {emailServiceStatus.global.fromAddress}
+      </div>
+    )}
+    {emailServiceStatus.hotels.length > 0 && (
+      <div className="mt-2 text-sm text-blue-700">
+        Monitoring {emailServiceStatus.hotels.length} hotels
+      </div>
+    )}
+  </div>
+)}
+
+            <Tabs defaultValue="daily">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="daily">Daily Reports</TabsTrigger>
+                <TabsTrigger value="license">License Alerts</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="daily" className="space-y-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="daily-reports-enabled" className="flex flex-col space-y-1">
+                    <span>Enable Daily Reports</span>
+                    <span className="font-normal text-sm text-gray-500">
+                      Send daily financial reports via email
+                    </span>
+                  </Label>
+                  <Switch
+                    id="daily-reports-enabled"
+                    checked={notificationSettings.dailyReport.enabled}
+                    onCheckedChange={(checked) => setNotificationSettings({
+                      ...notificationSettings,
+                      dailyReport: {
+                        ...notificationSettings.dailyReport,
+                        enabled: checked
+                      }
+                    })}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="report-time">Report Time</Label>
+                  <Input
+                    id="report-time"
+                    type="time"
+                    value={notificationSettings.dailyReport.time}
+                    onChange={(e) => setNotificationSettings({
+                      ...notificationSettings,
+                      dailyReport: {
+                        ...notificationSettings.dailyReport,
+                        time: e.target.value
+                      }
+                    })}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Time when daily reports will be sent (24-hour format)
+                  </p>
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Recipients</Label>
+                  <div className="space-y-2">
+                    {notificationSettings.dailyReport.recipients.map((recipient: any, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 border rounded">
+                        <div>
+                          <div className="font-medium">{recipient.name || recipient.email}</div>
+                          {recipient.name && (
+                            <div className="text-sm text-gray-500">{recipient.email}</div>
+                          )}
+                          {recipient.role && (
+                            <Badge variant="outline" className="text-xs mt-1">
+                              {recipient.role}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={recipient.active}
+                            onCheckedChange={() => handleToggleRecipient(recipient.email)}
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveRecipient(recipient.email)}
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 p-4 border rounded-lg bg-gray-50">
+                    <h4 className="font-medium mb-2">Add New Recipient</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <Input
+                        placeholder="Email"
+                        type="email"
+                        value={newRecipient.email}
+                        onChange={(e) => setNewRecipient({...newRecipient, email: e.target.value})}
+                      />
+                      <Input
+                        placeholder="Name (optional)"
+                        value={newRecipient.name}
+                        onChange={(e) => setNewRecipient({...newRecipient, name: e.target.value})}
+                      />
+                      <Select
+                        value={newRecipient.role}
+                        onValueChange={(value) => setNewRecipient({...newRecipient, role: value})}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Role" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="manager">Manager</SelectItem>
+                          <SelectItem value="owner">Owner</SelectItem>
+                          <SelectItem value="accountant">Accountant</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button 
+                      className="mt-2" 
+                      onClick={handleAddRecipient}
+                      disabled={!newRecipient.email}
+                    >
+                      Add Recipient
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="license" className="space-y-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="license-alerts-enabled" className="flex flex-col space-y-1">
+                    <span>Enable License Expiry Alerts</span>
+                    <span className="font-normal text-sm text-gray-500">
+                      Send alerts when license is about to expire
+                    </span>
+                  </Label>
+                  <Switch
+                    id="license-alerts-enabled"
+                    checked={notificationSettings.licenseExpiryAlerts.enabled}
+                    onCheckedChange={(checked) => setNotificationSettings({
+                      ...notificationSettings,
+                      licenseExpiryAlerts: {
+                        ...notificationSettings.licenseExpiryAlerts,
+                        enabled: checked
+                      }
+                    })}
+                  />
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Alert Before Expiry (days)</Label>
+                  <div className="flex flex-wrap gap-2">
+{[30, 15, 7, 1].map((days) => {
+  // Safely check if daysBefore exists and is an array
+  const daysBeforeArray = Array.isArray(notificationSettings.licenseExpiryAlerts.daysBefore) 
+    ? notificationSettings.licenseExpiryAlerts.daysBefore 
+    : [];
+  
+  const isSelected = daysBeforeArray.includes(days);
+  
+  return (
+    <Badge
+      key={days}
+      variant={isSelected ? "default" : "outline"}
+      className="cursor-pointer"
+      onClick={() => {
+        const currentDays = daysBeforeArray;
+        const newDays = isSelected
+          ? currentDays.filter(d => d !== days)
+          : [...currentDays, days].sort((a, b) => b - a);
+        
+        setNotificationSettings({
+          ...notificationSettings,
+          licenseExpiryAlerts: {
+            ...notificationSettings.licenseExpiryAlerts,
+            daysBefore: newDays
+          }
+        });
+      }}
+    >
+      {days} day{days !== 1 ? 's' : ''}
+    </Badge>
+  );
+})}
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            <DialogFooter className="mt-6">
+<Button 
+  variant="outline" 
+  onClick={() => setShowTestNotificationModal(true)}
+  // Remove the disabled condition or make it always false for testing
+  disabled={false}
+  className={!emailServiceStatus?.global?.serviceAvailable ? "opacity-70" : ""}
+>
+  Test Notification
+  {!emailServiceStatus?.global?.serviceAvailable && (
+    <span className="ml-2 text-xs">(Email may not be configured)</span>
+  )}
+</Button>
+              <Button variant="outline" onClick={() => setShowNotificationSettingsModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveNotificationSettings}>
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* License Management Modal */}
+        <Dialog open={showLicenseModal} onOpenChange={setShowLicenseModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>License Management - {selectedHotel?.name}</DialogTitle>
+              <DialogDescription>
+                Manage hotel license information and expiry dates.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="license-number">License Number</Label>
+                <Input
+                  id="license-number"
+                  value={licenseInfo.licenseNumber}
+                  onChange={(e) => setLicenseInfo({...licenseInfo, licenseNumber: e.target.value})}
+                  placeholder="Enter license number"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="expiry-date">Expiry Date</Label>
+                <Input
+                  id="expiry-date"
+                  type="date"
+                  value={licenseInfo.expiryDate ? new Date(licenseInfo.expiryDate).toISOString().split('T')[0] : ''}
+                  onChange={(e) => setLicenseInfo({...licenseInfo, expiryDate: e.target.value})}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="license-document">License Document URL (optional)</Label>
+                <Input
+                  id="license-document"
+                  type="url"
+                  value={licenseInfo.licenseDocument}
+                  onChange={(e) => setLicenseInfo({...licenseInfo, licenseDocument: e.target.value})}
+                  placeholder="https://example.com/license.pdf"
+                />
+              </div>
+
+              {licenseInfo.expiryDate && (
+                <div className="p-3 rounded-lg bg-gray-100">
+                  <div className="flex items-center">
+                    <span className="font-medium">Status:</span>
+<Badge 
+  variant={new Date(licenseInfo.expiryDate) > new Date() ? 'default' : 'destructive'}
+  className={`ml-2 ${new Date(licenseInfo.expiryDate) > new Date() ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}`}
+>
+  {new Date(licenseInfo.expiryDate) > new Date() ? "Active" : "Expired"}
+</Badge>
+                  </div>
+                  {new Date(licenseInfo.expiryDate) > new Date() && (
+                    <div className="text-sm text-gray-600 mt-1">
+                      Expires in {Math.ceil((new Date(licenseInfo.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowLicenseModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveLicenseInfo}>
+                Save License Info
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Test Notification Modal */}
+        <Dialog open={showTestNotificationModal} onOpenChange={setShowTestNotificationModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Test Notification</DialogTitle>
+              <DialogDescription>
+                Send a test notification to verify your settings.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="test-type">Notification Type</Label>
+                <Select
+                  value={testNotificationData.type}
+                  onValueChange={(value) => setTestNotificationData({...testNotificationData, type: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily_report">Daily Report</SelectItem>
+                    <SelectItem value="license_expiry">License Expiry Alert</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="test-email">Test Email Address</Label>
+                <Input
+                  id="test-email"
+                  type="email"
+                  value={testNotificationData.testEmail}
+                  onChange={(e) => setTestNotificationData({...testNotificationData, testEmail: e.target.value})}
+                  placeholder="test@example.com"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Leave empty to use your account email
+                </p>
+              </div>
+
+              {testNotificationData.type === 'daily_report' && (
+                <div>
+                  <Label htmlFor="test-date">Report Date</Label>
+                  <Input
+                    id="test-date"
+                    type="date"
+                    value={testNotificationData.date}
+                    onChange={(e) => setTestNotificationData({...testNotificationData, date: e.target.value})}
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Date for the test report (default: today)
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowTestNotificationModal(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleTestNotification}>
+                Send Test
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-blue-600">{hotels.length}</div>
             <div className="text-sm text-gray-600">Total Hotels</div>
@@ -1234,6 +1858,12 @@ const isValidUrl = (url: string | undefined): boolean => {
               {hotels.reduce((sum, hotel) => sum + (hotel.amenities?.length || 0), 0)}
             </div>
             <div className="text-sm text-gray-600">Total Amenities</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-purple-600">
+              {hotels.filter(h => h.license && h.license.status === 'active').length}
+            </div>
+            <div className="text-sm text-gray-600">Active Licenses</div>
           </div>
         </div>
 
@@ -1475,24 +2105,7 @@ const isValidUrl = (url: string | undefined): boolean => {
             </Dialog>
           </div>
         )}
-        {/* <div className="flex justify-between items-center mb-6">
-  <Button 
-    onClick={() => {
-      if (user?.role === 'super_admin') {
-        setShowCreateModal(true);
-      } else {
-        setError("Only super administrators can create new hotels");
-      }
-    }} 
-    className="bg-blue-600 hover:bg-blue-700 text-white"
-  >
-    <PlusIcon className="w-5 h-5 mr-2" />
-    Add New Hotel
-  </Button>
-</div> */}
       </div>
-      
-
     </div>
   );
 }

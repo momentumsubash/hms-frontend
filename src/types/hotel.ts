@@ -1,4 +1,5 @@
 // types/hotel.ts
+
 export interface HotelAddress {
   street?: string;
   area?: string;
@@ -22,6 +23,35 @@ export interface HotelNote {
     name: string;
   };
   createdAt: string;
+}
+
+// Add these new interfaces for license and notification settings
+export interface HotelLicense {
+  licenseNumber?: string;
+  expiryDate?: string;
+  licenseDocument?: string;
+  status?: 'active' | 'expired' | 'pending';
+}
+
+export interface NotificationRecipient {
+  email: string;
+  name?: string;
+  role?: string;
+  active: boolean;
+  addedAt?: string;
+}
+
+export interface NotificationSettings {
+  dailyReport?: {
+    enabled: boolean;
+    time: string;
+    recipients: NotificationRecipient[];
+  };
+  licenseExpiryAlerts?: {
+    enabled: boolean;
+    recipients: string[];
+    daysBefore: number[];
+  };
 }
 
 export interface Hotel {
@@ -51,6 +81,17 @@ export interface Hotel {
   notes?: HotelNote[];
   createdAt?: string;
   updatedAt?: string;
+  
+  // Add the new properties
+  license?: HotelLicense;
+  notificationSettings?: NotificationSettings;
+  
+  // Optional domain properties
+  domain?: string;
+  customDomains?: string[];
+  whitelistedDomains?: string[];
+  isActive?: boolean;
+  
   statistics?: {
     financial?: {
       monthlyRevenue: number;

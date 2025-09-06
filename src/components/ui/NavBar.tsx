@@ -47,6 +47,7 @@ const defaultNavLinks: NavLink[] = [
   { label: "Checkouts", href: "/checkouts" }, // open to all
   { label: "Guests", href: "/guests" },       // open to all
   { label: "Hotels", href: "/hotels", roles: ["super_admin","manager"] },
+    { label: "Email Status", href: "/email-status",roles: ["super_admin"]  }, // Add this
   { label: "Items", href: "/items" , roles: ["super_admin","manager"]},         // open to all
   { label: "Orders", href: "/orders" },       // open to all
   { label: "Rooms", href: "/rooms" , roles: ["super_admin","manager"] },         // open to all

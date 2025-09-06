@@ -987,3 +987,219 @@ export const updateHotelBalance = async (id: string, initialAmount: number): Pro
   
   return response.json();
 };
+
+
+// Notification management functions
+export const getHotelRecipients = async (hotelId: string) => {
+  const response = await fetch(`/api/hotels/${hotelId}/recipients`, {
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+  });
+  return response.json();
+};
+
+export const addHotelRecipient = async (hotelId: string, recipient: any) => {
+  const response = await fetch(`/api/hotels/${hotelId}/recipients`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    },
+    body: JSON.stringify(recipient)
+  });
+  return response.json();
+};
+
+export const removeHotelRecipient = async (hotelId: string, email: string) => {
+  const response = await fetch(`/api/hotels/${hotelId}/recipients/${encodeURIComponent(email)}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+  });
+  return response.json();
+};
+
+export const toggleHotelRecipient = async (hotelId: string, email: string) => {
+  const response = await fetch(`/api/hotels/${hotelId}/recipients/${encodeURIComponent(email)}/toggle`, {
+    method: 'PATCH',
+    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+  });
+  return response.json();
+};
+
+export const updateHotelNotificationSettings = async (hotelId: string, settings: any) => {
+  const response = await fetch(`/api/hotels/${hotelId}/notification-settings`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    },
+    body: JSON.stringify(settings)
+  });
+  return response.json();
+};
+
+export const testHotelNotification = async (hotelId: string, testData: any) => {
+  const response = await fetch(`/api/hotels/${hotelId}/test-notification`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    },
+    body: JSON.stringify(testData)
+  });
+  return response.json();
+};
+
+// Add these functions to your api.ts file
+
+// Notification and License Management Functions
+export const getHotelLicense = async (hotelId: string): Promise<{ success: boolean; data: any }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/license`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch hotel license');
+  }
+  
+  return response.json();
+};
+
+export const updateHotelLicense = async (hotelId: string, licenseInfo: any): Promise<{ success: boolean; data: any }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/license`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(licenseInfo),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to update hotel license');
+  }
+  
+  return response.json();
+};
+
+export const getNotificationSettings = async (hotelId: string): Promise<{ success: boolean; data: any }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/notification-settings`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch notification settings');
+  }
+  
+  return response.json();
+};
+
+export const updateNotificationSettings = async (hotelId: string, settings: any): Promise<{ success: boolean; data: any }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/notification-settings`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(settings),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to update notification settings');
+  }
+  
+  return response.json();
+};
+
+export const addNotificationRecipient = async (hotelId: string, recipient: any): Promise<{ success: boolean; data: any }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/recipients`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(recipient),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to add notification recipient');
+  }
+  
+  return response.json();
+};
+
+export const removeNotificationRecipient = async (hotelId: string, email: string): Promise<{ success: boolean; data: any }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/recipients/${encodeURIComponent(email)}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to remove notification recipient');
+  }
+  
+  return response.json();
+};
+
+export const toggleNotificationRecipient = async (hotelId: string, email: string): Promise<{ success: boolean; data: any }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/recipients/${encodeURIComponent(email)}/toggle`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to toggle notification recipient');
+  }
+  
+  return response.json();
+};
+
+export const testNotification = async (hotelId: string, type: string, testEmail?: string, date?: string): Promise<{ success: boolean; message: string; data?: any }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/test-notification`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ type, testEmail, date }),
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to send test notification');
+  }
+  
+  return response.json();
+};
+
+export const getEmailServiceStatus = async (): Promise<{ success: boolean; data: any }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/email-status`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch email service status');
+  }
+  
+  return response.json();
+};
