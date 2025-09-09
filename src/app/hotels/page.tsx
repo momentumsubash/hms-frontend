@@ -9,7 +9,9 @@ import {
   getNotificationSettings, updateNotificationSettings,
   addNotificationRecipient, removeNotificationRecipient,
   toggleNotificationRecipient, testNotification,
-  getEmailServiceStatus
+  getEmailServiceStatus,
+  // Add these new API functions
+  addHotelDomain, removeHotelDomain, updateHotelDomains
 } from "@/lib/api";
 import { createExpenditure, getExpenditures, approveExpenditure, rejectExpenditure } from "@/lib/expenditure";
 import { Hotel } from "@/types/hotel";
@@ -18,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import Image from "next/image";
-import { PhotoIcon, PlusIcon, XMarkIcon, BellIcon, ClockIcon, DocumentTextIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import { PhotoIcon, PlusIcon, XMarkIcon, BellIcon, ClockIcon, DocumentTextIcon, EnvelopeIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,16 +29,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
+import { toast } from 'sonner'; // ← Add this import
 export default function HotelsPage() {
   // Hotel state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showBalanceModal, setShowBalanceModal] = useState(false);
-const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
+  const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const [showExpenditureModal, setShowExpenditureModal] = useState(false);
   const [balanceAmount, setBalanceAmount] = useState(0);
-const [hotels, setHotels] = useState<Hotel[]>([]);
+  const [hotels, setHotels] = useState<Hotel[]>([]);
+  
+  // Domain management state
+  const [showDomainModal, setShowDomainModal] = useState(false);
+  const [newDomain, setNewDomain] = useState("");
+  const [domainType, setDomainType] = useState<"whitelistedDomains" | "customDomains">("whitelistedDomains");
+  
   // Notification and License state
   const [showNotificationSettingsModal, setShowNotificationSettingsModal] = useState(false);
   const [showLicenseModal, setShowLicenseModal] = useState(false);
@@ -109,6 +117,7 @@ const [hotels, setHotels] = useState<Hotel[]>([]);
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({
@@ -151,7 +160,9 @@ const [hotels, setHotels] = useState<Hotel[]>([]);
     notes: [],
     initialAmount: 0,
     currentBalance: 0,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    whitelistedDomains: [],
+    customDomains: []
   });
 
   useEffect(() => {
@@ -186,24 +197,98 @@ const [hotels, setHotels] = useState<Hotel[]>([]);
     }
   };
 
-const checkEmailServiceStatus = async () => {
-  try {
-    const response = await getEmailServiceStatus();
-    setEmailServiceStatus(response.data);
-  } catch (e: any) {
-    console.error("Failed to get email service status:", e.message);
-    // Set a default status that won't break the UI
-    setEmailServiceStatus({
-      global: {
-        postmark: false,
-        defaultEmail: false,
-        serviceAvailable: false,
-        fromAddress: 'not configured'
-      },
-      hotels: []
-    });
-  }
-};
+  const checkEmailServiceStatus = async () => {
+    try {
+      const response = await getEmailServiceStatus();
+      setEmailServiceStatus(response.data);
+    } catch (e: any) {
+      console.error("Failed to get email service status:", e.message);
+      setEmailServiceStatus({
+        global: {
+          postmark: false,
+          defaultEmail: false,
+          serviceAvailable: false,
+          fromAddress: 'not configured'
+        },
+        hotels: []
+      });
+    }
+  };
+
+  // Domain management functions
+  const handleAddDomain = async () => {
+    if (!selectedHotel?._id || !newDomain) return;
+    
+    try {
+      // Validate domain format
+      if (!isValidDomain(newDomain)) {
+       toast.error("Invalid Domain: Please enter a valid domain name (e.g., example.com)");
+        return;
+      }
+      
+      // Add the domain
+      await addHotelDomain(selectedHotel._id, domainType, newDomain);
+      
+      // Update the local state
+      setHotels(prev => prev.map(hotel => 
+        hotel._id === selectedHotel._id 
+          ? { 
+              ...hotel, 
+              [domainType]: [...(hotel[domainType] || []), newDomain] 
+            } 
+          : hotel
+      ));
+      
+      if (selectedHotel) {
+        setSelectedHotel(prev => prev ? { 
+          ...prev, 
+          [domainType]: [...(prev[domainType] || []), newDomain] 
+        } : null);
+      }
+      
+      setNewDomain("");
+    toast.success(`Domain ${newDomain} has been added successfully.`);
+    } catch (e: any) {
+      setError(e.message);
+    toast.error(e.message || "Failed to add domain");
+    }
+  };
+
+  const handleRemoveDomain = async (domain: string, type: "whitelistedDomains" | "customDomains") => {
+    if (!selectedHotel?._id) return;
+    
+    try {
+      await removeHotelDomain(selectedHotel._id, type, domain);
+      
+      // Update the local state
+      setHotels(prev => prev.map(hotel => 
+        hotel._id === selectedHotel._id 
+          ? { 
+              ...hotel, 
+              [type]: hotel[type]?.filter(d => d !== domain) || [] 
+            } 
+          : hotel
+      ));
+      
+      if (selectedHotel) {
+        setSelectedHotel(prev => prev ? { 
+          ...prev, 
+          [type]: prev[type]?.filter(d => d !== domain) || [] 
+        } : null);
+      }
+      
+    toast.success(`Domain ${domain} has been removed successfully.`);
+    } catch (e: any) {
+      setError(e.message);
+    toast.error(e.message || "Failed to remove domain");
+    }
+  };
+
+  const isValidDomain = (domain: string) => {
+    // Simple domain validation
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
+    return domainRegex.test(domain);
+  };
 
   const handleCreateExpenditure = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -257,36 +342,34 @@ const checkEmailServiceStatus = async () => {
     }
   };
 
-const handleOpenNotificationSettings = async (hotel: Hotel) => {
-  try {
-    setSelectedHotel(hotel);
-    const response = await getNotificationSettings(hotel._id!);
-    
-    // Ensure proper structure with fallbacks
-    const settings = response.data || {
-      dailyReport: {
-        enabled: true,
-        time: "18:00",
-        recipients: []
-      },
-      licenseExpiryAlerts: {
-        enabled: true,
-        recipients: [],
-        daysBefore: [30, 15, 7, 1] // Ensure this is always an array
+  const handleOpenNotificationSettings = async (hotel: Hotel) => {
+    try {
+      setSelectedHotel(hotel);
+      const response = await getNotificationSettings(hotel._id!);
+      
+      const settings = response.data || {
+        dailyReport: {
+          enabled: true,
+          time: "18:00",
+          recipients: []
+        },
+        licenseExpiryAlerts: {
+          enabled: true,
+          recipients: [],
+          daysBefore: [30, 15, 7, 1]
+        }
+      };
+      
+      if (!settings.licenseExpiryAlerts.daysBefore || !Array.isArray(settings.licenseExpiryAlerts.daysBefore)) {
+        settings.licenseExpiryAlerts.daysBefore = [30, 15, 7, 1];
       }
-    };
-    
-    // Make sure daysBefore is always an array
-    if (!settings.licenseExpiryAlerts.daysBefore || !Array.isArray(settings.licenseExpiryAlerts.daysBefore)) {
-      settings.licenseExpiryAlerts.daysBefore = [30, 15, 7, 1];
+      
+      setNotificationSettings(settings);
+      setShowNotificationSettingsModal(true);
+    } catch (e: any) {
+      setError(e.message);
     }
-    
-    setNotificationSettings(settings);
-    setShowNotificationSettingsModal(true);
-  } catch (e: any) {
-    setError(e.message);
-  }
-};
+  };
 
   const handleOpenLicenseModal = async (hotel: Hotel) => {
     try {
@@ -328,7 +411,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
     if (!selectedHotel?._id || !newRecipient.email) return;
     try {
       await addNotificationRecipient(selectedHotel._id, newRecipient);
-      // Refresh notification settings
       const response = await getNotificationSettings(selectedHotel._id);
       setNotificationSettings(response.data);
       setNewRecipient({ email: "", name: "", role: "manager" });
@@ -341,7 +423,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
     if (!selectedHotel?._id) return;
     try {
       await removeNotificationRecipient(selectedHotel._id, email);
-      // Refresh notification settings
       const response = await getNotificationSettings(selectedHotel._id);
       setNotificationSettings(response.data);
     } catch (e: any) {
@@ -353,7 +434,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
     if (!selectedHotel?._id) return;
     try {
       await toggleNotificationRecipient(selectedHotel._id, email);
-      // Refresh notification settings
       const response = await getNotificationSettings(selectedHotel._id);
       setNotificationSettings(response.data);
     } catch (e: any) {
@@ -382,8 +462,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
     }
   };
 
-  // Add these helper functions to your component
-
   const handleUploadLogo = async (e: React.ChangeEvent<HTMLInputElement>, hotelId: string) => {
     if (!e.target.files?.[0]) return;
     
@@ -392,7 +470,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
       setUploadProgress(0);
       const file = e.target.files[0];
       
-      // Simulate upload progress
       const interval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) {
@@ -409,7 +486,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
       const response = await uploadHotelLogo(hotelId, formData);
       setUploadProgress(100);
       
-      // Update the hotel in the list
       setHotels(prev => prev.map(hotel => 
         hotel._id === hotelId ? { ...hotel, logo: response.url } : hotel
       ));
@@ -438,7 +514,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
       setUploadProgress(0);
       const files = Array.from(e.target.files);
       
-      // Simulate upload progress
       const interval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) {
@@ -458,7 +533,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
       
       setUploadProgress(100);
       
-      // Update the hotel in the list
       setHotels(prev => prev.map(hotel => 
         hotel._id === hotelId ? { ...hotel, [type]: [...(hotel[type] || []), ...response.urls] } : hotel
       ));
@@ -484,7 +558,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
 
   const handleRemoveImage = async (hotelId: string, imageUrl: string, type: 'logo' | 'images' | 'gallery') => {
     try {
-      // For now, we'll just remove from the UI - actual deletion from storage would require a backend endpoint
       setHotels(prev => prev.map(hotel => {
         if (hotel._id === hotelId) {
           if (type === 'logo') {
@@ -512,7 +585,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
     }
   };
 
-  // Safe URL validation function
   const isValidUrl = (url: string | undefined): boolean => {
     if (!url) return false;
     try {
@@ -523,7 +595,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
     }
   };
 
-  // Filter hotels
   const filteredHotels = hotels.filter((hotel: Hotel) => {
     const matchesName = filters.name === "" || (hotel.name && hotel.name.toLowerCase().includes(filters.name.toLowerCase()));
     const matchesCity = filters.city === "" || (hotel.address?.city && hotel.address.city.toLowerCase().includes(filters.city.toLowerCase()));
@@ -544,9 +615,9 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
         logout={logout}
         navLinks={navLinks}
       />
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Hotels Management</h1>
+      <div className="max-w-7xl mx-auto p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold">Hotels Management</h1>
           {user?.role === 'super_admin' && (
             <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
               Add New Hotel
@@ -554,7 +625,7 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
           )}
         </div>
 
-        {/* Create Hotel Modal - Only for super_admin */}
+        {/* Create Hotel Modal */}
         {user?.role === 'super_admin' && (
           <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -567,7 +638,6 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                   await addHotel(newHotel);
                   setShowCreateModal(false);
                   loadData();
-                  // Reset form
                   setNewHotel({
                     name: "",
                     description: "",
@@ -602,7 +672,9 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                     notes: [],
                     initialAmount: 0,
                     currentBalance: 0,
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date().toISOString(),
+                    whitelistedDomains: [],
+                    customDomains: []
                   });
                 } catch (e: any) {
                   setError(e.message);
@@ -824,11 +896,11 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                   />
                 </div>
 
-                <div className="flex justify-end space-x-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)} className="w-full sm:w-auto">
                     Cancel
                   </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">
                     Create Hotel
                   </Button>
                 </div>
@@ -892,31 +964,31 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statistics</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">License</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statistics</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">License</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredHotels.map((hotel: Hotel) => (
                   <tr key={hotel._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="font-medium">{hotel.name}</div>
                       <div className="text-sm text-gray-500">{hotel.description}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div>{hotel.address?.city}</div>
                       <div className="text-sm text-gray-500">{hotel.address?.street}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div>{hotel.contact?.phone || hotel.phone}</div>
                       <div className="text-sm text-gray-500">{hotel.contact?.email}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div>{hotel.roomCount} Total Rooms</div>
                       <div className="text-sm text-gray-500">
                         {hotel.amenities?.length || 0} Amenities
@@ -930,29 +1002,29 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-4">
                       <div className="text-sm">
                         Created: {hotel.createdAt ? new Date(hotel.createdAt).toLocaleDateString() : 'N/A'}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                   {hotel.license ? (
-  <Badge 
-    variant={hotel.license.status === 'active' ? 'default' : 'destructive'}
-    className={`capitalize ${hotel.license.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
-  >
-    {hotel.license.status}
-    {hotel.license.expiryDate && (
-      <span className="ml-1">
-        ({new Date(hotel.license.expiryDate).toLocaleDateString()})
-      </span>
-    )}
-  </Badge>
-) : (
-  <Badge variant="outline">No License</Badge>
-)}
+                    <td className="px-4 py-4">
+                      {hotel.license ? (
+                        <Badge 
+                          variant={hotel.license.status === 'active' ? 'default' : 'destructive'}
+                          className={`capitalize ${hotel.license.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
+                        >
+                          {hotel.license.status}
+                          {hotel.license.expiryDate && (
+                            <span className="ml-1">
+                              ({new Date(hotel.license.expiryDate).toLocaleDateString()})
+                            </span>
+                          )}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">No License</Badge>
+                      )}
                     </td>
-                    <td className="px-6 py-4 space-y-2">
+                    <td className="px-4 py-4 space-y-2">
                       <Button
                         onClick={() => {
                           setSelectedHotel(hotel);
@@ -997,6 +1069,18 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                           >
                             <DocumentTextIcon className="w-4 h-4 mr-1" />
                             License
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setSelectedHotel(hotel);
+                              setShowDomainModal(true);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
+                          >
+                            <GlobeAltIcon className="w-4 h-4 mr-1" />
+                            Domains
                           </Button>
                         </>
                       )}
@@ -1277,11 +1361,11 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                       />
                     </div>
 
-                    <div className="flex justify-end space-x-2 pt-4">
-                      <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
+                    <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
+                      <Button type="button" variant="outline" onClick={() => setShowEditModal(false)} className="w-full sm:w-auto">
                         Cancel
                       </Button>
-                      <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                      <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">
                         Update Hotel
                       </Button>
                     </div>
@@ -1435,7 +1519,7 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
 
         {/* Update Balance Modal */}
         <Dialog open={showBalanceModal} onOpenChange={setShowBalanceModal}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Update Hotel Balance</DialogTitle>
             </DialogHeader>
@@ -1450,15 +1534,95 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 />
               </div>
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setShowBalanceModal(false)}>
+              <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                <Button type="button" variant="outline" onClick={() => setShowBalanceModal(false)} className="w-full sm:w-auto">
                   Cancel
                 </Button>
-                <Button onClick={handleUpdateBalance} className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Button onClick={handleUpdateBalance} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">
                   Update Balance
                 </Button>
               </div>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Domain Management Modal */}
+        <Dialog open={showDomainModal} onOpenChange={setShowDomainModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Domain Management - {selectedHotel?.name}</DialogTitle>
+              <DialogDescription>
+                Manage domains for this hotel. Whitelisted domains are used for CORS and domain-based routing.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="domain-type">Domain Type</Label>
+                <Select
+                  value={domainType}
+                  onValueChange={(value: "whitelistedDomains" | "customDomains") => setDomainType(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select domain type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="whitelistedDomains">Whitelisted Domains</SelectItem>
+                    <SelectItem value="customDomains">Custom Domains</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="new-domain">Add New Domain</Label>
+                <div className="flex space-x-2">
+                  <Input
+                    id="new-domain"
+                    placeholder="example.com"
+                    value={newDomain}
+                    onChange={(e) => setNewDomain(e.target.value)}
+                  />
+                  <Button onClick={handleAddDomain} disabled={!newDomain}>
+                    Add
+                  </Button>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  Enter domain without protocol (e.g., example.com)
+                </p>
+              </div>
+
+              <div>
+                <Label className="mb-2 block">Current Domains</Label>
+                <div className="border rounded-lg p-4 max-h-60 overflow-y-auto">
+                  {selectedHotel && selectedHotel[domainType] && selectedHotel[domainType]!.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedHotel[domainType]!.map((domain, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 border rounded">
+                          <div className="font-medium">{domain}</div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveDomain(domain, domainType)}
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-4">
+                      No {domainType === "whitelistedDomains" ? "whitelisted" : "custom"} domains configured
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowDomainModal(false)}>
+                Close
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
@@ -1472,30 +1636,30 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
               </DialogDescription>
             </DialogHeader>
 
-{emailServiceStatus && (
-  <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-    <div className="flex items-center">
-      <EnvelopeIcon className="w-5 h-5 text-blue-600 mr-2" />
-      <span className="font-medium">Email Service Status:</span>
-      <Badge 
-        variant="outline"
-        className={`ml-2 ${emailServiceStatus.global.serviceAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-      >
-        {emailServiceStatus.global.serviceAvailable ? "Available" : "Unavailable"}
-      </Badge>
-    </div>
-    {emailServiceStatus.global.fromAddress && (
-      <div className="text-sm text-blue-700 mt-1">
-        From: {emailServiceStatus.global.fromAddress}
-      </div>
-    )}
-    {emailServiceStatus.hotels.length > 0 && (
-      <div className="mt-2 text-sm text-blue-700">
-        Monitoring {emailServiceStatus.hotels.length} hotels
-      </div>
-    )}
-  </div>
-)}
+            {emailServiceStatus && (
+              <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="flex items-center">
+                  <EnvelopeIcon className="w-5 h-5 text-blue-600 mr-2" />
+                  <span className="font-medium">Email Service Status:</span>
+                  <Badge 
+                    variant="outline"
+                    className={`ml-2 ${emailServiceStatus.global.serviceAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                  >
+                    {emailServiceStatus.global.serviceAvailable ? "Available" : "Unavailable"}
+                  </Badge>
+                </div>
+                {emailServiceStatus.global.fromAddress && (
+                  <div className="text-sm text-blue-700 mt-1">
+                    From: {emailServiceStatus.global.fromAddress}
+                  </div>
+                )}
+                {emailServiceStatus.hotels.length > 0 && (
+                  <div className="mt-2 text-sm text-blue-700">
+                    Monitoring {emailServiceStatus.hotels.length} hotels
+                  </div>
+                )}
+              </div>
+            )}
 
             <Tabs defaultValue="daily">
               <TabsList className="grid w-full grid-cols-2">
@@ -1640,56 +1804,54 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                 <div>
                   <Label className="mb-2 block">Alert Before Expiry (days)</Label>
                   <div className="flex flex-wrap gap-2">
-{[30, 15, 7, 1].map((days) => {
-  // Safely check if daysBefore exists and is an array
-  const daysBeforeArray = Array.isArray(notificationSettings.licenseExpiryAlerts.daysBefore) 
-    ? notificationSettings.licenseExpiryAlerts.daysBefore 
-    : [];
-  
-  const isSelected = daysBeforeArray.includes(days);
-  
-  return (
-    <Badge
-      key={days}
-      variant={isSelected ? "default" : "outline"}
-      className="cursor-pointer"
-      onClick={() => {
-        const currentDays = daysBeforeArray;
-        const newDays = isSelected
-          ? currentDays.filter(d => d !== days)
-          : [...currentDays, days].sort((a, b) => b - a);
-        
-        setNotificationSettings({
-          ...notificationSettings,
-          licenseExpiryAlerts: {
-            ...notificationSettings.licenseExpiryAlerts,
-            daysBefore: newDays
-          }
-        });
-      }}
-    >
-      {days} day{days !== 1 ? 's' : ''}
-    </Badge>
-  );
-})}
+                    {[30, 15, 7, 1].map((days) => {
+                      const daysBeforeArray = Array.isArray(notificationSettings.licenseExpiryAlerts.daysBefore) 
+                        ? notificationSettings.licenseExpiryAlerts.daysBefore 
+                        : [];
+                      
+                      const isSelected = daysBeforeArray.includes(days);
+                      
+                      return (
+                        <Badge
+                          key={days}
+                          variant={isSelected ? "default" : "outline"}
+                          className="cursor-pointer"
+                          onClick={() => {
+                            const currentDays = daysBeforeArray;
+                            const newDays = isSelected
+                              ? currentDays.filter(d => d !== days)
+                              : [...currentDays, days].sort((a, b) => b - a);
+                            
+                            setNotificationSettings({
+                              ...notificationSettings,
+                              licenseExpiryAlerts: {
+                                ...notificationSettings.licenseExpiryAlerts,
+                                daysBefore: newDays
+                              }
+                            });
+                          }}
+                        >
+                          {days} day{days !== 1 ? 's' : ''}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </div>
               </TabsContent>
             </Tabs>
 
             <DialogFooter className="mt-6">
-<Button 
-  variant="outline" 
-  onClick={() => setShowTestNotificationModal(true)}
-  // Remove the disabled condition or make it always false for testing
-  disabled={false}
-  className={!emailServiceStatus?.global?.serviceAvailable ? "opacity-70" : ""}
->
-  Test Notification
-  {!emailServiceStatus?.global?.serviceAvailable && (
-    <span className="ml-2 text-xs">(Email may not be configured)</span>
-  )}
-</Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowTestNotificationModal(true)}
+                disabled={false}
+                className={!emailServiceStatus?.global?.serviceAvailable ? "opacity-70" : ""}
+              >
+                Test Notification
+                {!emailServiceStatus?.global?.serviceAvailable && (
+                  <span className="ml-2 text-xs">(Email may not be configured)</span>
+                )}
+              </Button>
               <Button variant="outline" onClick={() => setShowNotificationSettingsModal(false)}>
                 Cancel
               </Button>
@@ -1746,12 +1908,12 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                 <div className="p-3 rounded-lg bg-gray-100">
                   <div className="flex items-center">
                     <span className="font-medium">Status:</span>
-<Badge 
-  variant={new Date(licenseInfo.expiryDate) > new Date() ? 'default' : 'destructive'}
-  className={`ml-2 ${new Date(licenseInfo.expiryDate) > new Date() ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}`}
->
-  {new Date(licenseInfo.expiryDate) > new Date() ? "Active" : "Expired"}
-</Badge>
+                    <Badge 
+                      variant={new Date(licenseInfo.expiryDate) > new Date() ? 'default' : 'destructive'}
+                      className={`ml-2 ${new Date(licenseInfo.expiryDate) > new Date() ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}`}
+                    >
+                      {new Date(licenseInfo.expiryDate) > new Date() ? "Active" : "Expired"}
+                    </Badge>
                   </div>
                   {new Date(licenseInfo.expiryDate) > new Date() && (
                     <div className="text-sm text-gray-600 mt-1">
@@ -2057,11 +2219,11 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                       rows={2}
                     />
                   </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setShowExpenditureModal(false)}>
+                  <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setShowExpenditureModal(false)} className="w-full sm:w-auto">
                       Cancel
                     </Button>
-                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">
                       Create Expenditure
                     </Button>
                   </div>
@@ -2092,11 +2254,11 @@ const handleOpenNotificationSettings = async (hotel: Hotel) => {
                       rows={3}
                     />
                   </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setShowRejectModal(false)}>
+                  <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setShowRejectModal(false)} className="w-full sm:w-auto">
                       Cancel
                     </Button>
-                    <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white">
+                    <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto">
                       Reject
                     </Button>
                   </div>

@@ -1,6 +1,13 @@
 // Create a new user
 import { Hotel } from '@/types/hotel';
 // import { Hotel } from 'lucide-react';
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message?: string;
+  data?: T;
+  error?: string;
+  status?: number;
+}
 export async function createUser(user: any) {
   const res = await fetch(`${API_URL}/users`, {
     method: "POST",
@@ -1202,4 +1209,99 @@ export const getEmailServiceStatus = async (): Promise<{ success: boolean; data:
   }
   
   return response.json();
+};
+
+// Add these to your existing API functions in api.ts
+
+/**
+ * Add a domain to a hotel's whitelistedDomains or customDomains
+ */
+export const addHotelDomain = async (
+  hotelId: string,
+  domainType: 'whitelistedDomains' | 'customDomains',
+  domain: string
+): Promise<ApiResponse<any>> => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/hotels/${hotelId}/domains`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ domainType, domain }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Failed to add domain: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error('Error adding hotel domain:', error);
+    throw new Error(error.message || 'Failed to add domain');
+  }
+};
+
+/**
+ * Remove a domain from a hotel's whitelistedDomains or customDomains
+ */
+export const removeHotelDomain = async (
+  hotelId: string,
+  domainType: 'whitelistedDomains' | 'customDomains',
+  domain: string
+): Promise<ApiResponse<any>> => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/hotels/${hotelId}/domains`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ domainType, domain }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Failed to remove domain: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error('Error removing hotel domain:', error);
+    throw new Error(error.message || 'Failed to remove domain');
+  }
+};
+
+/**
+ * Update multiple domains at once (optional - for bulk operations)
+ */
+export const updateHotelDomains = async (
+  hotelId: string,
+  domainType: 'whitelistedDomains' | 'customDomains',
+  domains: string[]
+): Promise<ApiResponse<any>> => {
+  try {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_URL}/hotels/${hotelId}/domains/bulk`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ domainType, domains }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Failed to update domains: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error: any) {
+    console.error('Error updating hotel domains:', error);
+    throw new Error(error.message || 'Failed to update domains');
+  }
 };
