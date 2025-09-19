@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import * as lucideIcons from "lucide-react"
 import { MapPin, Phone, Mail } from "lucide-react"
 import Navbar from "@/components/navbar"
-import { GATEWAY_URL } from "@/lib/api"
+import { API_URL } from "@/lib/api"
 
 const WhatsAppIcon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -55,7 +55,7 @@ export default function HotelLandingPage() {
       try {
         // Determine domain from browser
         const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-        const res = await fetch(`${GATEWAY_URL}/hotels/public/domain?domain=${encodeURIComponent(host)}`);
+        const res = await fetch(`${API_URL}/hotels/public/domain?domain=${encodeURIComponent(host)}`);
         if (!res.ok) throw new Error(`Failed to load hotel (${res.status})`);
         const data = await res.json();
         if (data?.success && data.data) {
