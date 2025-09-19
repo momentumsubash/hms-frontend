@@ -30,7 +30,7 @@ export async function createUser(user: any) {
 // lib/api.ts
 export const updateHotelWebsite = async (hotelId: string, content: { website: WebsiteContent; seo: SEOData }) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const response = await fetch(`${GATEWAY_URL}/hotels/${hotelId}/website`, {
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/website`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
