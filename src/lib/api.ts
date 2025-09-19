@@ -1,5 +1,6 @@
 // Create a new user
 import { Hotel } from '@/types/hotel';
+import { WebsiteContent, SEOData } from '@/types/website';
 // import { Hotel } from 'lucide-react';
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -8,6 +9,8 @@ export interface ApiResponse<T = any> {
   error?: string;
   status?: number;
 }
+
+
 export async function createUser(user: any) {
   const res = await fetch(`${API_URL}/users`, {
     method: "POST",
@@ -23,6 +26,25 @@ export async function createUser(user: any) {
   return res.json();
 }
 
+// Add proper types for the updateHotelWebsite function
+// lib/api.ts
+export const updateHotelWebsite = async (hotelId: string, content: { website: WebsiteContent; seo: SEOData }) => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const response = await fetch(`${GATEWAY_URL}/hotels/${hotelId}/website`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(content)
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to update website content');
+  }
+  
+  return response.json();
+};
 // Delete a user
 export async function deleteUser(id: string) {
   const res = await fetch(`${API_URL}/users/${id}`, {
@@ -68,6 +90,7 @@ export async function getMyHotel() {
 }
 // Copied from design/hms-ui-v2/lib/api.ts
 export const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+export const GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000/api";
 
 function getToken() {
   if (typeof window === "undefined") return null;

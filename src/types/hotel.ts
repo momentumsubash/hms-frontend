@@ -1,4 +1,7 @@
 // types/hotel.ts
+import type { WebsiteContent, SEOData } from './website';
+
+export type LicenseStatus = 'active' | 'expired' | 'pending';
 
 export interface HotelAddress {
   street?: string;
@@ -15,22 +18,23 @@ export interface HotelContact {
   website?: string;
 }
 
+export interface Author {
+  _id: string;
+  name: string;
+}
+
 export interface HotelNote {
   _id?: string;
   text: string;
-  author: {
-    _id: string;
-    name: string;
-  };
+  author: Author;
   createdAt: string;
 }
 
-// Add these new interfaces for license and notification settings
 export interface HotelLicense {
   licenseNumber?: string;
   expiryDate?: string;
   licenseDocument?: string;
-  status?: 'active' | 'expired' | 'pending';
+  status?: LicenseStatus;
 }
 
 export interface NotificationRecipient {
@@ -41,27 +45,70 @@ export interface NotificationRecipient {
   addedAt?: string;
 }
 
+export interface DailyReportSettings {
+  enabled: boolean;
+  time: string;
+  recipients: NotificationRecipient[];
+}
+
+export interface LicenseExpiryAlerts {
+  enabled: boolean;
+  recipients: string[];
+  daysBefore: number[];
+}
+
+export interface ReservationNotifications {
+  enabled: boolean;
+  recipients: NotificationRecipient[];
+}
+
 export interface NotificationSettings {
-  dailyReport?: {
-    enabled: boolean;
-    time: string;
-    recipients: NotificationRecipient[];
-  };
-  licenseExpiryAlerts?: {
-    enabled: boolean;
-    recipients: string[];
-    daysBefore: number[];
-  };
+  dailyReport?: DailyReportSettings;
+  licenseExpiryAlerts?: LicenseExpiryAlerts;
+  reservationNotifications?: ReservationNotifications;
+}
+
+export interface FinancialStatistics {
+  monthlyRevenue: number;
+  monthlyExpenditure: number;
+  currentBalance: number;
+  initialAmount: number;
+}
+
+export interface OccupancyStatistics {
+  totalRooms: number;
+  occupiedRooms: number;
+  availableRooms: number;
+  occupancyRate: number;
+}
+
+export interface GuestStatistics {
+  current: number;
+}
+
+export interface HotelStatistics {
+  financial?: FinancialStatistics;
+  occupancy?: OccupancyStatistics;
+  guests?: GuestStatistics;
+}
+
+export interface RecentTransactions {
+  checkouts: any[];
+  expenditures: any[];
 }
 
 export interface Hotel {
   _id?: string;
-  name: string;
+  name?: string;
   description?: string;
-  location?: string;
   phone?: string;
   logo?: string;
   images?: string[];
+  gallery?: string[];
+  address?: HotelAddress;
+  contact?: HotelContact;
+  
+  // Business details
   vatNumber?: string;
   companyName?: string;
   vatAddress?: string;
@@ -70,47 +117,32 @@ export interface Hotel {
   floors?: number;
   established?: number;
   amenities?: string[];
-  gallery?: string[];
-  contact?: HotelContact;
-  address?: HotelAddress;
   locationMap?: string;
   nearby?: string[];
+  
+  // Financial details
   initialAmount?: number;
   currentBalance?: number;
   lastBalanceUpdate?: string;
-  notes?: HotelNote[];
-  createdAt?: string;
-  updatedAt?: string;
   
-  // Add the new properties
-  license?: HotelLicense;
-  notificationSettings?: NotificationSettings;
-  
-  // Optional domain properties
+  // Domain management
   domain?: string;
-  customDomains?: string[];
   whitelistedDomains?: string[];
+  customDomains?: string[];
   isActive?: boolean;
   
-  statistics?: {
-    financial?: {
-      monthlyRevenue: number;
-      monthlyExpenditure: number;
-      currentBalance: number;
-      initialAmount: number;
-    };
-    occupancy?: {
-      totalRooms: number;
-      occupiedRooms: number;
-      availableRooms: number;
-      occupancyRate: number;
-    };
-    guests?: {
-      current: number;
-    };
-  };
-  recentTransactions?: {
-    checkouts: any[];
-    expenditures: any[];
-  };
+  // Content and settings
+  website?: WebsiteContent;
+  seo?: SEOData;
+  license?: HotelLicense;
+  notificationSettings?: NotificationSettings;
+  notes?: HotelNote[];
+  
+  // Statistics and transactions
+  statistics?: HotelStatistics;
+  recentTransactions?: RecentTransactions;
+  
+  // Timestamps
+  createdAt?: string;
+  updatedAt?: string;
 }

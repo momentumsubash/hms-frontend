@@ -9,12 +9,11 @@ import {
   getNotificationSettings, updateNotificationSettings,
   addNotificationRecipient, removeNotificationRecipient,
   toggleNotificationRecipient, testNotification,
-  getEmailServiceStatus,
-  // Add these new API functions
-  addHotelDomain, removeHotelDomain, updateHotelDomains
+  getEmailServiceStatus, updateHotelWebsite, 
+  addHotelDomain, removeHotelDomain
 } from "@/lib/api";
+import { getHotel } from "@/lib/api";
 import { createExpenditure, getExpenditures, approveExpenditure, rejectExpenditure } from "@/lib/expenditure";
-import { Hotel } from "@/types/hotel";
 import { Expenditure, ExpenditureFilters } from "@/types/expenditure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -29,7 +28,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from 'sonner'; // ← Add this import
+import { toast } from 'sonner';
+import WebsiteContentManager from "@/components/WebsiteContentManager";
+import { Hotel } from "@/types/hotel";
+
 export default function HotelsPage() {
   // Hotel state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -103,6 +105,9 @@ export default function HotelsPage() {
     role: "manager"
   });
 
+  // Website content modal state
+  const [showWebsiteModal, setShowWebsiteModal] = useState(false);
+
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
@@ -117,7 +122,6 @@ export default function HotelsPage() {
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({
@@ -126,44 +130,67 @@ export default function HotelsPage() {
     search: ""
   });
 
-  const [newHotel, setNewHotel] = useState<Hotel>({
-    name: "",
-    description: "",
-    location: "",
+// Update your newHotel state initialization to include all required properties:
+const [newHotel, setNewHotel] = useState<Hotel>({
+  name: "",
+  description: "",
+  phone: "",
+  logo: "",
+  images: [],
+  vatNumber: "",
+  companyName: "",
+  vatAddress: "",
+  type: "",
+  roomCount: 0,
+  floors: 0,
+  established: new Date().getFullYear(),
+  amenities: [],
+  gallery: [],
+  contact: {
     phone: "",
-    logo: "",
-    images: [],
-    vatNumber: "",
-    companyName: "",
-    vatAddress: "",
-    type: "",
-    roomCount: 0,
-    floors: 0,
-    established: new Date().getFullYear(),
+    reception: "",
+    email: "",
+    website: ""
+  },
+  address: {
+    street: "",
+    area: "",
+    city: "",
+    state: "",
+    zip: ""
+  },
+  locationMap: "",
+  nearby: [],
+  notes: [],
+  initialAmount: 0,
+  currentBalance: 0,
+  createdAt: new Date().toISOString(),
+  whitelistedDomains: [],
+  customDomains: [],
+  website: {
+    heroTitle: "",
+    heroSubtitle: "",
+    heroImage: "",
+    aboutDescription: "",
+    amenitiesDescription: "",
+    experiencesDescription: "",
+    testimonialsDescription: "",
+    footerDescription: "",
+    rooms: [],
     amenities: [],
-    gallery: [],
-    contact: {
+    testimonials: [],
+    contactInfo: {
       phone: "",
-      reception: "",
       email: "",
-      website: ""
-    },
-    address: {
-      street: "",
-      area: "",
-      city: "",
-      state: "",
-      zip: ""
-    },
-    locationMap: "",
-    nearby: [],
-    notes: [],
-    initialAmount: 0,
-    currentBalance: 0,
-    createdAt: new Date().toISOString(),
-    whitelistedDomains: [],
-    customDomains: []
-  });
+      address: ""
+    }
+  },
+  seo: {
+    title: "",
+    description: "",
+    keywords: []
+  }
+});
 
   useEffect(() => {
     loadData();
@@ -222,7 +249,7 @@ export default function HotelsPage() {
     try {
       // Validate domain format
       if (!isValidDomain(newDomain)) {
-       toast.error("Invalid Domain: Please enter a valid domain name (e.g., example.com)");
+        toast.error("Invalid Domain: Please enter a valid domain name (e.g., example.com)");
         return;
       }
       
@@ -247,10 +274,10 @@ export default function HotelsPage() {
       }
       
       setNewDomain("");
-    toast.success(`Domain ${newDomain} has been added successfully.`);
+      toast.success(`Domain ${newDomain} has been added successfully.`);
     } catch (e: any) {
       setError(e.message);
-    toast.error(e.message || "Failed to add domain");
+      toast.error(e.message || "Failed to add domain");
     }
   };
 
@@ -277,10 +304,10 @@ export default function HotelsPage() {
         } : null);
       }
       
-    toast.success(`Domain ${domain} has been removed successfully.`);
+      toast.success(`Domain ${domain} has been removed successfully.`);
     } catch (e: any) {
       setError(e.message);
-    toast.error(e.message || "Failed to remove domain");
+      toast.error(e.message || "Failed to remove domain");
     }
   };
 
@@ -392,8 +419,10 @@ export default function HotelsPage() {
     try {
       await updateNotificationSettings(selectedHotel._id, notificationSettings);
       setShowNotificationSettingsModal(false);
+      toast.success("Notification settings updated successfully");
     } catch (e: any) {
       setError(e.message);
+      toast.error("Failed to update notification settings");
     }
   };
 
@@ -402,8 +431,10 @@ export default function HotelsPage() {
     try {
       await updateHotelLicense(selectedHotel._id, licenseInfo);
       setShowLicenseModal(false);
+      toast.success("License information updated successfully");
     } catch (e: any) {
       setError(e.message);
+      toast.error("Failed to update license information");
     }
   };
 
@@ -414,8 +445,10 @@ export default function HotelsPage() {
       const response = await getNotificationSettings(selectedHotel._id);
       setNotificationSettings(response.data);
       setNewRecipient({ email: "", name: "", role: "manager" });
+      toast.success("Recipient added successfully");
     } catch (e: any) {
       setError(e.message);
+      toast.error("Failed to add recipient");
     }
   };
 
@@ -425,8 +458,10 @@ export default function HotelsPage() {
       await removeNotificationRecipient(selectedHotel._id, email);
       const response = await getNotificationSettings(selectedHotel._id);
       setNotificationSettings(response.data);
+      toast.success("Recipient removed successfully");
     } catch (e: any) {
       setError(e.message);
+      toast.error("Failed to remove recipient");
     }
   };
 
@@ -436,8 +471,10 @@ export default function HotelsPage() {
       await toggleNotificationRecipient(selectedHotel._id, email);
       const response = await getNotificationSettings(selectedHotel._id);
       setNotificationSettings(response.data);
+      toast.success("Recipient status updated");
     } catch (e: any) {
       setError(e.message);
+      toast.error("Failed to update recipient status");
     }
   };
 
@@ -452,13 +489,15 @@ export default function HotelsPage() {
       );
       
       if (response.success) {
-        alert(`Test notification sent successfully: ${response.message}`);
+        toast.success(`Test notification sent successfully: ${response.message}`);
         setShowTestNotificationModal(false);
       } else {
         setError(`Failed to send test notification: ${response.message}`);
+        toast.error(`Failed to send test notification: ${response.message}`);
       }
     } catch (e: any) {
       setError(e.message);
+      toast.error("Failed to send test notification");
     }
   };
 
@@ -468,7 +507,7 @@ export default function HotelsPage() {
     try {
       setUploading(true);
       setUploadProgress(0);
-      const file = e.target.files[0];
+      const file = e.target.files[0] as File;
       
       const interval = setInterval(() => {
         setUploadProgress(prev => {
@@ -499,10 +538,12 @@ export default function HotelsPage() {
         setUploadProgress(0);
       }, 500);
       
+      toast.success("Logo uploaded successfully");
     } catch (e: any) {
       setError(e.message);
       setUploading(false);
       setUploadProgress(0);
+      toast.error("Failed to upload logo");
     }
   };
 
@@ -512,7 +553,7 @@ export default function HotelsPage() {
     try {
       setUploading(true);
       setUploadProgress(0);
-      const files = Array.from(e.target.files);
+      const files = Array.from(e.target.files) as File[];
       
       const interval = setInterval(() => {
         setUploadProgress(prev => {
@@ -549,10 +590,12 @@ export default function HotelsPage() {
         setUploadProgress(0);
       }, 500);
       
+      toast.success(`${files.length} ${type} uploaded successfully`);
     } catch (e: any) {
       setError(e.message);
       setUploading(false);
       setUploadProgress(0);
+      toast.error(`Failed to upload ${type}`);
     }
   };
 
@@ -580,8 +623,10 @@ export default function HotelsPage() {
         }
       }
       
+      toast.success("Image removed successfully");
     } catch (e: any) {
       setError(e.message);
+      toast.error("Failed to remove image");
     }
   };
 
@@ -638,46 +683,71 @@ export default function HotelsPage() {
                   await addHotel(newHotel);
                   setShowCreateModal(false);
                   loadData();
-                  setNewHotel({
-                    name: "",
-                    description: "",
-                    location: "",
-                    phone: "",
-                    logo: "",
-                    images: [],
-                    vatNumber: "",
-                    companyName: "",
-                    vatAddress: "",
-                    type: "",
-                    roomCount: 0,
-                    floors: 0,
-                    established: new Date().getFullYear(),
-                    amenities: [],
-                    gallery: [],
-                    contact: {
-                      phone: "",
-                      reception: "",
-                      email: "",
-                      website: ""
-                    },
-                    address: {
-                      street: "",
-                      area: "",
-                      city: "",
-                      state: "",
-                      zip: ""
-                    },
-                    locationMap: "",
-                    nearby: [],
-                    notes: [],
-                    initialAmount: 0,
-                    currentBalance: 0,
-                    createdAt: new Date().toISOString(),
-                    whitelistedDomains: [],
-                    customDomains: []
-                  });
+// In the create hotel modal onSubmit handler, update the reset function:
+setNewHotel({
+  name: "",
+  description: "",
+  phone: "",
+  logo: "",
+  images: [],
+  vatNumber: "",
+  companyName: "",
+  vatAddress: "",
+  type: "",
+  roomCount: 0,
+  floors: 0,
+  established: new Date().getFullYear(),
+  amenities: [],
+  gallery: [],
+  contact: {
+    phone: "",
+    reception: "",
+    email: "",
+    website: ""
+  },
+  address: {
+    street: "",
+    area: "",
+    city: "",
+    state: "",
+    zip: ""
+  },
+  locationMap: "",
+  nearby: [],
+  notes: [],
+  initialAmount: 0,
+  currentBalance: 0,
+  createdAt: new Date().toISOString(),
+  whitelistedDomains: [],
+  customDomains: [],
+  website: {
+    heroTitle: "",
+    heroSubtitle: "",
+    heroImage: "",
+    aboutDescription: "",
+    amenitiesDescription: "",
+    experiencesDescription: "",
+    testimonialsDescription: "",
+    footerDescription: "",
+    rooms: [],
+    amenities: [],
+    testimonials: [],
+    contactInfo: {
+      phone: "",
+      email: "",
+      address: ""
+    }
+  },
+  seo: {
+    title: "",
+    description: "",
+    keywords: []
+  }
+});
+                  toast.success("Hotel created successfully");
                 } catch (e: any) {
                   setError(e.message);
+                  toast.error("Failed to create hotel");
                 }
               }} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1070,6 +1140,29 @@ export default function HotelsPage() {
                             <DocumentTextIcon className="w-4 h-4 mr-1" />
                             License
                           </Button>
+              <Button
+                            onClick={async () => {
+                              try {
+                                // Load full hotel including website/seo before opening modal
+                                const res = await getHotel(hotel._id!);
+                                if (res?.success && res.data) {
+                                  setSelectedHotel(res.data);
+                                } else {
+                                  setSelectedHotel(hotel);
+                                }
+                              } catch (e) {
+                                setSelectedHotel(hotel);
+                              } finally {
+                                setShowWebsiteModal(true);
+                              }
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="w-full bg-teal-100 text-teal-800 hover:bg-teal-200"
+                          >
+                            <GlobeAltIcon className="w-4 h-4 mr-1" />
+                            Website Content
+                          </Button>
                           <Button
                             onClick={() => {
                               setSelectedHotel(hotel);
@@ -1077,7 +1170,7 @@ export default function HotelsPage() {
                             }}
                             variant="outline"
                             size="sm"
-                            className="w-full bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
+                            className="w-full bg-orange-100 text-orange-800 hover:bg-orange-200"
                           >
                             <GlobeAltIcon className="w-4 h-4 mr-1" />
                             Domains
@@ -1115,8 +1208,10 @@ export default function HotelsPage() {
                       await updateHotel(selectedHotel._id, selectedHotel);
                       setShowEditModal(false);
                       loadData();
+                      toast.success("Hotel updated successfully");
                     } catch (e: any) {
                       setError(e.message);
+                      toast.error("Failed to update hotel");
                     }
                   }} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2003,6 +2098,29 @@ export default function HotelsPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Website Content Modal */}
+        <Dialog open={showWebsiteModal} onOpenChange={setShowWebsiteModal}>
+          <DialogContent className="max-w-4xl h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Website Content - {selectedHotel?.name}</DialogTitle>
+            </DialogHeader>
+            {selectedHotel && (
+              <WebsiteContentManager
+                hotel={selectedHotel as any}
+                onSave={async (content: { website: any; seo: any }) => {
+                  try {
+                    await updateHotelWebsite(selectedHotel._id!, content);
+                    loadData();
+                    toast.success("Website content updated successfully");
+                  } catch (error: any) {
+                    toast.error("Failed to update website content: " + error.message);
+                  }
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* Summary Stats */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
@@ -2265,7 +2383,9 @@ export default function HotelsPage() {
                 </form>
               </DialogContent>
             </Dialog>
+
           </div>
+          
         )}
       </div>
     </div>
