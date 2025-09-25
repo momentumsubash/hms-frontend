@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { useAuth } from "@/components/ui/auth-provider";
 
 interface NavLink {
   label: string;
@@ -8,10 +9,10 @@ interface NavLink {
 }
 
 interface NavBarProps {
-  user: any;
+  user?: any;
   showUserMenu: boolean;
   setShowUserMenu: (v: boolean) => void;
-  logout: () => void | Promise<void>;
+  logout?: () => void | Promise<void>;
   navLinks?: NavLink[];
 }
 
@@ -21,18 +22,8 @@ interface NavBarProps {
 import { useEffect, useState } from "react";
 
 export const NavBar: React.FC<NavBarProps> = ({ user, showUserMenu, setShowUserMenu, logout, navLinks }) => {
-  const [localUser, setLocalUser] = useState<any>(null);
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem("user");
-        if (stored) {
-          setLocalUser(JSON.parse(stored));
-        }
-      } catch {}
-    }
-  }, []);
-type Role = "staff" | "manager" | "super_admin";
+  const { user: authUser, logout: authLogout } = useAuth();
+  type Role = "staff" | "manager" | "super_admin";
 
 interface NavLink {
   label: string;
@@ -40,7 +31,7 @@ interface NavLink {
   roles?: Role[]; // allowed roles
 }
 
-const displayUser = localUser || user;
+const displayUser = user || authUser;
 
 const defaultNavLinks: NavLink[] = [
   { label: "Dashboard", href: "/dashboard" }, // open to all
@@ -85,11 +76,11 @@ const links = defaultNavLinks.filter(
               className="flex items-center space-x-2 px-3 py-2 rounded hover:bg-gray-100 border border-gray-200"
               onClick={() => setShowUserMenu(!showUserMenu)}
             >
-              <span className="font-medium text-gray-700">
-                {displayUser?.firstName || displayUser?.lastName
-                  ? `${displayUser?.firstName || ""} ${displayUser?.lastName || ""}`.trim()
-                  : displayUser?.email || "User"}
-              </span>
+             <span className="font-medium text-gray-700">
+  {user?.firstName || user?.lastName
+    ? `${user?.firstName || ""} ${user?.lastName || ""}`.trim()
+    : user?.email || "User"}
+</span>
               <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
             </button>
             {showUserMenu && (
@@ -98,7 +89,7 @@ const links = defaultNavLinks.filter(
                   className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
                   onClick={async () => {
                     setShowUserMenu(false);
-                    await logout();
+                    await (logout || authLogout)();
                   }}
                 >
                   Sign out

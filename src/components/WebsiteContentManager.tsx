@@ -573,25 +573,12 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Hero Image</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={websiteContent.heroImage || ''}
-                    onChange={(e) => updateField('heroImage', e.target.value)}
-                    placeholder="Hero background image URL"
-                  />
-                  {availableImages.length > 0 && (
-                    <Select value={websiteContent.heroImage || undefined} onValueChange={(val) => updateField('heroImage', val)}>
-                      <SelectTrigger className="min-w-[200px]">
-                        <SelectValue placeholder="Pick from uploaded" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60 overflow-y-auto">
-                        {availableImages.map((img, i) => (
-                          <SelectItem key={`${img}-${i}`} value={img}>{img}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
+                <ImageSelectWithPreview
+  value={websiteContent.heroImage || ''}
+  onValueChange={(val) => updateField('heroImage', val)}
+  availableImages={availableImages}
+  label="Select Hero Image"
+/>
               </div>
             </CardContent>
           </Card>
@@ -708,27 +695,14 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
                       />
                     </div>
                     
-                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Label>Image URL</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={room.image}
-                          onChange={(e) => updateRoom(index, 'image', e.target.value)}
-                          placeholder="Image URL"
-                        />
-                        {availableImages.length > 0 && (
-                          <Select onValueChange={(val) => updateRoom(index, 'image', val)}>
-                            <SelectTrigger className="min-w-[200px]">
-                              <SelectValue placeholder="Pick from uploaded" />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-60 overflow-y-auto">
-                              {([...(hotel?.gallery || []), ...(hotel?.images || [])]).map((img, i) => (
-                                <SelectItem key={`${img}-${i}`} value={img}>{img}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
+                    <div className="mt-4">
+                      <Label>Room Image</Label>
+                      <ImageSelectWithPreview
+                        value={room.image || ''}
+                        onValueChange={(val) => updateRoom(index, 'image', val)}
+                        availableImages={availableImages}
+                        label="Select Room Image"
+                      />
                     </div>
                     
                     <div className="mt-4">
@@ -879,25 +853,12 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
                       </div>
                       <div>
                         <Label>Guest Image</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            value={testimonial.image || ''}
-                            onChange={(e) => updateTestimonial(index, 'image', e.target.value)}
-                            placeholder="Guest image URL"
-                          />
-                          {availableImages.length > 0 && (
-                            <Select value={testimonial.image || undefined} onValueChange={(val) => updateTestimonial(index, 'image', val)}>
-                              <SelectTrigger className="min-w-[200px]">
-                                <SelectValue placeholder="Pick from uploaded" />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-60 overflow-y-auto">
-                                {([...(hotel?.gallery || []), ...(hotel?.images || [])]).map((img, i) => (
-                                  <SelectItem key={`${img}-${i}`} value={img}>{img}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                        </div>
+                        <ImageSelectWithPreview
+                          value={testimonial.image || ''}
+                          onValueChange={(val) => updateTestimonial(index, 'image', val)}
+                          availableImages={availableImages}
+                          label="Select Guest Image"
+                        />
                       </div>
                     </div>
                     
