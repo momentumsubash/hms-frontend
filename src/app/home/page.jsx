@@ -286,11 +286,15 @@ export default function HotelLandingPage() {
               </div>
               <div className="flex items-center gap-2 text-background/80 mb-2">
                 <Phone className="w-4 h-4" />
-                <span>{websiteContent.contactInfo?.phone || hotel?.phone || ''}</span>
+                <span>{websiteContent.contactInfo?.phone || hotel?.contact?.phone || ''}</span>
+              </div>
+              <div className="flex items-center gap-2 text-background/80 mb-2">
+                <Phone className="w-4 h-4" />
+                <span>{websiteContent.contactInfo?.reception || hotel?.contact?.reception || ''}</span>
               </div>
               <div className="flex items-center gap-2 text-background/80">
                 <Mail className="w-4 h-4" />
-                <span>{websiteContent.contactInfo?.email || ''}</span>
+                <span>{hotel?.contact?.email || ''}</span>
               </div>
             </div>
             <div>
