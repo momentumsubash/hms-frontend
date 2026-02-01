@@ -591,8 +591,9 @@ export default function StatsPage() {
                         </thead>
                         <tbody>
                           {itemBreakdown.map((row) => (
+               
                               <tr key={row.itemId} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 border">{row.name}</td>
+                              <td className="px-3 py-2 border">{row?.item}</td>
                                  <td className="px-3 py-2 border">{getCategoryName(row.category)}</td>
                               <td className="px-3 py-2 border text-center">{row.quantity}</td>
                                 <td className="px-3 py-2 border text-right">रु{row.sales?.toFixed(2)}</td>
@@ -782,9 +783,9 @@ export default function StatsPage() {
                                               <div className="flex justify-between items-center p-3 bg-teal-50 rounded">
                                                 <span className="font-medium">Hotel Balance</span>
                                                 <span className="text-lg font-bold text-teal-600">
-                                                  Initial: रु{financialOverview?.hotel?.initialAmount?.toLocaleString() ?? 0}<br />
+                                                  {/* Initial: रु{financialOverview?.hotel?.initialAmount?.toLocaleString() ?? 0}<br />
                                                   Earnings: रु{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}<br />
-                                                  Expenditures: रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}<br />
+                                                  Expenditures: रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}<br /> */}
                                                   <span className="font-semibold">Current Balance: रु{((Number(financialOverview?.hotel?.initialAmount) || 0) + (Number(financialOverview?.summary?.totalGainedMoney) || 0) - (Number(financialOverview?.summary?.totalExpenditures) || 0)).toLocaleString()}</span>
                                                 </span>
                                               </div>
@@ -939,8 +940,8 @@ export default function StatsPage() {
                             <CardTitle className="text-sm">Hotel Balance</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold text-teal-600">रु{dailySummary.hotelBalance?.currentBalance?.toLocaleString() ?? 0}</div>
-                            <div className="text-sm text-gray-600">Initial Amount: रु{dailySummary.hotelBalance?.initialAmount?.toLocaleString() ?? 0}</div>
+                            <div className="text-2xl font-bold text-teal-600"> रु{((Number(financialOverview?.hotel?.initialAmount) || 0) + (Number(financialOverview?.summary?.totalGainedMoney) || 0) - (Number(financialOverview?.summary?.totalExpenditures) || 0)).toLocaleString()}</div>
+                            <div className="text-sm text-gray-600">Initial Amount: रु{financialOverview?.hotel?.initialAmount?.toLocaleString() ?? 0}<br /></div>
                             <div className="text-sm text-gray-600">Last updated: {dailySummary.hotelBalance?.lastBalanceUpdate ? format(new Date(dailySummary.hotelBalance.lastBalanceUpdate), "MMM dd, yyyy") : 'N/A'}</div>
                           </CardContent>
                         </Card>
