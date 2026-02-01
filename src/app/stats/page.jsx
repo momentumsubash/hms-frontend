@@ -177,6 +177,13 @@ export default function StatsPage() {
         const roomJson = await roomRes.json();
         const dailyJson = await dailyRes.json();
       
+        console.log('📊 Stats Data Received:');
+        console.log('itemJson:', itemJson);
+        console.log('roomJson:', roomJson);
+        console.log('financialRes:', financialRes);
+        console.log('summaryRes:', summaryRes);
+        console.log('dailyJson:', dailyJson);
+        
         setItemStats(itemJson.data || itemJson);
         setRoomStats(roomJson.data || roomJson);
         setExpenditures(expendituresRes?.data || []);
@@ -311,14 +318,41 @@ export default function StatsPage() {
     }
   };
 
-  // Calculate totals
-  const totalItemSales = itemStats?.totalItemSales ?? 0;
-  const totalRoomRevenue = roomStats?.totalRoomRevenue ?? 0;
-  const totalCombined = totalItemSales + totalRoomRevenue;
-  const totalRoomCount = roomStats?.totalCount ?? 0;
+  // Calculate totals and transform data for display
+  const totalItemSales = Array.isArray(itemStats) 
+    ? itemStats.reduce((sum, item) => sum + (item.totalSales || 0), 0)
+    : itemStats?.totalItemSales ?? 0;
   
-  const itemBreakdown = itemStats?.breakdown || [];
-  const roomBreakdown = roomStats?.breakdown || [];
+  const totalItemQuantity = Array.isArray(itemStats)
+    ? itemStats.reduce((sum, item) => sum + (item.quantity || 0), 0)
+    : itemStats?.totalQuantity ?? 0;
+  
+  const totalRoomRevenue = roomStats?.totalRoomCharge ?? roomStats?.totalRoomRevenue ?? 0;
+  const totalRoomCheckouts = roomStats?.totalCheckouts ?? roomStats?.totalCount ?? 0;
+  const totalNights = roomStats?.totalNights ?? 0;
+  const totalCombined = totalItemSales + totalRoomRevenue;
+  
+  // Transform item stats array into breakdown format
+  const itemBreakdown = Array.isArray(itemStats) 
+    ? itemStats.map(item => ({
+        itemId: item.item,
+        name: item.name,
+        category: item.category || '',
+        quantity: item.quantity || 0,
+        sales: item.totalSales || 0
+      }))
+    : itemStats?.breakdown || [];
+  
+  // Room sales is returned as aggregate, not per-room, so create a summary
+  const roomBreakdown = roomStats && !Array.isArray(roomStats)
+    ? [{
+        roomNumber: 'All Rooms',
+        type: 'Aggregate',
+        totalNights: roomStats.totalNights || 0,
+        checkoutCount: roomStats.totalCheckouts || 0,
+        actualRoomRevenue: roomStats.totalRoomCharge || 0
+      }]
+    : roomStats?.breakdown || [];
 
      const isManager = user?.role === 'manager' || user?.role === 'super_admin';
 
@@ -365,7 +399,7 @@ export default function StatsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-blue-600">रु{totalItemSales.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">Total Items Sold: {itemStats?.totalQuantity ?? 0}</div>
+                  <div className="text-sm text-gray-600">Total Items Sold: {totalItemQuantity}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -374,7 +408,7 @@ export default function StatsPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">रु{totalRoomRevenue.toLocaleString()}</div>
-                  <div className="text-sm text-gray-600">Total Checkouts: {roomStats?.totalCount ?? 0}</div>
+                  <div className="text-sm text-gray-600">Total Checkouts: {totalRoomCheckouts}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -503,7 +537,7 @@ export default function StatsPage() {
                              </div>
                              <div className="flex justify-between">
                                <span>Item Sales:</span>
-                               <span className="font-semibold text-blue-600">रु{financialOverview?.summary?.totalItemSales.toLocaleString() ?? 0}</span>
+                               <span className="font-semibold text-blue-600">रु{financialOverview?.summary?.totalItemSales?.toLocaleString() ?? 0}</span>
                              </div>
                             <div className="flex justify-between border-t pt-2">
                               <span>Total Sales:</span>
@@ -526,9 +560,11 @@ export default function StatsPage() {
                              </div>
                              <div className="flex justify-between">
                                <span>Profit Margin:</span>
-                               <span className="font-semibold">{typeof financialOverview?.summary?.profitMargin === 'string' 
-                                 ? financialOverview.summary.profitMargin 
-                                 : (financialOverview?.summary?.profitMargin?.toFixed(1) ?? 0) + '%'}</span>
+                               <span className="font-semibold">
+                                 {isNaN(Number(financialOverview?.summary?.profitMargin))
+                                   ? (financialOverview?.summary?.profitMargin ?? '0%')
+                                   : (Number(financialOverview?.summary?.profitMargin).toFixed(1) + '%')}
+                               </span>
                              </div>
                           </div>
                         </CardContent>
@@ -564,7 +600,7 @@ export default function StatsPage() {
                           ))}
                           <tr className="bg-gray-50 font-bold">
                             <td colSpan={2} className="px-3 py-2 border text-right">Total Item Sales:</td>
-                            <td className="px-3 py-2 border text-center">{itemStats?.totalQuantity || 0}</td>
+                            <td className="px-3 py-2 border text-center">{totalItemQuantity}</td>
                             <td className="px-3 py-2 border text-right">रु{totalItemSales.toFixed(2)}</td>
                           </tr>
                         </tbody>
@@ -603,8 +639,8 @@ export default function StatsPage() {
                           ))}
                           <tr className="bg-gray-50 font-bold">
                             <td colSpan={2} className="px-3 py-2 border text-right">Total Room Revenue:</td>
-                            <td className="px-3 py-2 border text-center">{roomStats?.totalNights || 0}</td>
-                            <td className="px-3 py-2 border text-center">{roomStats?.totalCount || 0}</td>
+                            <td className="px-3 py-2 border text-center">{totalNights}</td>
+                            <td className="px-3 py-2 border text-center">{totalRoomCheckouts}</td>
                             <td className="px-3 py-2 border text-right">रु{totalRoomRevenue.toFixed(2)}</td>
                           </tr>
                         </tbody>
@@ -743,6 +779,15 @@ export default function StatsPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-4">
+                                              <div className="flex justify-between items-center p-3 bg-teal-50 rounded">
+                                                <span className="font-medium">Hotel Balance</span>
+                                                <span className="text-lg font-bold text-teal-600">
+                                                  Initial: रु{financialOverview?.hotel?.initialAmount?.toLocaleString() ?? 0}<br />
+                                                  Earnings: रु{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}<br />
+                                                  Expenditures: रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}<br />
+                                                  <span className="font-semibold">Current Balance: रु{((Number(financialOverview?.hotel?.initialAmount) || 0) + (Number(financialOverview?.summary?.totalGainedMoney) || 0) - (Number(financialOverview?.summary?.totalExpenditures) || 0)).toLocaleString()}</span>
+                                                </span>
+                                              </div>
                           
                             <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                               <span className="font-medium">Total Sales without Vat</span>
@@ -872,7 +917,10 @@ export default function StatsPage() {
                             <div className={`text-2xl font-bold ${dailySummary.financial?.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               रु{dailySummary.financial?.netProfit?.toLocaleString() ?? 0}
                             </div>
-                            <div className="text-sm text-gray-600">Margin: {dailySummary.financial?.profitMargin?.toFixed(1) ?? 0}%</div>
+                            <div className="text-sm text-gray-600">Margin: {isNaN(Number(dailySummary.financial?.profitMargin))
+                              ? (dailySummary.financial?.profitMargin ?? '0%')
+                              : (Number(dailySummary.financial?.profitMargin).toFixed(1) + '%')}
+                            </div>
                           </CardContent>
                         </Card>
                         <Card>
@@ -891,8 +939,18 @@ export default function StatsPage() {
                             <CardTitle className="text-sm">Hotel Balance</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="text-2xl font-bold text-teal-600">रु{dailySummary.hotel?.currentBalance?.toLocaleString() ?? 0}</div>
-                            <div className="text-sm text-gray-600">Last updated: {dailySummary.hotel?.lastBalanceUpdate ? format(new Date(dailySummary.hotel.lastBalanceUpdate), "MMM dd, yyyy") : 'N/A'}</div>
+                            <div className="text-2xl font-bold text-teal-600">रु{dailySummary.hotelBalance?.currentBalance?.toLocaleString() ?? 0}</div>
+                            <div className="text-sm text-gray-600">Initial Amount: रु{dailySummary.hotelBalance?.initialAmount?.toLocaleString() ?? 0}</div>
+                            <div className="text-sm text-gray-600">Last updated: {dailySummary.hotelBalance?.lastBalanceUpdate ? format(new Date(dailySummary.hotelBalance.lastBalanceUpdate), "MMM dd, yyyy") : 'N/A'}</div>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardHeader>
+                            <CardTitle className="text-sm">Expenditures (Approved)</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="text-2xl font-bold text-red-600">रु{dailySummary.expenditures?.total?.toLocaleString() ?? 0}</div>
+                            <div className="text-sm text-gray-600">Count: {dailySummary.expenditures?.count ?? 0}</div>
                           </CardContent>
                         </Card>
                       </div>

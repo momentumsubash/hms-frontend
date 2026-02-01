@@ -30,6 +30,8 @@ export interface ContactInfo {
   phone: string;
   email: string;
   address: string;
+  reception?: string;
+  website?: string;
 }
 
 export interface WebsiteContent {

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Save, Image as ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Save, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { IconSelector } from "@/components/ui/icon-selector";
 import { Hotel } from "@/types/hotel";
 import { WebsiteContent, SEOData, RoomItem, TestimonialItem, AmenityDetailed } from "@/types/website";
@@ -17,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ImageSelector } from "@/components/ui/image-selector";
 import { ImageSelectWithPreview } from "@/components/ui/image-select-with-preview";
 import { GalleryModal } from "@/components/ui/gallery-modal";
+import { isValidImageUrl, normalizeImageUrl } from "@/lib/imageLoader";
 import styles from "@/styles/websiteContent.module.css";
 
 interface LocalAmenity {
@@ -102,6 +103,9 @@ const ICON_MAPPING: Record<string, string> = {
 
   const ensureWebsiteDefaults = (website?: Partial<WebsiteContent>): WebsiteContent => {
     const currentDate = new Date().toISOString();
+    
+    console.log('🔧 ensureWebsiteDefaults called with:', website);
+    console.log('📞 Input contactInfo:', website?.contactInfo);
 
     const processedAmenities: { name: string; icon: string }[] = (() => {
       try {
@@ -135,41 +139,46 @@ const ICON_MAPPING: Record<string, string> = {
         console.error('Error processing amenities:', error);
         return [...DEFAULT_AMENITIES];
       }
-    })();  const websiteDefaults: WebsiteContent = {
-    heroTitle: website?.heroTitle || "",
-    heroSubtitle: website?.heroSubtitle || "",
-    heroImage: website?.heroImage || "",
-    aboutDescription: website?.aboutDescription || "",
-    amenitiesDescription: website?.amenitiesDescription || "",
-    experiencesDescription: website?.experiencesDescription || "",
-    testimonialsDescription: website?.testimonialsDescription || "",
-    footerDescription: website?.footerDescription || "",
-    rooms: Array.isArray(website?.rooms) 
-      ? website.rooms.map(room => ({
-          ...room,
-          image: room.image || ""
-        })) 
-      : [],
-    amenities: processedAmenities,
-    testimonials: Array.isArray(website?.testimonials) 
-      ? website.testimonials.map(t => ({
-          name: t.name || "",
-          comment: t.comment || "",
-          date: t.date || currentDate,
-          rating: t.rating || 5,
-          image: t.image || "",
-          isActive: t.isActive ?? true
-        })) as TestimonialItem[] 
-      : [],
-    contactInfo: {
-      phone: website?.contactInfo?.phone || "",
-      email: website?.contactInfo?.email || "",
-      address: website?.contactInfo?.address || ""
-    }
+    })();  
+    
+    const websiteDefaults: WebsiteContent = {
+      heroTitle: website?.heroTitle || "",
+      heroSubtitle: website?.heroSubtitle || "",
+      heroImage: website?.heroImage || "",
+      aboutDescription: website?.aboutDescription || "",
+      amenitiesDescription: website?.amenitiesDescription || "",
+      experiencesDescription: website?.experiencesDescription || "",
+      testimonialsDescription: website?.testimonialsDescription || "",
+      footerDescription: website?.footerDescription || "",
+      rooms: Array.isArray(website?.rooms) 
+        ? website.rooms.map(room => ({
+            ...room,
+            image: room.image || ""
+          })) 
+        : [],
+      amenities: processedAmenities,
+      testimonials: Array.isArray(website?.testimonials) 
+        ? website.testimonials.map(t => ({
+            name: t.name || "",
+            comment: t.comment || "",
+            date: t.date || currentDate,
+            rating: t.rating || 5,
+            image: t.image || "",
+            isActive: t.isActive ?? true
+          })) as TestimonialItem[] 
+        : [],
+      contactInfo: {
+        phone: website?.contactInfo?.phone || "",
+        email: website?.contactInfo?.email || "",
+        address: website?.contactInfo?.address || "",
+        reception: website?.contactInfo?.reception || "",
+        website: website?.contactInfo?.website || ""
+      }
+    };
+    
+    console.log('✅ ensureWebsiteDefaults output contactInfo:', websiteDefaults.contactInfo);
+    return websiteDefaults;
   };
-
-  return websiteDefaults;
-};
 
 const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, onSave }) => {
   // Importing required components at the top
@@ -211,7 +220,7 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
         rooms: [],
         amenities: [...DEFAULT_AMENITIES],
         testimonials: [],
-        contactInfo: { phone: '', email: '', address: '' }
+        contactInfo: { phone: '', email: '', address: '', reception: '', website: '' }
       };
       console.log('Using fallback state:', fallbackState);
       return fallbackState;
@@ -224,10 +233,12 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
     index?: number;
   } | null>(null);
   const [currentAmenityIndex, setCurrentAmenityIndex] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
   const [seo, setSeo] = useState<SEOData>(() => ({
-    title: hotel?.seo?.title || "",
-    description: hotel?.seo?.description || "",
+    // Support both frontend naming (title, description) and backend naming (metaTitle, metaDescription)
+    title: hotel?.seo?.title || hotel?.seo?.metaTitle || "",
+    description: hotel?.seo?.description || hotel?.seo?.metaDescription || "",
     keywords: Array.isArray(hotel?.seo?.keywords) ? hotel.seo.keywords : []
   }));
 
@@ -326,10 +337,18 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
 
   useEffect(() => {
     try {
-      console.log('useEffect triggered with hotel:', hotel);
+      console.log('🔄 useEffect triggered - hotel changed:', hotel?._id);
       
       if (hotel) {
+        console.log('🏨 Full hotel object:', hotel);
+        console.log('📋 Hotel website data:', hotel.website);
+        console.log('📞 Hotel contactInfo:', hotel.website?.contactInfo);
+        console.log('🔍 Hotel SEO data:', hotel.seo);
+        
         const content = ensureWebsiteDefaults(hotel.website);
+        console.log('✅ Ensured website defaults:', content);
+        console.log('📞 ContactInfo from ensureWebsiteDefaults:', content.contactInfo);
+        
         const safeContent = {
           ...content,
           amenities: ensureArray(content.amenities, DEFAULT_AMENITIES),
@@ -338,25 +357,31 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
           contactInfo: content.contactInfo || { phone: '', email: '', address: '' }
         };
         
-        console.log('Setting websiteContent from hotel:', safeContent);
+        console.log('✅ Safe content before setState:', safeContent);
+        console.log('📞 Safe content.contactInfo:', safeContent.contactInfo);
         setWebsiteContent(safeContent);
         
-        setSeo(hotel.seo || {
-          title: "",
-          description: "",
-          keywords: []
-        });
+        // Support both frontend naming (title, description) and backend naming (metaTitle, metaDescription)
+        const seoData = {
+          title: hotel?.seo?.title || hotel?.seo?.metaTitle || "",
+          description: hotel?.seo?.description || hotel?.seo?.metaDescription || "",
+          keywords: Array.isArray(hotel?.seo?.keywords) ? hotel.seo.keywords : []
+        };
+        
+        console.log('✅ Setting SEO data:', seoData);
+        setSeo(seoData);
       } else {
+        console.log('⚠️ No hotel provided, setting defaults');
         const content = ensureWebsiteDefaults();
         const safeContent = {
           ...content,
           amenities: [...DEFAULT_AMENITIES],
           rooms: [],
           testimonials: [],
-          contactInfo: { phone: '', email: '', address: '' }
+          contactInfo: { phone: '', email: '', address: '', reception: '', website: '' }
         };
         
-        console.log('Setting default websiteContent:', safeContent);
+        console.log('✅ Setting default websiteContent:', safeContent);
         setWebsiteContent(safeContent);
         
         setSeo({
@@ -366,45 +391,66 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
         });
       }
     } catch (error) {
-      console.error('Error in useEffect:', error);
+      console.error('❌ Error in useEffect:', error);
     }
   }, [hotel]);
 
-  const handleSave = () => {
-    console.log('Saving website content...');
-    console.log('Current amenities before processing:', websiteContent.amenities);
-    
-    // Send amenities as objects with both name and icon, and filter out empty names
-    const processedAmenities = ensureArray(websiteContent.amenities, DEFAULT_AMENITIES)
-      .map(a => ({
-        name: (a.name || '').trim(),
-        icon: a.icon || 'Star'
-      }))
-      .filter(a => a.name !== ''); // Remove amenities with empty names
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      console.log('🚀 Starting save process...');
+      console.log('Saving website content...');
+      console.log('Current amenities before processing:', websiteContent.amenities);
+      
+      // Send amenities as objects with both name and icon, and filter out empty names
+      const processedAmenities = ensureArray(websiteContent.amenities, DEFAULT_AMENITIES)
+        .map(a => ({
+          name: (a.name || '').trim(),
+          icon: a.icon || 'Star'
+        }))
+        .filter(a => a.name !== ''); // Remove amenities with empty names
 
-    console.log('Processed amenities:', processedAmenities);
+      console.log('Processed amenities:', processedAmenities);
 
-    // Ensure we have at least one amenity to avoid validation errors
-    const finalAmenities = processedAmenities.length > 0
-      ? processedAmenities
-      : [{ name: "WiFi", icon: "Wifi" }];
+      // Ensure we have at least one amenity to avoid validation errors
+      const finalAmenities = processedAmenities.length > 0
+        ? processedAmenities
+        : [{ name: "WiFi", icon: "Wifi" }];
 
-    console.log('Final amenities to save:', finalAmenities);
+      console.log('Final amenities to save:', finalAmenities);
 
-    const backendWebsite = {
-      ...websiteContent,
-      amenities: finalAmenities
-    } as unknown as WebsiteContent;
-    
-    console.log('Full website content to save:', backendWebsite);
-    onSave({ website: backendWebsite, seo });
+      const backendWebsite = {
+        ...websiteContent,
+        amenities: finalAmenities
+      } as unknown as WebsiteContent;
+      
+      console.log('Full website content to save:', backendWebsite);
+      console.log('Contact info to save:', backendWebsite.contactInfo);
+      console.log('Rooms to save:', backendWebsite.rooms);
+      console.log('Rooms count:', backendWebsite.rooms?.length || 0);
+      console.log('SEO data to save:', seo);
+      
+      // Call the onSave callback
+      await onSave({ website: backendWebsite, seo });
+      console.log('✅ Save completed successfully');
+    } catch (error) {
+      console.error('❌ Error during save:', error);
+      throw error;
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const updateField = <T extends keyof WebsiteContent>(field: T, value: WebsiteContent[T]) => {
-    setWebsiteContent((prev: WebsiteContent) => ({
-      ...prev,
-      [field]: value
-    }));
+    console.log(`Updating field ${String(field)}:`, value);
+    setWebsiteContent((prev: WebsiteContent) => {
+      const updated = {
+        ...prev,
+        [field]: value
+      };
+      console.log(`Field ${String(field)} updated. New state:`, updated);
+      return updated;
+    });
   };
 
   // Ensure amenities are always initialized
@@ -416,17 +462,22 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
   }, []);
 
   const updateSeoField = <T extends keyof SEOData>(field: T, value: SEOData[T]) => {
-    setSeo((prev: SEOData) => ({
-      ...prev,
-      [field]: value
-    }));
+    console.log(`Updating SEO field ${String(field)}:`, value);
+    setSeo((prev: SEOData) => {
+      const updated = {
+        ...prev,
+        [field]: value
+      };
+      console.log(`SEO field ${String(field)} updated. New SEO state:`, updated);
+      return updated;
+    });
   };
 
   const addRoom = () => {
     setWebsiteContent((prev: WebsiteContent) => ({
       ...prev,
       rooms: [
-        ...prev.rooms,
+        ...ensureArray(prev.rooms, []),
         {
           title: "New Room",
           description: "",
@@ -442,7 +493,7 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
   const updateRoom = <T extends keyof RoomItem>(index: number, field: T, value: RoomItem[T]) => {
     setWebsiteContent((prev: WebsiteContent) => ({
       ...prev,
-      rooms: prev.rooms.map((room, i) => 
+      rooms: ensureArray(prev.rooms, []).map((room, i) => 
         i === index ? { ...room, [field]: value } : room
       )
     }));
@@ -451,14 +502,14 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
   const removeRoom = (index: number) => {
     setWebsiteContent(prev => ({
       ...prev,
-      rooms: prev.rooms.filter((_, i) => i !== index)
+      rooms: ensureArray(prev.rooms, []).filter((_, i) => i !== index)
     }));
   };
 
   const toggleRoom = (index: number) => {
     setWebsiteContent(prev => ({
       ...prev,
-      rooms: prev.rooms.map((room, i) => 
+      rooms: ensureArray(prev.rooms, []).map((room, i) => 
         i === index ? { ...room, isActive: !room.isActive } : room
       )
     }));
@@ -525,15 +576,32 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
     }));
   };
 
-  const availableImages = Array.from(new Set([...(hotel?.images || []), ...(hotel?.gallery || [])])).filter(Boolean);
+  const availableImages = Array.from(new Set([...(hotel?.images || []), ...(hotel?.gallery || [])]))
+    .filter(img => img && typeof img === 'string' && img.trim() !== '')
+    .map(img => normalizeImageUrl(img))
+    .filter((img): img is string => img !== null)
+    .filter(img => isValidImageUrl(img));
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Website Content Management</h2>
-        <Button onClick={handleSave} className="flex items-center gap-2">
-          <Save size={16} />
-          Save Changes
+        <Button 
+          onClick={handleSave} 
+          disabled={isSaving}
+          className="flex items-center gap-2"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 size={16} className="animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save size={16} />
+              Save Changes
+            </>
+          )}
         </Button>
       </div>
 
@@ -896,11 +964,14 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
               <div>
                 <Label>Phone</Label>
                 <Input
-                 value={websiteContent.contactInfo?.phone || ""}
-                  onChange={(e) => updateField('contactInfo', {
-                    ...websiteContent.contactInfo,
-                    phone: e.target.value
-                  })}
+                  value={websiteContent.contactInfo?.phone || ""}
+                  onChange={(e) => {
+                    console.log('Phone value changed:', e.target.value);
+                    updateField('contactInfo', {
+                      ...(websiteContent.contactInfo || { phone: '', email: '', address: '' }),
+                      phone: e.target.value
+                    });
+                  }}
                   placeholder="Phone number"
                 />
               </div>
@@ -909,21 +980,55 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
                 <Input
                   type="email"
                   value={websiteContent.contactInfo?.email || ""}
-                  onChange={(e) => updateField('contactInfo', {
-                    ...(websiteContent.contactInfo || { phone: '', email: '', address: '' }),
-                    email: e.target.value
-                  })}
+                  onChange={(e) => {
+                    console.log('Email value changed:', e.target.value);
+                    updateField('contactInfo', {
+                      ...(websiteContent.contactInfo || { phone: '', email: '', address: '' }),
+                      email: e.target.value
+                    });
+                  }}
                   placeholder="Email address"
+                />
+              </div>
+              <div>
+                <Label>Reception Phone</Label>
+                <Input
+                  value={websiteContent.contactInfo?.reception || ""}
+                  onChange={(e) => {
+                    console.log('Reception value changed:', e.target.value);
+                    updateField('contactInfo', {
+                      ...(websiteContent.contactInfo || { phone: '', email: '', address: '' }),
+                      reception: e.target.value
+                    });
+                  }}
+                  placeholder="Reception phone number"
+                />
+              </div>
+              <div>
+                <Label>Website URL</Label>
+                <Input
+                  value={websiteContent.contactInfo?.website || ""}
+                  onChange={(e) => {
+                    console.log('Website value changed:', e.target.value);
+                    updateField('contactInfo', {
+                      ...(websiteContent.contactInfo || { phone: '', email: '', address: '' }),
+                      website: e.target.value
+                    });
+                  }}
+                  placeholder="https://www.example.com"
                 />
               </div>
               <div>
                 <Label>Address</Label>
                 <Textarea
                   value={websiteContent.contactInfo?.address || ""}
-                  onChange={(e) => updateField('contactInfo', {
-                    ...(websiteContent.contactInfo || { phone: '', email: '', address: '' }),
-                    address: e.target.value
-                  })}
+                  onChange={(e) => {
+                    console.log('Address value changed:', e.target.value);
+                    updateField('contactInfo', {
+                      ...(websiteContent.contactInfo || { phone: '', email: '', address: '' }),
+                      address: e.target.value
+                    });
+                  }}
                   placeholder="Full address"
                 />
               </div>

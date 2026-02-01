@@ -1372,14 +1372,15 @@ setNewHotel({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-1">Contact Information</label>
+                      <label className="block text-sm font-medium mb-1">Contact Information (Synced with Website Management)</label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input
                           type="text"
                           value={selectedHotel.contact?.phone || ""}
                           onChange={(e) => setSelectedHotel({
                             ...selectedHotel, 
-                            contact: { ...selectedHotel.contact, phone: e.target.value }
+                            contact: { ...selectedHotel.contact, phone: e.target.value },
+                            website: { ...selectedHotel.website, contactInfo: { ...selectedHotel.website?.contactInfo, phone: e.target.value } }
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2"
                           placeholder="Phone"
@@ -1389,7 +1390,8 @@ setNewHotel({
                           value={selectedHotel.contact?.reception || ""}
                           onChange={(e) => setSelectedHotel({
                             ...selectedHotel, 
-                            contact: { ...selectedHotel.contact, reception: e.target.value }
+                            contact: { ...selectedHotel.contact, reception: e.target.value },
+                            website: { ...selectedHotel.website, contactInfo: { ...selectedHotel.website?.contactInfo, reception: e.target.value } }
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2"
                           placeholder="Reception"
@@ -1399,7 +1401,8 @@ setNewHotel({
                           value={selectedHotel.contact?.email || ""}
                           onChange={(e) => setSelectedHotel({
                             ...selectedHotel, 
-                            contact: { ...selectedHotel.contact, email: e.target.value }
+                            contact: { ...selectedHotel.contact, email: e.target.value },
+                            website: { ...selectedHotel.website, contactInfo: { ...selectedHotel.website?.contactInfo, email: e.target.value } }
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2"
                           placeholder="Email"
@@ -1409,10 +1412,22 @@ setNewHotel({
                           value={selectedHotel.contact?.website || ""}
                           onChange={(e) => setSelectedHotel({
                             ...selectedHotel, 
-                            contact: { ...selectedHotel.contact, website: e.target.value }
+                            contact: { ...selectedHotel.contact, website: e.target.value },
+                            website: { ...selectedHotel.website, contactInfo: { ...selectedHotel.website?.contactInfo, website: e.target.value } }
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2"
                           placeholder="Website URL"
+                        />
+                        <textarea
+                          value={selectedHotel.website?.contactInfo?.address || ""}
+                          onChange={(e) => setSelectedHotel({
+                            ...selectedHotel, 
+                            website: { ...selectedHotel.website, contactInfo: { ...selectedHotel.website?.contactInfo, address: e.target.value } },
+                            // Note: address at root level is street/area/city/zip, website.contactInfo.address is full address
+                          })}
+                          className="w-full border border-gray-300 rounded px-3 py-2 col-span-1 md:col-span-2"
+                          placeholder="Full Address"
+                          rows={2}
                         />
                       </div>
                     </div>
@@ -2106,10 +2121,13 @@ setNewHotel({
             </DialogHeader>
             {selectedHotel && (
               <WebsiteContentManager
+                key={selectedHotel._id}
                 hotel={selectedHotel as any}
                 onSave={async (content: { website: any; seo: any }) => {
                   try {
-                    await updateHotelWebsite(selectedHotel._id!, content);
+                    const updatedHotel = await updateHotelWebsite(selectedHotel._id!, content);
+                    // Update selected hotel immediately to show new data in modal
+                    setSelectedHotel(updatedHotel);
                     loadData();
                     toast.success("Website content updated successfully");
                   } catch (error: any) {

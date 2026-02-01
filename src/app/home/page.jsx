@@ -26,6 +26,7 @@ const getImageUrl = (primaryUrl, fallbackUrl, defaultImage = "/abstract-geometri
 export default function HotelLandingPage() {
   const [hotel, setHotel] = useState(null);
   const [websiteContent, setWebsiteContent] = useState(null);
+  const [seo, setSeo] = useState(null);
   
   const ensureWebsiteDefaults = (website) => {
     const w = website || {};
@@ -62,6 +63,50 @@ export default function HotelLandingPage() {
           const hotelData = data.data;
           setHotel(hotelData);
           setWebsiteContent(ensureWebsiteDefaults(hotelData.website));
+          
+          // Store SEO data - support both naming conventions (title/description or metaTitle/metaDescription)
+          setSeo({
+            title: hotelData.seo?.title || hotelData.seo?.metaTitle || hotelData.name || "",
+            description: hotelData.seo?.description || hotelData.seo?.metaDescription || hotelData.description || "",
+            keywords: hotelData.seo?.keywords || [],
+            ogImage: hotelData.seo?.ogImage || hotelData.images?.[0] || ""
+          });
+          
+          // Update page title and meta tags dynamically
+          if (typeof window !== 'undefined' && document) {
+            document.title = hotelData.seo?.title || hotelData.seo?.metaTitle || hotelData.name || "Hotel";
+            
+            // Update or create meta description
+            let metaDescription = document.querySelector('meta[name="description"]');
+            if (!metaDescription) {
+              metaDescription = document.createElement('meta');
+              metaDescription.name = 'description';
+              document.head.appendChild(metaDescription);
+            }
+            metaDescription.content = hotelData.seo?.description || hotelData.seo?.metaDescription || hotelData.description || "";
+            
+            // Update keywords if available
+            if (hotelData.seo?.keywords?.length > 0) {
+              let metaKeywords = document.querySelector('meta[name="keywords"]');
+              if (!metaKeywords) {
+                metaKeywords = document.createElement('meta');
+                metaKeywords.name = 'keywords';
+                document.head.appendChild(metaKeywords);
+              }
+              metaKeywords.content = hotelData.seo.keywords.join(', ');
+            }
+            
+            // Update OG image if available
+            if (hotelData.seo?.ogImage) {
+              let ogImage = document.querySelector('meta[property="og:image"]');
+              if (!ogImage) {
+                ogImage = document.createElement('meta');
+                ogImage.setAttribute('property', 'og:image');
+                document.head.appendChild(ogImage);
+              }
+              ogImage.content = hotelData.seo.ogImage;
+            }
+          }
         } else {
           setHotel(null);
           setWebsiteContent(null);
@@ -280,22 +325,50 @@ export default function HotelLandingPage() {
             <div>
               <h3 className="text-2xl font-bold mb-4">{hotel?.name}</h3>
               <p className="text-background/80 mb-4">{websiteContent.footerDescription || 'Experience authentic Nepali hospitality in the heart of the Himalayas. Your gateway to adventure and tranquility.'}</p>
-              <div className="flex items-center gap-2 text-background/80 mb-2">
-                <MapPin className="w-4 h-4" />
-                <span>{websiteContent.contactInfo?.address || hotel?.address?.street || ''}</span>
-              </div>
-              <div className="flex items-center gap-2 text-background/80 mb-2">
-                <Phone className="w-4 h-4" />
-                <span>{websiteContent.contactInfo?.phone || hotel?.contact?.phone || ''}</span>
-              </div>
-              <div className="flex items-center gap-2 text-background/80 mb-2">
-                <Phone className="w-4 h-4" />
-                <span>{websiteContent.contactInfo?.reception || hotel?.contact?.reception || ''}</span>
-              </div>
-              <div className="flex items-center gap-2 text-background/80">
-                <Mail className="w-4 h-4" />
-                <span>{hotel?.contact?.email || ''}</span>
-              </div>
+              {websiteContent.contactInfo?.address && (
+                <div className="flex items-start gap-2 text-background/80 mb-2">
+                  <MapPin className="w-4 h-4 mt-1 flex-shrink-0" />
+                  <span>{websiteContent.contactInfo.address}</span>
+                </div>
+              )}
+              {websiteContent.contactInfo?.phone && (
+                <div className="flex items-center gap-2 text-background/80 mb-2">
+                  <Phone className="w-4 h-4" />
+                  <a href={`tel:${websiteContent.contactInfo.phone}`} className="hover:text-background transition-colors">
+                    {websiteContent.contactInfo.phone}
+                  </a>
+                </div>
+              )}
+              {websiteContent.contactInfo?.email && (
+                <div className="flex items-center gap-2 text-background/80 mb-2">
+                  <Mail className="w-4 h-4" />
+                  <a href={`mailto:${websiteContent.contactInfo.email}`} className="hover:text-background transition-colors">
+                    {websiteContent.contactInfo.email}
+                  </a>
+                </div>
+              )}
+              {hotel?.contact?.phone && !websiteContent.contactInfo?.phone && (
+                <div className="flex items-center gap-2 text-background/80 mb-2">
+                  <Phone className="w-4 h-4" />
+                  <a href={`tel:${hotel.contact.phone}`} className="hover:text-background transition-colors">
+                    {hotel.contact.phone}
+                  </a>
+                </div>
+              )}
+              {hotel?.contact?.reception && (
+                <div className="flex items-center gap-2 text-background/80 mb-2">
+                  <Phone className="w-4 h-4" />
+                  <span>{hotel.contact.reception}</span>
+                </div>
+              )}
+              {hotel?.contact?.email && !websiteContent.contactInfo?.email && (
+                <div className="flex items-center gap-2 text-background/80">
+                  <Mail className="w-4 h-4" />
+                  <a href={`mailto:${hotel.contact.email}`} className="hover:text-background transition-colors">
+                    {hotel.contact.email}
+                  </a>
+                </div>
+              )}
             </div>
             <div>
               <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
@@ -320,6 +393,12 @@ export default function HotelLandingPage() {
           </div>
           <div className="border-t border-background/20 pt-8 text-center text-background/60">
             <p>&copy; {new Date().getFullYear()} {hotel?.name}. All rights reserved.</p>
+            {seo && (
+              <div className="mt-4 text-xs text-background/40">
+                <p>SEO: {seo.title}</p>
+                {seo.keywords?.length > 0 && <p>Keywords: {seo.keywords.slice(0, 3).join(', ')}</p>}
+              </div>
+            )}
           </div>
         </div>
       </footer>

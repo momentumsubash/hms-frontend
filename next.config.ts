@@ -2,27 +2,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    // Use remotePatterns for better flexibility
+    // Allow all remote patterns to avoid strict validation errors
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '*.public.blob.vercel-storage.com',
-        pathname: '/**',
-      },
-      // Add other image hosting services you might use
-      {
-        protocol: 'https',
-        hostname: '*.amazonaws.com',
+        hostname: '**',
         pathname: '/**',
       },
       {
-        protocol: 'https',
-        hostname: '*.googleapis.com',
+        protocol: 'http',
+        hostname: '**',
         pathname: '/**',
       },
     ],
   },
-  // ... other config options
 };
 
 module.exports = nextConfig;

@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ImageIcon, X } from 'lucide-react';
+import { getSafeImageUrl, isValidImageUrl, normalizeImageUrl } from '@/lib/imageLoader';
+import { SafeImage } from '@/components/ui/safe-image';
 
 interface ImageSelectWithPreviewProps {
   value: string;
@@ -31,21 +33,25 @@ export const ImageSelectWithPreview: React.FC<ImageSelectWithPreviewProps> = ({
     onValueChange("");
   };
 
+  // Filter available images to only valid URLs and non-empty strings
+  // Also normalize URLs by adding leading / if needed
+  const validImages = availableImages
+    .filter(img => img && typeof img === 'string' && img.trim() !== '')
+    .map(img => normalizeImageUrl(img))
+    .filter((img): img is string => img !== null)
+    .filter(img => isValidImageUrl(img));
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        {value ? (
+        {value && isValidImageUrl(normalizeImageUrl(value) || value) ? (
           <>
             <div className="relative w-16 h-16 rounded-md overflow-hidden border">
-              <Image
+              <SafeImage
                 src={value}
                 alt="Selected image"
                 fill
                 className="object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
               />
               <button
                 onClick={clearSelection}
@@ -81,7 +87,7 @@ export const ImageSelectWithPreview: React.FC<ImageSelectWithPreviewProps> = ({
           </DialogHeader>
           <ScrollArea className="h-96">
             <div className="grid grid-cols-3 gap-4 p-4">
-              {availableImages.map((imageUrl, index) => (
+              {validImages.map((imageUrl, index) => (
                 <div
                   key={index}
                   className={`cursor-pointer border-2 rounded-lg overflow-hidden transition-all ${
@@ -90,15 +96,11 @@ export const ImageSelectWithPreview: React.FC<ImageSelectWithPreviewProps> = ({
                   onClick={() => handleSelectImage(imageUrl)}
                 >
                   <div className="relative aspect-video">
-                    <Image
+                    <SafeImage
                       src={imageUrl}
                       alt={`Image ${index + 1}`}
                       fill
                       className="object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                      }}
                     />
                   </div>
                   <div className="p-2 text-xs truncate">

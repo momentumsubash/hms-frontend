@@ -2,6 +2,8 @@ import React from 'react';
 import Image from 'next/image';
 import { ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { isValidImageUrl } from '@/lib/imageLoader';
+import { SafeImage } from '@/components/ui/safe-image';
 import styles from '@/styles/websiteContent.module.css';
 
 interface ImageSelectorProps {
@@ -23,9 +25,9 @@ export const ImageSelector: React.FC<ImageSelectorProps> = ({
       style={{ aspectRatio: aspectRatio === 'square' ? '1' : '16/9' }}
       onClick={onSelectImage}
     >
-      {currentImage ? (
+      {currentImage && isValidImageUrl(normalizeImageUrl(currentImage) || currentImage) ? (
         <>
-          <Image
+          <SafeImage
             src={currentImage}
             alt="Selected image"
             fill

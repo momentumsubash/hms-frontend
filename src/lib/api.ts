@@ -30,6 +30,9 @@ export async function createUser(user: any) {
 // lib/api.ts
 export const updateHotelWebsite = async (hotelId: string, content: { website: WebsiteContent; seo: SEOData }) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  console.log('📤 Sending to API - Content:', content);
+  console.log('📞 Sending contactInfo:', content.website.contactInfo);
+  
   const response = await fetch(`${API_URL}/hotels/${hotelId}/website`, {
     method: 'PUT',
     headers: {
@@ -43,7 +46,12 @@ export const updateHotelWebsite = async (hotelId: string, content: { website: We
     throw new Error('Failed to update website content');
   }
   
-  return response.json();
+  const result = await response.json();
+  console.log('📥 API Response:', result);
+  console.log('📞 Response contactInfo:', result.data?.website?.contactInfo);
+  
+  // Return the updated hotel data from the response
+  return result.data || result;
 };
 // Delete a user
 export async function deleteUser(id: string) {

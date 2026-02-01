@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { SafeImage } from '@/components/ui/safe-image';
+import { isValidImageUrl, normalizeImageUrl } from '@/lib/imageLoader';
 
 interface GalleryModalProps {
   isOpen: boolean;
@@ -19,6 +21,13 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
   images,
   title = "Select Image"
 }) => {
+  // Filter to only valid URLs and normalize them
+  const validImages = images
+    .filter(img => img && typeof img === 'string' && img.trim() !== '')
+    .map(img => normalizeImageUrl(img))
+    .filter((img): img is string => img !== null)
+    .filter(img => isValidImageUrl(img));
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl h-[80vh] flex flex-col">
@@ -27,7 +36,7 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
         </DialogHeader>
         <ScrollArea className="flex-1 p-4">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {images.map((image, index) => (
+            {validImages.map((image, index) => (
               <div 
                 key={index} 
                 className="relative aspect-square cursor-pointer hover:opacity-80 transition-opacity"
@@ -36,7 +45,7 @@ export const GalleryModal: React.FC<GalleryModalProps> = ({
                   onClose();
                 }}
               >
-                <Image
+                <SafeImage
                   src={image}
                   alt={`Gallery image ${index + 1}`}
                   fill
