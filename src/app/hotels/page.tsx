@@ -1380,7 +1380,29 @@ setNewHotel({
                           onChange={(e) => setSelectedHotel({
                             ...selectedHotel, 
                             contact: { ...selectedHotel.contact, phone: e.target.value },
-                            website: { ...selectedHotel.website, contactInfo: { ...selectedHotel.website?.contactInfo, phone: e.target.value } }
+                            website: { 
+                              ...(selectedHotel.website || {
+                                heroTitle: "",
+                                heroSubtitle: "",
+                                heroImage: "",
+                                aboutDescription: "",
+                                amenitiesDescription: "",
+                                experiencesDescription: "",
+                                testimonialsDescription: "",
+                                footerDescription: "",
+                                rooms: [],
+                                amenities: [],
+                                testimonials: [],
+                                contactInfo: { phone: "", email: "", address: "" }
+                              }),
+                              contactInfo: { 
+                                phone: e.target.value, 
+                                email: selectedHotel.website?.contactInfo?.email || "", 
+                                address: selectedHotel.website?.contactInfo?.address || "", 
+                                reception: selectedHotel.website?.contactInfo?.reception, 
+                                website: selectedHotel.website?.contactInfo?.website 
+                              } 
+                            }
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2"
                           placeholder="Phone"
@@ -1391,7 +1413,29 @@ setNewHotel({
                           onChange={(e) => setSelectedHotel({
                             ...selectedHotel, 
                             contact: { ...selectedHotel.contact, reception: e.target.value },
-                            website: { ...selectedHotel.website, contactInfo: { ...selectedHotel.website?.contactInfo, reception: e.target.value } }
+                            website: { 
+                              ...(selectedHotel.website || {
+                                heroTitle: "",
+                                heroSubtitle: "",
+                                heroImage: "",
+                                aboutDescription: "",
+                                amenitiesDescription: "",
+                                experiencesDescription: "",
+                                testimonialsDescription: "",
+                                footerDescription: "",
+                                rooms: [],
+                                amenities: [],
+                                testimonials: [],
+                                contactInfo: { phone: "", email: "", address: "" }
+                              }),
+                              contactInfo: { 
+                                phone: selectedHotel.website?.contactInfo?.phone || "", 
+                                email: selectedHotel.website?.contactInfo?.email || "", 
+                                address: selectedHotel.website?.contactInfo?.address || "", 
+                                reception: e.target.value, 
+                                website: selectedHotel.website?.contactInfo?.website 
+                              } 
+                            }
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2"
                           placeholder="Reception"
@@ -1402,7 +1446,29 @@ setNewHotel({
                           onChange={(e) => setSelectedHotel({
                             ...selectedHotel, 
                             contact: { ...selectedHotel.contact, email: e.target.value },
-                            website: { ...selectedHotel.website, contactInfo: { ...selectedHotel.website?.contactInfo, email: e.target.value } }
+                            website: { 
+                              ...(selectedHotel.website || {
+                                heroTitle: "",
+                                heroSubtitle: "",
+                                heroImage: "",
+                                aboutDescription: "",
+                                amenitiesDescription: "",
+                                experiencesDescription: "",
+                                testimonialsDescription: "",
+                                footerDescription: "",
+                                rooms: [],
+                                amenities: [],
+                                testimonials: [],
+                                contactInfo: { phone: "", email: "", address: "" }
+                              }),
+                              contactInfo: { 
+                                phone: selectedHotel.website?.contactInfo?.phone || "", 
+                                email: e.target.value, 
+                                address: selectedHotel.website?.contactInfo?.address || "", 
+                                reception: selectedHotel.website?.contactInfo?.reception, 
+                                website: selectedHotel.website?.contactInfo?.website 
+                              } 
+                            }
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2"
                           placeholder="Email"
@@ -1413,7 +1479,29 @@ setNewHotel({
                           onChange={(e) => setSelectedHotel({
                             ...selectedHotel, 
                             contact: { ...selectedHotel.contact, website: e.target.value },
-                            website: { ...selectedHotel.website, contactInfo: { ...selectedHotel.website?.contactInfo, website: e.target.value } }
+                            website: { 
+                              ...(selectedHotel.website || {
+                                heroTitle: "",
+                                heroSubtitle: "",
+                                heroImage: "",
+                                aboutDescription: "",
+                                amenitiesDescription: "",
+                                experiencesDescription: "",
+                                testimonialsDescription: "",
+                                footerDescription: "",
+                                rooms: [],
+                                amenities: [],
+                                testimonials: [],
+                                contactInfo: { phone: "", email: "", address: "" }
+                              }),
+                              contactInfo: { 
+                                phone: selectedHotel.website?.contactInfo?.phone || "", 
+                                email: selectedHotel.website?.contactInfo?.email || "", 
+                                address: selectedHotel.website?.contactInfo?.address || "", 
+                                reception: selectedHotel.website?.contactInfo?.reception, 
+                                website: e.target.value 
+                              } 
+                            }
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2"
                           placeholder="Website URL"
@@ -1422,7 +1510,29 @@ setNewHotel({
                           value={selectedHotel.website?.contactInfo?.address || ""}
                           onChange={(e) => setSelectedHotel({
                             ...selectedHotel, 
-                            website: { ...selectedHotel.website, contactInfo: { ...selectedHotel.website?.contactInfo, address: e.target.value } },
+                            website: { 
+                              ...(selectedHotel.website || {
+                                heroTitle: "",
+                                heroSubtitle: "",
+                                heroImage: "",
+                                aboutDescription: "",
+                                amenitiesDescription: "",
+                                experiencesDescription: "",
+                                testimonialsDescription: "",
+                                footerDescription: "",
+                                rooms: [],
+                                amenities: [],
+                                testimonials: [],
+                                contactInfo: { phone: "", email: "", address: "" }
+                              }),
+                              contactInfo: { 
+                                phone: selectedHotel.website?.contactInfo?.phone || "", 
+                                email: selectedHotel.website?.contactInfo?.email || "", 
+                                address: e.target.value, 
+                                reception: selectedHotel.website?.contactInfo?.reception, 
+                                website: selectedHotel.website?.contactInfo?.website 
+                              } 
+                            },
                             // Note: address at root level is street/area/city/zip, website.contactInfo.address is full address
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2 col-span-1 md:col-span-2"

@@ -2,7 +2,7 @@ import React from 'react';
 import Image from 'next/image';
 import { ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { isValidImageUrl } from '@/lib/imageLoader';
+import { isValidImageUrl, normalizeImageUrl } from '@/lib/imageLoader';
 import { SafeImage } from '@/components/ui/safe-image';
 import styles from '@/styles/websiteContent.module.css';
 

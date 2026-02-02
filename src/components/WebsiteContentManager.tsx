@@ -237,8 +237,8 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
   
   const [seo, setSeo] = useState<SEOData>(() => ({
     // Support both frontend naming (title, description) and backend naming (metaTitle, metaDescription)
-    title: hotel?.seo?.title || hotel?.seo?.metaTitle || "",
-    description: hotel?.seo?.description || hotel?.seo?.metaDescription || "",
+    title: hotel?.seo?.title || "",
+    description: hotel?.seo?.description || "",
     keywords: Array.isArray(hotel?.seo?.keywords) ? hotel.seo.keywords : []
   }));
 
@@ -261,7 +261,7 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
         return {
           ...prev,
           amenities: amenities.map((amenity, idx) =>
-            idx === currentAmenityIndex ? { ...amenity, icon: validIcon } : amenity
+            idx === currentAmenityIndex ? { ...(amenity as any), icon: validIcon } : amenity
           )
         };
       });
@@ -311,7 +311,7 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
           setWebsiteContent(prev => ({
             ...prev,
             rooms: prev.rooms.map((room, idx) =>
-              idx === currentImageField.index ? { ...room, image: imageUrl } : room
+              idx === currentImageField.index ? { ...(room as RoomItem), image: imageUrl } : room
             )
           }));
         }
@@ -321,7 +321,7 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
           setWebsiteContent(prev => ({
             ...prev,
             testimonials: prev.testimonials.map((testimonial, idx) =>
-              idx === currentImageField.index ? { ...testimonial, image: imageUrl } : testimonial
+              idx === currentImageField.index ? { ...(testimonial as TestimonialItem), image: imageUrl } : testimonial
             )
           }));
         }
@@ -363,8 +363,8 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
         
         // Support both frontend naming (title, description) and backend naming (metaTitle, metaDescription)
         const seoData = {
-          title: hotel?.seo?.title || hotel?.seo?.metaTitle || "",
-          description: hotel?.seo?.description || hotel?.seo?.metaDescription || "",
+          title: hotel?.seo?.title || "",
+          description: hotel?.seo?.description || "",
           keywords: Array.isArray(hotel?.seo?.keywords) ? hotel.seo.keywords : []
         };
         
@@ -494,7 +494,7 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
     setWebsiteContent((prev: WebsiteContent) => ({
       ...prev,
       rooms: ensureArray(prev.rooms, []).map((room, i) => 
-        i === index ? { ...room, [field]: value } : room
+        i === index ? { ...(room as RoomItem), [field]: value } : room
       )
     }));
   };
@@ -509,9 +509,10 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
   const toggleRoom = (index: number) => {
     setWebsiteContent(prev => ({
       ...prev,
-      rooms: ensureArray(prev.rooms, []).map((room, i) => 
-        i === index ? { ...room, isActive: !room.isActive } : room
-      )
+      rooms: ensureArray(prev.rooms, []).map((room, i) => {
+        const roomItem = room as RoomItem;
+        return i === index ? { ...roomItem, isActive: !roomItem.isActive } : roomItem;
+      })
     }));
   };
 
@@ -555,7 +556,7 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
     setWebsiteContent((prev: WebsiteContent) => ({
       ...prev,
       testimonials: prev.testimonials.map((testimonial, i) => 
-        i === index ? { ...testimonial, [field]: value } : testimonial
+        i === index ? { ...(testimonial as TestimonialItem), [field]: value } : testimonial
       )
     }));
   };
@@ -571,7 +572,7 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
     setWebsiteContent(prev => ({
       ...prev,
       testimonials: prev.testimonials.map((testimonial, i) => 
-        i === index ? { ...testimonial, isActive: !testimonial.isActive } : testimonial
+        i === index ? { ...(testimonial as TestimonialItem), isActive: !testimonial.isActive } : testimonial
       )
     }));
   };
@@ -814,7 +815,7 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
                           value={amenity.icon}
                           onValueChange={(icon) => {
                             const updatedAmenities = [...websiteContent.amenities];
-                            updatedAmenities[index] = { ...amenity, icon };
+                            updatedAmenities[index] = { ...(amenity as any), icon };
                             updateField('amenities', updatedAmenities);
                           }}
                         />
