@@ -508,8 +508,7 @@ const handleUpdateOrderItems = async () => {
                           <option value="">Select a room</option>
                           {occupiedRooms.map((room) => (
                             <option key={room._id} value={room.roomNumber}>
-                              Room {room.roomNumber} - {room.guestId?.firstName} {room.guestId?.lastName} 
-                              {room.hotelId?.name && ` (${room.hotelId.name})`}
+                              Room {room.roomNumber} - {room.guestName || 'Guest'} (Check-in: {new Date(room.checkInDate).toLocaleDateString()})
                             </option>
                           ))}
                         </select>
