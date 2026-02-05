@@ -1461,8 +1461,8 @@ export default function GuestsPage() {
                         className="w-full border border-gray-300 rounded px-3 py-2 h-32"
                         required
                       >
-                        {/* Show all rooms when editing, available rooms when creating */}
-                        {(editingGuest ? allRooms : availableRooms).map((room) => (
+                        {/* Show all rooms when editing, only available (unoccupied) rooms when creating */}
+                        {(editingGuest ? allRooms : availableRooms.filter(r => !r.isOccupied)).map((room) => (
                           <option
                             key={room._id}
                             value={room._id}
