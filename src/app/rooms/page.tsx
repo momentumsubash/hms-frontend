@@ -3,6 +3,7 @@
 import { getRooms, updateRoom, updateRoomMaintenance } from "@/lib/api";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
+import { PaginationControls } from "@/components/common/PaginationControls";
 import { useEffect, useState, useCallback } from "react";
 
 export default function RoomsPage() {
@@ -89,6 +90,53 @@ export default function RoomsPage() {
   // Room details modal state
   const [showDetails, setShowDetails] = useState(false);
   const [roomDetails, setRoomDetails] = useState<any>(null);
+
+  // Form errors state
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+  const [editFormErrors, setEditFormErrors] = useState<{[key: string]: string}>({});
+
+  // Reset form errors on modal open/close
+  const resetFormErrors = () => setFormErrors({});
+  const resetEditFormErrors = () => setEditFormErrors({});
+
+  // Validation function for add form
+  const validateAddForm = (): boolean => {
+    const errors: {[key: string]: string} = {};
+    
+    if (!addForm.roomNumber || addForm.roomNumber.trim() === '') {
+      errors.roomNumber = 'Room number is required';
+    }
+    if (!addForm.type) {
+      errors.type = 'Room type is required';
+    }
+    if (!addForm.rate || Number(addForm.rate) <= 0) {
+      errors.rate = 'Rate must be greater than 0';
+    }
+    if (!addForm.capacity || Number(addForm.capacity) <= 0) {
+      errors.capacity = 'Capacity must be greater than 0';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Validation function for edit form
+  const validateEditForm = (): boolean => {
+    const errors: {[key: string]: string} = {};
+    
+    if (!editForm.type) {
+      errors.type = 'Room type is required';
+    }
+    if (!editForm.rate || Number(editForm.rate) <= 0) {
+      errors.rate = 'Rate must be greater than 0';
+    }
+    if (!editForm.capacity || Number(editForm.capacity) <= 0) {
+      errors.capacity = 'Capacity must be greater than 0';
+    }
+    
+    setEditFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   // Helper function to get standard headers
   const getRequestHeaders = (token: string) => {
@@ -241,9 +289,7 @@ export default function RoomsPage() {
 
   // Load data when page changes
   useEffect(() => {
-    if (page > 1) {
-      loadData(false);
-    }
+    loadData(false);
   }, [page, loadData]);
 
   // Clean up debounce timeout
@@ -289,6 +335,17 @@ export default function RoomsPage() {
     const responseData = await response.json();
     
     if (!response.ok) {
+      // Handle API validation errors
+      if (responseData.details) {
+        const errorDetails = responseData.details;
+        const fieldMatch = errorDetails.match(/"(\w+)"/);
+        if (fieldMatch) {
+          const fieldName = fieldMatch[1];
+          setFormErrors({ [fieldName]: errorDetails });
+        }
+        const errorMessage = responseData?.message || 'Validation error';
+        throw new Error(errorMessage);
+      }
       const errorMessage = responseData?.message || 'Failed to create room';
       throw new Error(errorMessage);
     }
@@ -332,6 +389,17 @@ export default function RoomsPage() {
     const responseData = await response.json();
     
     if (!response.ok) {
+      // Handle API validation errors
+      if (responseData.details) {
+        const errorDetails = responseData.details;
+        const fieldMatch = errorDetails.match(/"(\w+)"/);
+        if (fieldMatch) {
+          const fieldName = fieldMatch[1];
+          setEditFormErrors({ [fieldName]: errorDetails });
+        }
+        const errorMessage = responseData?.message || 'Validation error';
+        throw new Error(errorMessage);
+      }
       const errorMessage = responseData?.message || 'Failed to update room';
       throw new Error(errorMessage);
     }
@@ -372,90 +440,6 @@ export default function RoomsPage() {
     };
     setFilters(clearedFilters);
     loadData(true, clearedFilters);
-  };
-
-  // Generate pagination buttons
-  const generatePaginationButtons = () => {
-    const buttons = [];
-    const maxVisiblePages = 5;
-    
-    let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    // Adjust if we're near the end
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    // First and previous buttons
-    if (startPage > 1) {
-      buttons.push(
-        <button
-          key="first"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => setPage(1)}
-          disabled={page === 1 || loading}
-        >
-          «
-        </button>
-      );
-      
-      buttons.push(
-        <button
-          key="prev"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => setPage(page - 1)}
-          disabled={page === 1 || loading}
-        >
-          ‹
-        </button>
-      );
-    }
-    
-    // Page number buttons
-    for (let i = startPage; i <= endPage; i++) {
-      buttons.push(
-        <button
-          key={i}
-          className={`px-3 py-2 text-sm font-medium rounded-md ${
-            page === i
-              ? 'text-white bg-blue-600 border border-blue-600'
-              : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-          } disabled:opacity-50`}
-          onClick={() => setPage(i)}
-          disabled={loading}
-        >
-          {i}
-        </button>
-      );
-    }
-    
-    // Next and last buttons
-    if (endPage < totalPages) {
-      buttons.push(
-        <button
-          key="next"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => setPage(page + 1)}
-          disabled={page === totalPages || loading}
-        >
-          ›
-        </button>
-      );
-      
-      buttons.push(
-        <button
-          key="last"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => setPage(totalPages)}
-          disabled={page === totalPages || loading}
-        >
-          »
-        </button>
-      );
-    }
-    
-    return buttons;
   };
 
   if (loading && rooms.length === 0) {
@@ -694,32 +678,14 @@ export default function RoomsPage() {
             </table>
           </div>
 
-          {/* Enhanced Pagination Controls - UPDATED */}
-          {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 bg-gray-50 border-t gap-4">
-              <div className="text-sm text-gray-700">
-                Showing {rooms.length} rooms (Page {page} of {totalPages}, Total: {totalRooms})
-              </div>
-              <div className="flex items-center space-x-1">
-                {generatePaginationButtons()}
-              </div>
-              <div className="flex items-center space-x-2 text-sm">
-                <span>Go to page:</span>
-                <input
-                  type="number"
-                  min="1"
-                  max={totalPages}
-                  value={page}
-                  onChange={(e) => {
-                    const newPage = Math.max(1, Math.min(totalPages, parseInt(e.target.value) || 1));
-                    setPage(newPage);
-                  }}
-                  className="w-16 border border-gray-300 rounded px-2 py-1 text-center"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-          )}
+          {/* Enhanced Pagination Controls */}
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            loading={loading}
+            onPageChange={(newPage) => setPage(newPage)}
+            showInput={true}
+          />
 
           {(!Array.isArray(rooms) || rooms.length === 0) && !loading && (
             <div className="text-center py-12">
@@ -843,6 +809,10 @@ export default function RoomsPage() {
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
+                  if (!validateAddForm()) {
+                    showToast("Please fix validation errors", "error");
+                    return;
+                  }
                   setAddLoading(true);
                   try {
                     await createRoom({
@@ -859,6 +829,7 @@ export default function RoomsPage() {
                     });
                     
                     setShowAdd(false);
+                    resetFormErrors();
                     showToast("Room created successfully!", "success");
                     await loadData(true);
                   } catch (e: any) {
@@ -876,16 +847,17 @@ export default function RoomsPage() {
                     type="text"
                     value={addForm.roomNumber}
                     onChange={e => setAddForm((f: any) => ({ ...f, roomNumber: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.roomNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                   />
+                  {formErrors.roomNumber && <p className="text-red-600 text-sm mt-1">{formErrors.roomNumber}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Type</label>
                   <select
                     value={addForm.type}
                     onChange={e => setAddForm((f: any) => ({ ...f, type: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.type ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                   >
                     <option value="">Select Type</option>
@@ -894,6 +866,7 @@ export default function RoomsPage() {
                     <option value="suite">Suite</option>
                     <option value="deluxe">Deluxe</option>
                   </select>
+                  {formErrors.type && <p className="text-red-600 text-sm mt-1">{formErrors.type}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Rate</label>
@@ -901,9 +874,10 @@ export default function RoomsPage() {
                     type="number"
                     value={addForm.rate}
                     onChange={e => setAddForm((f: any) => ({ ...f, rate: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.rate ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                   />
+                  {formErrors.rate && <p className="text-red-600 text-sm mt-1">{formErrors.rate}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Description</label>
@@ -940,9 +914,10 @@ export default function RoomsPage() {
                     type="number"
                     value={addForm.capacity}
                     onChange={e => setAddForm((f: any) => ({ ...f, capacity: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.capacity ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                   />
+                  {formErrors.capacity && <p className="text-red-600 text-sm mt-1">{formErrors.capacity}</p>}
                 </div>
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
@@ -970,6 +945,10 @@ export default function RoomsPage() {
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
+                  if (!validateEditForm()) {
+                    showToast("Please fix validation errors", "error");
+                    return;
+                  }
                   setEditLoading(true);
                   try {
                     await updateRoomLocal(editRoom.roomNumber, {
@@ -987,6 +966,7 @@ export default function RoomsPage() {
 
                     setShowEdit(false);
                     setEditRoom(null);
+                    resetEditFormErrors();
                     showToast("Room updated successfully!", "success");
                     await loadData();
                   } catch (e: any) {
@@ -1003,7 +983,7 @@ export default function RoomsPage() {
                   <select
                     value={editForm.type}
                     onChange={e => setEditForm((f: any) => ({ ...f, type: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${editFormErrors.type ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                   >
                     <option value="">Select Type</option>
@@ -1012,6 +992,7 @@ export default function RoomsPage() {
                     <option value="suite">Suite</option>
                     <option value="deluxe">Deluxe</option>
                   </select>
+                  {editFormErrors.type && <p className="text-red-600 text-sm mt-1">{editFormErrors.type}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Rate</label>
@@ -1019,9 +1000,10 @@ export default function RoomsPage() {
                     type="number"
                     value={editForm.rate}
                     onChange={e => setEditForm((f: any) => ({ ...f, rate: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${editFormErrors.rate ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                   />
+                  {editFormErrors.rate && <p className="text-red-600 text-sm mt-1">{editFormErrors.rate}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Amenities (comma separated)</label>
@@ -1049,9 +1031,10 @@ export default function RoomsPage() {
                     type="number"
                     value={editForm.capacity}
                     onChange={e => setEditForm((f: any) => ({ ...f, capacity: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${editFormErrors.capacity ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                   />
+                  {editFormErrors.capacity && <p className="text-red-600 text-sm mt-1">{editFormErrors.capacity}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Maintenance Status</label>

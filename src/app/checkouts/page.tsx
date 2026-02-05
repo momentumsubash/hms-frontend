@@ -78,6 +78,24 @@ export default function CheckoutsPage() {
     paymentDate: ""
   });
 
+  // Form errors state
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  // Reset form errors
+  const resetFormErrors = () => setFormErrors({});
+
+  // Validation function for edit form
+  const validateCheckoutForm = (): boolean => {
+    const errors: {[key: string]: string} = {};
+
+    if (advanceAmount && Number(advanceAmount) < 0) {
+      errors.advanceAmount = 'Advance amount cannot be negative';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   // Paper type selection for printing
   const [paperType, setPaperType] = useState<"a4" | "a5" | "thermal">("a4");
 
@@ -578,6 +596,11 @@ const printBill = () => {
     e.preventDefault();
     if (!editCheckout) return;
 
+    if (!validateCheckoutForm()) {
+      setEditError("Please fix validation errors");
+      return;
+    }
+
     setEditLoading(true);
     setEditError("");
 
@@ -973,8 +996,9 @@ const printBill = () => {
                     id="advanceAmount"
                     value={advanceAmount}
                     onChange={(e) => setAdvanceAmount(e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`mt-1 block w-full border rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.advanceAmount ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   />
+                  {formErrors.advanceAmount && <p className="text-red-600 text-sm mt-1">{formErrors.advanceAmount}</p>}
                 </div>
                 {/* Payment Method Section */}
                 <h4 className="text-lg font-semibold mt-6 mb-2">Payment Method</h4>

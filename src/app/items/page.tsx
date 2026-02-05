@@ -92,6 +92,7 @@ export default function ItemsPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
   // Form state
   const [formData, setFormData] = useState({
@@ -221,10 +222,8 @@ export default function ItemsPage() {
 
   // Refetch items when page changes
   useEffect(() => {
-    if (!loading) {
-      fetchItems(page, filters);
-    }
-  }, [page]);
+    fetchItems(page, filters);
+  }, [page, filters]);
 
   // Handle filter changes with debouncing for search
   const handleFilterChange = (filterKey: string, value: string) => {
@@ -269,6 +268,11 @@ export default function ItemsPage() {
   };
 
   const createItem = async () => {
+    if (!validateForm()) {
+      setError('Please fix validation errors');
+      return;
+    }
+
     try {
       const token = getToken();
       const hotel = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('hotel') || '{}') : {};
@@ -299,9 +303,22 @@ export default function ItemsPage() {
         return;
       }
 
+      const responseData = await res.json();
+
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to create item");
+        // Handle API validation errors
+        if (responseData.details) {
+          const errorDetails = responseData.details;
+          const fieldMatch = errorDetails.match(/"(\w+)"/);
+          if (fieldMatch) {
+            const fieldName = fieldMatch[1];
+            setFormErrors({ [fieldName]: errorDetails });
+          }
+          setError(responseData.message || 'Validation error');
+        } else {
+          setError(responseData.message || "Failed to create item");
+        }
+        return;
       }
 
       setSuccess("Item created successfully!");
@@ -316,6 +333,11 @@ export default function ItemsPage() {
 
   const updateItem = async () => {
     if (!selectedItem) return;
+    if (!validateForm()) {
+      setError('Please fix validation errors');
+      return;
+    }
+
     try {
       const token = getToken();
       const hotel = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('hotel') || '{}') : {};
@@ -346,9 +368,22 @@ export default function ItemsPage() {
         return;
       }
 
+      const responseData = await res.json();
+
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update item");
+        // Handle API validation errors
+        if (responseData.details) {
+          const errorDetails = responseData.details;
+          const fieldMatch = errorDetails.match(/"(\w+)"/);
+          if (fieldMatch) {
+            const fieldName = fieldMatch[1];
+            setFormErrors({ [fieldName]: errorDetails });
+          }
+          setError(responseData.message || 'Validation error');
+        } else {
+          setError(responseData.message || "Failed to update item");
+        }
+        return;
       }
 
       setSuccess("Item updated successfully!");
@@ -409,6 +444,30 @@ export default function ItemsPage() {
       profitMarginBand: "",
       comment: ""
     });
+    setFormErrors({});
+  };
+
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+
+    if (!formData.name.trim()) {
+      errors.name = "Item name is required";
+    } else if (formData.name.trim().length < 2) {
+      errors.name = "Item name must be at least 2 characters long";
+    }
+
+    if (!formData.price) {
+      errors.price = "Price is required";
+    } else if (parseFloat(formData.price) <= 0) {
+      errors.price = "Price must be greater than 0";
+    }
+
+    if (!formData.category) {
+      errors.category = "Category must be selected";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const openEditModal = async (item: Item) => {
@@ -806,8 +865,9 @@ export default function ItemsPage() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   />
+                  {formErrors.name && <p className="text-red-600 text-sm mt-1">{formErrors.name}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Price (रु)</label>
@@ -818,8 +878,9 @@ export default function ItemsPage() {
                     step="0.01"
                     value={formData.price}
                     onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.price ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   />
+                  {formErrors.price && <p className="text-red-600 text-sm mt-1">{formErrors.price}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Category</label>
@@ -827,13 +888,14 @@ export default function ItemsPage() {
                     required
                     value={formData.category}
                     onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.category ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   >
                     <option value="">Select Category</option>
                     {categories.map((cat) => (
                       <option key={cat._id} value={cat._id}>{cat.name}</option>
                     ))}
                   </select>
+                  {formErrors.category && <p className="text-red-600 text-sm mt-1">{formErrors.category}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Profit Margin Band</label>
@@ -901,8 +963,9 @@ export default function ItemsPage() {
                     required
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   />
+                  {formErrors.name && <p className="text-red-600 text-sm mt-1">{formErrors.name}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Price (रु)</label>
@@ -913,8 +976,9 @@ export default function ItemsPage() {
                     step="0.01"
                     value={formData.price}
                     onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.price ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   />
+                  {formErrors.price && <p className="text-red-600 text-sm mt-1">{formErrors.price}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Category</label>
@@ -922,13 +986,14 @@ export default function ItemsPage() {
                     required
                     value={formData.category}
                     onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.category ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   >
                     <option value="">Select Category</option>
                     {categories.map((cat) => (
                       <option key={cat._id} value={cat._id}>{cat.name}</option>
                     ))}
                   </select>
+                  {formErrors.category && <p className="text-red-600 text-sm mt-1">{formErrors.category}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Profit Margin Band</label>

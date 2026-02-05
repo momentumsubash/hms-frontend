@@ -81,6 +81,7 @@ export default function ReferrersPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [filters, setFilters] = useState({
     status: "",
     search: ""
@@ -183,12 +184,19 @@ export default function ReferrersPage() {
 
     if (!formData.fullName.trim()) {
       errors.fullName = "Full name is required";
+    } else if (formData.fullName.trim().length < 3) {
+      errors.fullName = "Full name must be at least 3 characters long";
+    }
+
+    if (formData.address && formData.address.trim().length > 0 && formData.address.trim().length < 5) {
+      errors.address = "Address length must be at least 5 characters long";
     }
 
     if (!formData.referralPrice || parseFloat(formData.referralPrice) <= 0) {
       errors.referralPrice = "Referral price must be greater than 0";
     }
 
+    setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
@@ -201,6 +209,7 @@ export default function ReferrersPage() {
     }
 
     setFormLoading(true);
+    setFormErrors({});
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
@@ -228,12 +237,26 @@ export default function ReferrersPage() {
         });
       }
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save referrer');
+        // Handle API validation errors
+        if (responseData.details) {
+          // Parse validation error from details field
+          const errorMessage = responseData.details;
+          const fieldMatch = errorMessage.match(/"(\w+)"/);  // Extract field name from quotes
+          if (fieldMatch) {
+            const fieldName = fieldMatch[1];
+            setFormErrors({ [fieldName]: errorMessage });
+          }
+          setNotification({ type: 'error', message: responseData.message || 'Validation error' });
+        } else {
+          setNotification({ type: 'error', message: responseData.message || 'Failed to save referrer' });
+        }
+        return;
       }
 
-      const result = await response.json();
+      const result = responseData;
       await loadReferrers();
       resetForm();
       setNotification({ type: 'success', message: result.message || 'Referrer saved successfully' });
@@ -642,18 +665,20 @@ export default function ReferrersPage() {
                     type="text"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.fullName ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                   />
+                  {formErrors.fullName && <p className="text-red-600 text-sm mt-1">{formErrors.fullName}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Address</label>
                   <textarea
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.address ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     rows={2}
                   />
+                  {formErrors.address && <p className="text-red-600 text-sm mt-1">{formErrors.address}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">ID Number</label>
@@ -661,8 +686,9 @@ export default function ReferrersPage() {
                     type="text"
                     value={formData.idNo}
                     onChange={(e) => setFormData({ ...formData, idNo: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.idNo ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   />
+                  {formErrors.idNo && <p className="text-red-600 text-sm mt-1">{formErrors.idNo}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Taxi Number</label>
@@ -670,8 +696,9 @@ export default function ReferrersPage() {
                     type="text"
                     value={formData.taxiNo}
                     onChange={(e) => setFormData({ ...formData, taxiNo: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.taxiNo ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   />
+                  {formErrors.taxiNo && <p className="text-red-600 text-sm mt-1">{formErrors.taxiNo}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Referral Price (रु) *</label>
@@ -679,11 +706,12 @@ export default function ReferrersPage() {
                     type="number"
                     value={formData.referralPrice}
                     onChange={(e) => setFormData({ ...formData, referralPrice: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.referralPrice ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     min="0"
                     step="0.01"
                     required
                   />
+                  {formErrors.referralPrice && <p className="text-red-600 text-sm mt-1">{formErrors.referralPrice}</p>}
                 </div>
                 <div className="flex justify-end space-x-3">
                   <button
