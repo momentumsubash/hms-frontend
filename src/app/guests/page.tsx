@@ -389,9 +389,7 @@ export default function GuestsPage() {
 
   // Load data when page changes
   useEffect(() => {
-    if (page > 1) {
-      loadData(false);
-    }
+    loadData(false);
   }, [page, loadData]);
 
   // Clean up debounce timeout
@@ -740,8 +738,19 @@ export default function GuestsPage() {
       resetForm();
       setNotification({ type: 'success', message: resp?.message || 'Operation successful' });
     } catch (e: any) {
-      setError(e.message);
-      setNotification({ type: 'error', message: e.message || 'Operation failed' });
+      // Handle API validation errors
+      if (e.response && e.response.data && e.response.data.details) {
+        const errorDetails = e.response.data.details;
+        const fieldMatch = errorDetails.match(/\"(\w+)\"/);
+        if (fieldMatch) {
+          const fieldName = fieldMatch[1];
+          setFormErrors({ [fieldName]: errorDetails });
+        }
+        setNotification({ type: 'error', message: 'Validation error - please check the form' });
+      } else {
+        setError(e.message);
+        setNotification({ type: 'error', message: e.message || 'Operation failed' });
+      }
     } finally {
       setFormLoading(false);
     }

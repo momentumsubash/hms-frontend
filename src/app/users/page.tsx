@@ -45,6 +45,47 @@ export default function UsersPage() {
     isActive: true,
     hotel: ""
   });
+
+  // Form errors state
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  // Reset form errors
+  const resetFormErrors = () => setFormErrors({});
+
+  // Validation function
+  const validateForm = (): boolean => {
+    const errors: {[key: string]: string} = {};
+
+    if (!formData.email || formData.email.trim() === '') {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Email is invalid';
+    }
+
+    if (!formData.firstName || formData.firstName.trim() === '') {
+      errors.firstName = 'First name is required';
+    } else if (formData.firstName.trim().length < 2) {
+      errors.firstName = 'First name must be at least 2 characters';
+    }
+
+    if (!formData.lastName || formData.lastName.trim() === '') {
+      errors.lastName = 'Last name is required';
+    } else if (formData.lastName.trim().length < 2) {
+      errors.lastName = 'Last name must be at least 2 characters';
+    }
+
+    if (!currentUser && (!formData.password || formData.password.trim() === '')) {
+      errors.password = 'Password is required for new users';
+    }
+
+    if (!formData.role) {
+      errors.role = 'Role is required';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   // For super admin: list of hotels
   const [hotels, setHotels] = useState<any[]>([]);
   // Fetch hotels for super admin
@@ -96,11 +137,17 @@ export default function UsersPage() {
   }, [filters, pagination.page]);
 
   const handleCreate = async () => {
+    if (!validateForm()) {
+      toast.error("Please fix validation errors");
+      return;
+    }
+
     try {
       setLoading(true);
       await createUser(formData);
       toast.success("User created successfully");
       setShowModal(false);
+      resetFormErrors();
       // Refresh users list
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (token) {
@@ -114,6 +161,14 @@ export default function UsersPage() {
         });
       }
     } catch (e: any) {
+      // Parse API validation errors
+      if (e.message && e.message.includes('details')) {
+        const fieldMatch = e.message.match(/"(\w+)"/);
+        if (fieldMatch) {
+          const fieldName = fieldMatch[1];
+          setFormErrors({ [fieldName]: e.message });
+        }
+      }
       toast.error(e.message);
     } finally {
       setLoading(false);
@@ -121,11 +176,17 @@ export default function UsersPage() {
   };
 
   const handleUpdate = async () => {
+    if (!validateForm()) {
+      toast.error("Please fix validation errors");
+      return;
+    }
+
     try {
       setLoading(true);
       await updateUser(currentUser._id, formData);
       toast.success("User updated successfully");
       setShowModal(false);
+      resetFormErrors();
       // Refresh users list
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (token) {
@@ -139,6 +200,14 @@ export default function UsersPage() {
         });
       }
     } catch (e: any) {
+      // Parse API validation errors
+      if (e.message && e.message.includes('details')) {
+        const fieldMatch = e.message.match(/"(\w+)"/);
+        if (fieldMatch) {
+          const fieldName = fieldMatch[1];
+          setFormErrors({ [fieldName]: e.message });
+        }
+      }
       toast.error(e.message);
     } finally {
       setLoading(false);
@@ -473,9 +542,10 @@ export default function UsersPage() {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleFormChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.firstName ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                   />
+                  {formErrors.firstName && <p className="text-red-600 text-sm mt-1">{formErrors.firstName}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Last Name *</label>
@@ -484,9 +554,10 @@ export default function UsersPage() {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleFormChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.lastName ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                   />
+                  {formErrors.lastName && <p className="text-red-600 text-sm mt-1">{formErrors.lastName}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -497,10 +568,11 @@ export default function UsersPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleFormChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className={`w-full border rounded px-3 py-2 ${formErrors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                     required
                     disabled={!!currentUser}
                   />
+                  {formErrors.email && <p className="text-red-600 text-sm mt-1">{formErrors.email}</p>}
                 </div>
                 {!currentUser && (
                   <div>
@@ -510,9 +582,10 @@ export default function UsersPage() {
                       name="password"
                       value={formData.password}
                       onChange={handleFormChange}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className={`w-full border rounded px-3 py-2 ${formErrors.password ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                       required
                     />
+                    {formErrors.password && <p className="text-red-600 text-sm mt-1">{formErrors.password}</p>}
                   </div>
                 )}
               </div>
@@ -522,13 +595,14 @@ export default function UsersPage() {
                   name="role"
                   value={formData.role}
                   onChange={handleFormChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  className={`w-full border rounded px-3 py-2 ${formErrors.role ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   required
                 >
                   <option value="staff">Staff</option>
                   <option value="manager">Manager</option>
                   {user?.role === 'super_admin' && <option value="super_admin">Super Admin</option>}
                 </select>
+                {formErrors.role && <p className="text-red-600 text-sm mt-1">{formErrors.role}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Hotel ID *</label>

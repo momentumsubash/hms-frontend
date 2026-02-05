@@ -108,6 +108,12 @@ export default function HotelsPage() {
   // Website content modal state
   const [showWebsiteModal, setShowWebsiteModal] = useState(false);
 
+  // Form errors state
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  // Reset form errors
+  const resetFormErrors = () => setFormErrors({});
+
   const navLinks = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },

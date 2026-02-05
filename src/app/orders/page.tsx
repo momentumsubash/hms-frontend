@@ -30,6 +30,29 @@ export default function OrdersPage() {
   const [itemList, setItemList] = useState<any[]>([]);
   const [itemLoading, setItemLoading] = useState(false);
   
+  // Form errors state
+  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  // Reset form errors
+  const resetFormErrors = () => setFormErrors({});
+
+  // Validation function
+  const validateOrderForm = (): boolean => {
+    const errors: {[key: string]: string} = {};
+
+    if (!createForm.roomNumber || createForm.roomNumber.trim() === '') {
+      errors.roomNumber = 'Room is required';
+    }
+
+    const items = createForm.items.filter(item => item.itemId && item.quantity);
+    if (items.length === 0) {
+      errors.items = 'Please add at least one item';
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+  
   // Occupied rooms state
   const [occupiedRooms, setOccupiedRooms] = useState<any[]>([]);
   const [roomsLoading, setRoomsLoading] = useState(false);
@@ -399,6 +422,10 @@ const handleUpdateOrderItems = async () => {
                   if (editingOrder) {
                     await handleUpdateOrderItems();
                   } else {
+                      if (!validateOrderForm()) {
+                        setCreateError("Please fix validation errors");
+                        return;
+                      }
                       setCreateLoading(true);
                       setCreateError("");
                       try {
@@ -412,14 +439,6 @@ const handleUpdateOrderItems = async () => {
                             itemId: item.itemId,
                             quantity: parseInt(item.quantity) || 0
                           }));
-                        
-                        if (items.length === 0) {
-                          throw new Error("Please add at least one item");
-                        }
-
-                        if (!createForm.roomNumber) {
-                          throw new Error("Please select a room");
-                        }
 
                         const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
                         const res = await fetch(`${apiBase}/orders`, {
@@ -435,12 +454,22 @@ const handleUpdateOrderItems = async () => {
                         });
                         const data = await res.json().catch(() => ({}));
                         if (!res.ok) {
+                          // Handle API validation errors
+                          if (data?.details) {
+                            const errorDetails = data.details;
+                            const fieldMatch = errorDetails.match(/"(\w+)"/);
+                            if (fieldMatch) {
+                              const fieldName = fieldMatch[1];
+                              setFormErrors({ [fieldName]: errorDetails });
+                            }
+                          }
                           setNotification({ type: 'error', message: data?.message || 'Failed to create order' });
                           throw new Error(data?.message || "Failed to create order");
                         }
                         
                         setNotification({ type: 'success', message: data?.message || 'Order created successfully' });
                         setShowCreate(false);
+                        resetFormErrors();
                         setCreateForm({ roomNumber: "", items: [{ itemId: "", name: "", quantity: "1", price: 0 }] });
                         
                         // Refresh only the orders data instead of the entire page
@@ -468,27 +497,31 @@ const handleUpdateOrderItems = async () => {
                     ) : occupiedRooms.length === 0 ? (
                       <div className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100">No occupied rooms available</div>
                     ) : (
-                      <select
-                        value={createForm.roomNumber}
-                        onChange={e => setCreateForm(f => ({ ...f, roomNumber: e.target.value }))}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
-                        required
-                        disabled={!!editingOrder}
-                      >
-                        <option value="">Select a room</option>
-                        {occupiedRooms.map((room) => (
-                          <option key={room._id} value={room.roomNumber}>
-                            Room {room.roomNumber} - {room.guestId?.firstName} {room.guestId?.lastName} 
-                            {room.hotelId?.name && ` (${room.hotelId.name})`}
-                          </option>
-                        ))}
-                      </select>
+                      <div>
+                        <select
+                          value={createForm.roomNumber}
+                          onChange={e => setCreateForm(f => ({ ...f, roomNumber: e.target.value }))}
+                          className={`w-full border rounded px-3 py-2 ${formErrors.roomNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                          required
+                          disabled={!!editingOrder}
+                        >
+                          <option value="">Select a room</option>
+                          {occupiedRooms.map((room) => (
+                            <option key={room._id} value={room.roomNumber}>
+                              Room {room.roomNumber} - {room.guestId?.firstName} {room.guestId?.lastName} 
+                              {room.hotelId?.name && ` (${room.hotelId.name})`}
+                            </option>
+                          ))}
+                        </select>
+                        {formErrors.roomNumber && <p className="text-red-600 text-sm mt-1">{formErrors.roomNumber}</p>}
+                      </div>
                     )}
                   </div>
                   
                   {/* Items section */}
                   <div>
-                    <label className="block text-sm font-medium mb-1">Items</label>
+                    <label className="block text-sm font-medium mb-1">Items {formErrors.items && <span className="text-red-600">- {formErrors.items}</span>}</label>
+                    {formErrors.items && <p className="text-red-600 text-sm mb-2">{formErrors.items}</p>}
                     {createForm.items.map((item, index) => (
                       <div key={index} className="flex gap-2 mb-2 items-center">
                         <div className="flex-1">
