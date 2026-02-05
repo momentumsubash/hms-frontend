@@ -112,18 +112,21 @@ const getCurrentDateTimeLocal = () => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
-// Add function to calculate default check-out time (12 hours after check-in)
+// Add function to calculate default check-out time (next calendar day at 9:00 AM)
 const getDefaultCheckOutDateTime = (checkInDate: string) => {
   if (!checkInDate) return '';
 
   const checkIn = new Date(checkInDate);
-  checkIn.setHours(checkIn.getHours() + 12); // Add 12 hours (1 night)
+  // Set check-out to next calendar day at 9:00 AM (1 night)
+  const checkOut = new Date(checkIn);
+  checkOut.setDate(checkOut.getDate() + 1);
+  checkOut.setHours(9, 0, 0, 0);
 
-  const year = checkIn.getFullYear();
-  const month = String(checkIn.getMonth() + 1).padStart(2, '0');
-  const day = String(checkIn.getDate()).padStart(2, '0');
-  const hours = String(checkIn.getHours()).padStart(2, '0');
-  const minutes = String(checkIn.getMinutes()).padStart(2, '0');
+  const year = checkOut.getFullYear();
+  const month = String(checkOut.getMonth() + 1).padStart(2, '0');
+  const day = String(checkOut.getDate()).padStart(2, '0');
+  const hours = String(checkOut.getHours()).padStart(2, '0');
+  const minutes = String(checkOut.getMinutes()).padStart(2, '0');
 
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
