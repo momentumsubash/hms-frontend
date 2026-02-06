@@ -337,7 +337,7 @@ export default function StatsPage() {
     ? itemStats.map(item => ({
         itemId: item.item,
         name: item.name,
-        category: item.category || '',
+        category: item.category?.name || item.category || '',
         quantity: item.quantity || 0,
         sales: item.totalSales || 0
       }))
@@ -593,8 +593,8 @@ export default function StatsPage() {
                           {itemBreakdown.map((row) => (
                
                               <tr key={row.itemId} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 border">{row?.item}</td>
-                                 <td className="px-3 py-2 border">{getCategoryName(row.category)}</td>
+                              <td className="px-3 py-2 border">{row.name}</td>
+                                 <td className="px-3 py-2 border">{row.category}</td>
                               <td className="px-3 py-2 border text-center">{row.quantity}</td>
                                 <td className="px-3 py-2 border text-right">रु{row.sales?.toFixed(2)}</td>
                             </tr>
