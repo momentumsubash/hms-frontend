@@ -139,11 +139,14 @@ export default function UsersPage() {
   const handleCreate = async () => {
     if (!validateForm()) {
       toast.error("Please fix validation errors");
+      setError("Please fix validation errors");
       return;
     }
 
     try {
       setLoading(true);
+      setError(""); // Clear previous errors
+      console.log("Creating user with data:", formData);
       await createUser(formData);
       toast.success("User created successfully");
       setShowModal(false);
@@ -161,15 +164,25 @@ export default function UsersPage() {
         });
       }
     } catch (e: any) {
+      console.error("Error creating user:", e);
+      console.error("Error message:", e.message);
+      const errorMessage = e.message || "An error occurred while creating the user";
+      
+      // Set error in state for display
+      setError(errorMessage);
+      
+      // Also show toast
+      console.log("Showing error toast with message:", errorMessage);
+      toast.error(errorMessage);
+      
       // Parse API validation errors
-      if (e.message && e.message.includes('details')) {
-        const fieldMatch = e.message.match(/"(\w+)"/);
+      if (errorMessage && errorMessage.includes('details')) {
+        const fieldMatch = errorMessage.match(/"(\w+)"/);
         if (fieldMatch) {
           const fieldName = fieldMatch[1];
-          setFormErrors({ [fieldName]: e.message });
+          setFormErrors({ [fieldName]: errorMessage });
         }
       }
-      toast.error(e.message);
     } finally {
       setLoading(false);
     }
@@ -177,12 +190,15 @@ export default function UsersPage() {
 
   const handleUpdate = async () => {
     if (!validateForm()) {
-      toast.error("Please fix validation errors");
+      const msg = "Please fix validation errors";
+      toast.error(msg);
+      setError(msg);
       return;
     }
 
     try {
       setLoading(true);
+      setError(""); // Clear previous errors
       await updateUser(currentUser._id, formData);
       toast.success("User updated successfully");
       setShowModal(false);
@@ -200,15 +216,22 @@ export default function UsersPage() {
         });
       }
     } catch (e: any) {
+      const errorMessage = e.message || "An error occurred while updating the user";
+      
+      // Set error in state for display
+      setError(errorMessage);
+      
+      // Also show toast
+      toast.error(errorMessage);
+      
       // Parse API validation errors
-      if (e.message && e.message.includes('details')) {
-        const fieldMatch = e.message.match(/"(\w+)"/);
+      if (errorMessage && errorMessage.includes('details')) {
+        const fieldMatch = errorMessage.match(/"(\w+)"/);
         if (fieldMatch) {
           const fieldName = fieldMatch[1];
-          setFormErrors({ [fieldName]: e.message });
+          setFormErrors({ [fieldName]: errorMessage });
         }
       }
-      toast.error(e.message);
     } finally {
       setLoading(false);
     }
@@ -533,6 +556,15 @@ export default function UsersPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">{currentUser ? "Edit User" : "Add New User"}</h2>
+            
+            {/* Error Alert */}
+            {error && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-800 font-semibold">Error</p>
+                <p className="text-red-700">{error}</p>
+              </div>
+            )}
+            
             <form onSubmit={currentUser ? (e) => { e.preventDefault(); handleUpdate(); } : (e) => { e.preventDefault(); handleCreate(); }} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -666,17 +698,18 @@ export default function UsersPage() {
 
       {/* Toast container */}
       <ToastContainer 
-  position="bottom-right"
-  autoClose={5000}
-  hideProgressBar={false}
-  newestOnTop={false}
-  closeOnClick
-  rtl={false}
-  pauseOnFocusLoss
-  draggable
-  pauseOnHover
-  theme="light"
-/>
+        position="bottom-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        style={{ zIndex: 9999 }}
+      />
     </div>
   );
 }

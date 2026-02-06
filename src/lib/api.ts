@@ -20,9 +20,18 @@ export async function createUser(user: any) {
   if (res.status === 401) {
     localStorage.removeItem('token');
     window.location.href = '/login';
-    return;
+    throw new Error("Session expired. Please login again.");
   }
-  if (!res.ok) throw new Error("Failed to create user");
+  if (!res.ok) {
+    try {
+      const errorData = await res.json();
+      const errorMessage = errorData.message || errorData.error || "Failed to create user";
+      throw new Error(errorMessage);
+    } catch (e: any) {
+      // If JSON parsing fails, use the status text or a generic message
+      throw new Error(e.message || "Failed to create user");
+    }
+  }
   return res.json();
 }
 
@@ -62,9 +71,17 @@ export async function deleteUser(id: string) {
   if (res.status === 401) {
     localStorage.removeItem('token');
     window.location.href = '/login';
-    return;
+    throw new Error("Session expired. Please login again.");
   }
-  if (!res.ok) throw new Error("Failed to delete user");
+  if (!res.ok) {
+    try {
+      const errorData = await res.json();
+      const errorMessage = errorData.message || errorData.error || "Failed to delete user";
+      throw new Error(errorMessage);
+    } catch (e: any) {
+      throw new Error(e.message || "Failed to delete user");
+    }
+  }
   return res.json();
 }
 // List all users
@@ -195,9 +212,17 @@ export async function updateUser(id: string, user: any) {
   if (res.status === 401) {
     localStorage.removeItem('token');
     window.location.href = '/login';
-    return;
+    throw new Error("Session expired. Please login again.");
   }
-  if (!res.ok) throw new Error("Update failed");
+  if (!res.ok) {
+    try {
+      const errorData = await res.json();
+      const errorMessage = errorData.message || errorData.error || "Update failed";
+      throw new Error(errorMessage);
+    } catch (e: any) {
+      throw new Error(e.message || "Update failed");
+    }
+  }
   return res.json();
 }
 
@@ -209,9 +234,17 @@ export async function deactivateUser(id: string) {
   if (res.status === 401) {
     localStorage.removeItem('token');
     window.location.href = '/login';
-    return;
+    throw new Error("Session expired. Please login again.");
   }
-  if (!res.ok) throw new Error("Deactivation failed");
+  if (!res.ok) {
+    try {
+      const errorData = await res.json();
+      const errorMessage = errorData.message || errorData.error || "Deactivation failed";
+      throw new Error(errorMessage);
+    } catch (e: any) {
+      throw new Error(e.message || "Deactivation failed");
+    }
+  }
   return res.json();
 }
 

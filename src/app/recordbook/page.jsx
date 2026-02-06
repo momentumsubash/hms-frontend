@@ -254,7 +254,7 @@ const RecordBook = () => {
                       Total Revenue
                     </Typography>
                     <Typography variant="h5" component="div" color="primary.main">
-                      Rs. {data.summary.totalRevenue.toLocaleString()}
+                      Rs. {data.totals.totalRevenue.toLocaleString()}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -269,9 +269,9 @@ const RecordBook = () => {
                     <Typography 
                       variant="h5" 
                       component="div"
-                      color={data.summary.netProfit >= 0 ? 'success.main' : 'error.main'}
+                      color={data.totals.netProfit >= 0 ? 'success.main' : 'error.main'}
                     >
-                      Rs. {data.summary.netProfit.toLocaleString()}
+                      Rs. {data.totals.netProfit.toLocaleString()}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -310,10 +310,10 @@ const RecordBook = () => {
               <Grid item xs={12} md={6}>
                 <Accordion defaultExpanded elevation={2}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">🏨 Allocated Rooms ({data.allocatedRooms.length})</Typography>
+                    <Typography variant="h6">🏨 Allocated Rooms ({data.roomAllocations.length})</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    {data.allocatedRooms.length === 0 ? (
+                    {data.roomAllocations.length === 0 ? (
                       <Typography color="textSecondary" align="center" sx={{ py: 2 }}>
                         No rooms allocated on this date
                       </Typography>
@@ -329,7 +329,7 @@ const RecordBook = () => {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {data.allocatedRooms.map((room) => (
+                            {data.roomAllocations.map((room) => (
                               <TableRow key={room.roomNumber} hover>
                                 <TableCell>
                                   <Typography variant="body1" fontWeight="medium">
@@ -347,9 +347,9 @@ const RecordBook = () => {
                                 <TableCell>Rs. {room.rate?.toLocaleString()}</TableCell>
                                 <TableCell>
                                   <Chip 
-                                    label={room.isOccupied ? 'Occupied' : 'Vacant'} 
+                                    label={room.isCurrentlyOccupied ? 'Occupied' : 'Vacant'} 
                                     size="small" 
-                                    color={room.isOccupied ? 'success' : 'default'} 
+                                    color={room.isCurrentlyOccupied ? 'success' : 'default'} 
                                   />
                                 </TableCell>
                               </TableRow>
@@ -362,53 +362,26 @@ const RecordBook = () => {
                 </Accordion>
               </Grid>
 
-              {/* Items Sold */}
+              {/* Items Sold Summary */}
               <Grid item xs={12} md={6}>
                 <Accordion defaultExpanded elevation={2}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">🍽️ Items Sold ({data.itemsSold.length} items)</Typography>
+                    <Typography variant="h6">🍽️ Items Summary ({data.summary.totalItemsSold} items)</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    {data.itemsSold.length === 0 ? (
+                    {data.summary.totalItemsSold === 0 ? (
                       <Typography color="textSecondary" align="center" sx={{ py: 2 }}>
                         No items sold on this date
                       </Typography>
                     ) : (
-                      <TableContainer>
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Item Name</TableCell>
-                              <TableCell>Price</TableCell>
-                              <TableCell>Quantity</TableCell>
-                              <TableCell>Total Sales</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {data.itemsSold.map((item) => (
-                              <TableRow key={item.name} hover>
-                                <TableCell>
-                                  <Box>
-                                    <Typography variant="body2" fontWeight="medium">
-                                      {item.name}
-                                    </Typography>
-                                    <Typography variant="caption" color="textSecondary">
-                                      {item.category}
-                                    </Typography>
-                                  </Box>
-                                </TableCell>
-                                <TableCell>Rs. {item.price?.toLocaleString()}</TableCell>
-                                <TableCell>{item.quantity}</TableCell>
-                                <TableCell>
-                                  <Typography fontWeight="medium">
-                                    Rs. {item.sales?.toLocaleString()}
-                                  </Typography>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+                        <Typography variant="h5" color="primary" fontWeight="bold">
+                          {data.summary.totalItemsSold}
+                        </Typography>
+                        <Typography variant="body1" color="textSecondary">
+                          items sold for Rs. {data.totals.itemSales.toLocaleString()}
+                        </Typography>
+                      </Box>
                     )}
                   </AccordionDetails>
                 </Accordion>
@@ -418,187 +391,69 @@ const RecordBook = () => {
               <Grid item xs={12}>
                 <Accordion defaultExpanded elevation={2}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">📋 Daily Orders ({data.dailyOrders.length})</Typography>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    {data.dailyOrders.length === 0 ? (
-                      <Typography color="textSecondary" align="center" sx={{ py: 3 }}>
-                        No orders placed on this date
-                      </Typography>
-                    ) : (
-                      data.dailyOrders.map((order) => (
-                        <Paper key={order.orderId} sx={{ p: 3, mb: 3, border: 1, borderColor: 'grey.200' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                            <Box>
-                              <Typography variant="h6" color="primary">
-                                Order #{order.orderId?.slice(-6).toUpperCase()}
-                              </Typography>
-                              <Typography variant="body2" color="textSecondary">
-                                {order.guest?.name || 'No guest'} • {format(new Date(order.createdAt), 'hh:mm a')}
-                              </Typography>
-                            </Box>
-                            <Chip 
-                              label={order.status} 
-                              color={order.status === 'completed' ? 'success' : 'default'} 
-                              size="medium"
-                            />
-                          </Box>
-                          
-                          <TableContainer sx={{ mb: 2 }}>
-                            <Table size="small">
-                              <TableHead>
-                                <TableRow>
-                                  <TableCell>Item Name</TableCell>
-                                  <TableCell>Price</TableCell>
-                                  <TableCell>Quantity</TableCell>
-                                  <TableCell>Total</TableCell>
-                                </TableRow>
-                              </TableHead>
-                              <TableBody>
-                                {order.items.map((item, index) => (
-                                  <TableRow key={index} hover>
-                                    <TableCell>{item.name}</TableCell>
-                                    <TableCell>Rs. {item.price}</TableCell>
-                                    <TableCell>{item.quantity}</TableCell>
-                                    <TableCell>Rs. {item.total}</TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </TableContainer>
-                          
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                            <Typography variant="caption" color="textSecondary">
-                              Created by: {order.createdBy || 'System'}
-                            </Typography>
-                            <Typography variant="h6" color="primary">
-                              Total: Rs. {order.totalAmount?.toLocaleString()}
-                            </Typography>
-                          </Box>
-                        </Paper>
-                      ))
-                    )}
-                  </AccordionDetails>
-                </Accordion>
-              </Grid>
-
-              {/* Daily Checkouts */}
-              <Grid item xs={12}>
-                <Accordion defaultExpanded elevation={2}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">🚪 Daily Checkouts ({data.dailyCheckouts.length})</Typography>
+                    <Typography variant="h6">📋 Daily Checkouts ({data.dailyCheckouts.length})</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
                     {data.dailyCheckouts.length === 0 ? (
                       <Typography color="textSecondary" align="center" sx={{ py: 3 }}>
-                        No checkouts processed on this date
+                        No checkouts on this date
                       </Typography>
                     ) : (
                       data.dailyCheckouts.map((checkout) => (
                         <Paper key={checkout.checkoutId} sx={{ p: 3, mb: 3, border: 1, borderColor: 'grey.200' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2, flexWrap: 'wrap', gap: 2 }}>
                             <Box>
-                              <Typography variant="h5" color="primary">
-                                {checkout.guest?.name || 'Unknown Guest'}
+                              <Typography variant="h6" color="primary">
+                                Checkout #{checkout.checkoutId?.slice(-6).toUpperCase()}
                               </Typography>
                               <Typography variant="body2" color="textSecondary">
-                                {checkout.guest?.phone} • {checkout.guest?.email}
+                                {checkout.guest?.name || 'Walk-in'} • {checkout.paymentMethod}
                               </Typography>
                             </Box>
-                            <Box textAlign="right">
-                              <Typography variant="body2">
-                                Checkout: {format(new Date(checkout.checkOutDate), 'MMM dd, yyyy')}
+                            <Box sx={{ textAlign: 'right' }}>
+                              <Typography variant="h6" color="primary" fontWeight="bold">
+                                Rs. {checkout.financials?.totalBill.toLocaleString()}
                               </Typography>
                               <Typography variant="caption" color="textSecondary">
-                                Processed by: {checkout.processedBy}
+                                {format(new Date(checkout.checkOutDate), 'MMM dd, yyyy')}
                               </Typography>
                             </Box>
                           </Box>
-
-                          <Grid container spacing={3}>
-                            {/* Rooms */}
-                            <Grid item xs={12} md={6}>
-                              <Typography variant="h6" gutterBottom>
-                                Rooms Occupied:
-                              </Typography>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                {checkout.rooms.map((room) => (
-                                  <Chip
-                                    key={room.roomNumber}
-                                    label={`${room.roomNumber} (${room.type} - Rs. ${room.rate})`}
+                          
+                          <Box sx={{ p: 2, backgroundColor: '#f5f5f5', borderRadius: 1, mt: 2 }}>
+                            <Grid container spacing={2}>
+                              <Grid item xs={12} sm={6}>
+                                <Box>
+                                  <Typography variant="caption" color="textSecondary">Room Charges</Typography>
+                                  <Typography variant="h6" color="primary">
+                                    Rs. {checkout.financials?.roomCharges.toLocaleString()}
+                                  </Typography>
+                                </Box>
+                              </Grid>
+                              <Grid item xs={12} sm={6}>
+                                <Box>
+                                  <Typography variant="caption" color="textSecondary">Order Charges</Typography>
+                                  <Typography variant="h6" color="primary">
+                                    Rs. {checkout.financials?.orderCharges.toLocaleString()}
+                                  </Typography>
+                                </Box>
+                              </Grid>
+                            </Grid>
+                          </Box>
+                          
+                          {checkout.rooms && checkout.rooms.length > 0 && (
+                            <Box sx={{ mt: 2 }}>
+                              <Typography variant="subtitle2" gutterBottom>Rooms:</Typography>
+                              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                {checkout.rooms.map((room, idx) => (
+                                  <Chip 
+                                    key={idx}
+                                    label={`${room.roomNumber} (Rs. ${room.rate?.toLocaleString()})`}
                                     variant="outlined"
-                                    color="primary"
+                                    size="small"
                                   />
                                 ))}
                               </Box>
-                            </Grid>
-
-                            {/* Financial Summary */}
-                            <Grid item xs={12} md={6}>
-                              <Typography variant="h6" gutterBottom>
-                                Financial Summary:
-                              </Typography>
-                              <Paper variant="outlined" sx={{ p: 2 }}>
-                                {[
-                                  { label: 'Room Charges', value: checkout.financials.roomCharges },
-                                  { label: 'Discount', value: -checkout.financials.roomDiscount, isDiscount: true },
-                                  { label: 'Order Charges', value: checkout.financials.orderCharges },
-                                  { label: 'Extra Charges', value: checkout.financials.extraCharges },
-                                  { label: 'VAT Amount', value: checkout.financials.vatAmount },
-                                ].map((item, index) => (
-                                  <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                    <Typography variant="body2">{item.label}:</Typography>
-                                    <Typography 
-                                      variant="body2" 
-                                      color={item.isDiscount ? 'error' : 'textPrimary'}
-                                      fontWeight={item.isDiscount ? 'normal' : 'medium'}
-                                    >
-                                      {item.value !== 0 && (item.isDiscount ? '- ' : '')}Rs. {Math.abs(item.value).toLocaleString()}
-                                    </Typography>
-                                  </Box>
-                                ))}
-                                
-                                <Divider sx={{ my: 1 }} />
-                                
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                  <Typography variant="subtitle1" fontWeight="bold">
-                                    Total Bill:
-                                  </Typography>
-                                  <Typography variant="subtitle1" fontWeight="bold" color="primary">
-                                    Rs. {checkout.financials.totalBill?.toLocaleString()}
-                                  </Typography>
-                                </Box>
-                                
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <Typography variant="body2">Advance Paid:</Typography>
-                                  <Typography variant="body2">
-                                    Rs. {checkout.financials.advancePaid?.toLocaleString()}
-                                  </Typography>
-                                </Box>
-                              </Paper>
-                            </Grid>
-                          </Grid>
-
-                          {/* Orders in this checkout */}
-                          {checkout.orders && checkout.orders.length > 0 && (
-                            <Box sx={{ mt: 3 }}>
-                              <Typography variant="h6" gutterBottom>
-                                Orders included:
-                              </Typography>
-                              <Grid container spacing={2}>
-                                {checkout.orders.map((order, index) => (
-                                  <Grid item xs={12} sm={6} key={index}>
-                                    <Paper variant="outlined" sx={{ p: 2 }}>
-                                      <Typography variant="subtitle2" gutterBottom>
-                                        Order Total: Rs. {order.totalAmount?.toLocaleString()}
-                                      </Typography>
-                                      <Typography variant="body2" color="textSecondary">
-                                        Items: {order.items.map(item => `${item.name} (${item.quantity})`).join(', ')}
-                                      </Typography>
-                                    </Paper>
-                                  </Grid>
-                                ))}
-                              </Grid>
                             </Box>
                           )}
                         </Paper>
