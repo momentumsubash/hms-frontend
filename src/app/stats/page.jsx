@@ -327,9 +327,23 @@ export default function StatsPage() {
     ? itemStats.reduce((sum, item) => sum + (item.quantity || 0), 0)
     : itemStats?.totalQuantity ?? 0;
   
-  const totalRoomRevenue = roomStats?.totalRoomCharge ?? roomStats?.totalRoomRevenue ?? 0;
-  const totalRoomCheckouts = roomStats?.totalCheckouts ?? roomStats?.totalCount ?? 0;
-  const totalNights = roomStats?.totalNights ?? 0;
+  // Handle both old aggregate format and new room-wise format
+  let totalRoomRevenue = 0;
+  let totalRoomCheckouts = 0;
+  let totalNights = 0;
+  
+  if (roomStats?.totals) {
+    // New format: has totals and roomSales array
+    totalRoomRevenue = roomStats.totals?.totalRoomCharge ?? 0;
+    totalRoomCheckouts = roomStats.totals?.totalCheckouts ?? 0;
+    totalNights = roomStats.totals?.totalNights ?? 0;
+  } else if (roomStats && !Array.isArray(roomStats)) {
+    // Old aggregate format
+    totalRoomRevenue = roomStats?.totalRoomCharge ?? roomStats?.totalRoomRevenue ?? 0;
+    totalRoomCheckouts = roomStats?.totalCheckouts ?? roomStats?.totalCount ?? 0;
+    totalNights = roomStats?.totalNights ?? 0;
+  }
+  
   const totalCombined = totalItemSales + totalRoomRevenue;
   
   // Transform item stats array into breakdown format
@@ -343,8 +357,18 @@ export default function StatsPage() {
       }))
     : itemStats?.breakdown || [];
   
-  // Room sales is returned as aggregate, not per-room, so create a summary
-  const roomBreakdown = roomStats && !Array.isArray(roomStats)
+  // Transform room sales data - handle both new room-wise array and old aggregate format
+  const roomBreakdown = roomStats?.roomSales && Array.isArray(roomStats.roomSales)
+    ? roomStats.roomSales.map(room => ({
+        roomId: room.roomId,
+        roomNumber: room.roomNumber,
+        type: 'Allocated',
+        totalNights: room.totalNights || 0,
+        checkoutCount: room.totalCheckouts || 0,
+        actualRoomRevenue: room.totalRoomCharge || 0,
+        averageRoomCharge: room.averageRoomCharge || 0
+      }))
+    : roomStats && !Array.isArray(roomStats)
     ? [{
         roomNumber: 'All Rooms',
         type: 'Aggregate',
@@ -625,7 +649,8 @@ export default function StatsPage() {
                               <th className="px-3 py-2 border text-left">Type</th>
                               <th className="px-3 py-2 border text-center">Nights Sold</th>
                               <th className="px-3 py-2 border text-center">Checkouts</th>
-                              <th className="px-3 py-2 border text-right">Revenue</th>
+                              <th className="px-3 py-2 border text-right">Total Revenue</th>
+                              <th className="px-3 py-2 border text-right">Avg. Per Checkout</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -636,6 +661,7 @@ export default function StatsPage() {
                               <td className="px-3 py-2 border text-center">{row.totalNights || '-'}</td>
                               <td className="px-3 py-2 border text-center">{row.checkoutCount || '-'}</td>
                               <td className="px-3 py-2 border text-right">रु{row.actualRoomRevenue?.toFixed(2) || 0}</td>
+                              <td className="px-3 py-2 border text-right">रु{row.averageRoomCharge?.toFixed(2) || 0}</td>
                             </tr>
                           ))}
                           <tr className="bg-gray-50 font-bold">
@@ -643,6 +669,7 @@ export default function StatsPage() {
                             <td className="px-3 py-2 border text-center">{totalNights}</td>
                             <td className="px-3 py-2 border text-center">{totalRoomCheckouts}</td>
                             <td className="px-3 py-2 border text-right">रु{totalRoomRevenue.toFixed(2)}</td>
+                            <td className="px-3 py-2 border text-right">रु{(totalRoomRevenue / (totalRoomCheckouts || 1)).toFixed(2)}</td>
                           </tr>
                         </tbody>
                       </table>
