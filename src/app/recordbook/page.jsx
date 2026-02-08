@@ -53,6 +53,11 @@ function getToken() {
 }
 
 const RecordBook = () => {
+    // Pagination state for checkouts and items
+    const [checkoutPage, setCheckoutPage] = useState(0);
+    const [checkoutRowsPerPage, setCheckoutRowsPerPage] = useState(5);
+    const [itemPage, setItemPage] = useState(0);
+    const [itemRowsPerPage, setItemRowsPerPage] = useState(10);
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -362,32 +367,66 @@ const RecordBook = () => {
                 </Accordion>
               </Grid>
 
-              {/* Items Sold Summary */}
+              {/* Items Sold Table */}
               <Grid item xs={12} md={6}>
                 <Accordion defaultExpanded elevation={2}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">🍽️ Items Summary ({data.summary.totalItemsSold} items)</Typography>
+                    <Typography variant="h6">🍽️ Items Sold ({data.itemSalesBreakdown?.length || 0})</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    {data.summary.totalItemsSold === 0 ? (
+                    {(!data.itemSalesBreakdown || data.itemSalesBreakdown.length === 0) ? (
                       <Typography color="textSecondary" align="center" sx={{ py: 2 }}>
                         No items sold on this date
                       </Typography>
                     ) : (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1 }}>
-                        <Typography variant="h5" color="primary" fontWeight="bold">
-                          {data.summary.totalItemsSold}
-                        </Typography>
-                        <Typography variant="body1" color="textSecondary">
-                          items sold for Rs. {data.totals.itemSales.toLocaleString()}
-                        </Typography>
-                      </Box>
+                      <>
+                        <TableContainer>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Category</TableCell>
+                                <TableCell>Price</TableCell>
+                                <TableCell>Quantity</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {data.itemSalesBreakdown
+                                .slice(itemPage * itemRowsPerPage, itemPage * itemRowsPerPage + itemRowsPerPage)
+                                .map((item, idx) => (
+                                  <TableRow key={item.itemId || idx}>
+                                    <TableCell>{item.name}</TableCell>
+                                    <TableCell>{item.category}</TableCell>
+                                    <TableCell>Rs. {item.price?.toLocaleString()}</TableCell>
+                                    <TableCell>{item.quantity}</TableCell>
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                        {/* Pagination for items */}
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                          <Button
+                            size="small"
+                            disabled={itemPage === 0}
+                            onClick={() => setItemPage(itemPage - 1)}
+                          >Prev</Button>
+                          <Typography variant="body2" sx={{ mx: 2, alignSelf: 'center' }}>
+                            Page {itemPage + 1} of {Math.ceil(data.itemSalesBreakdown.length / itemRowsPerPage)}
+                          </Typography>
+                          <Button
+                            size="small"
+                            disabled={(itemPage + 1) * itemRowsPerPage >= data.itemSalesBreakdown.length}
+                            onClick={() => setItemPage(itemPage + 1)}
+                          >Next</Button>
+                        </Box>
+                      </>
                     )}
                   </AccordionDetails>
                 </Accordion>
               </Grid>
 
-              {/* Daily Orders */}
+              {/* Daily Checkouts Table with Pagination */}
               <Grid item xs={12}>
                 <Accordion defaultExpanded elevation={2}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -399,65 +438,60 @@ const RecordBook = () => {
                         No checkouts on this date
                       </Typography>
                     ) : (
-                      data.dailyCheckouts.map((checkout) => (
-                        <Paper key={checkout.checkoutId} sx={{ p: 3, mb: 3, border: 1, borderColor: 'grey.200' }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                            <Box>
-                              <Typography variant="h6" color="primary">
-                                Checkout #{checkout.checkoutId?.slice(-6).toUpperCase()}
-                              </Typography>
-                              <Typography variant="body2" color="textSecondary">
-                                {checkout.guest?.name || 'Walk-in'} • {checkout.paymentMethod}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ textAlign: 'right' }}>
-                              <Typography variant="h6" color="primary" fontWeight="bold">
-                                Rs. {checkout.financials?.totalBill.toLocaleString()}
-                              </Typography>
-                              <Typography variant="caption" color="textSecondary">
-                                {format(new Date(checkout.checkOutDate), 'MMM dd, yyyy')}
-                              </Typography>
-                            </Box>
-                          </Box>
-                          
-                          <Box sx={{ p: 2, backgroundColor: '#f5f5f5', borderRadius: 1, mt: 2 }}>
-                            <Grid container spacing={2}>
-                              <Grid item xs={12} sm={6}>
-                                <Box>
-                                  <Typography variant="caption" color="textSecondary">Room Charges</Typography>
-                                  <Typography variant="h6" color="primary">
-                                    Rs. {checkout.financials?.roomCharges.toLocaleString()}
-                                  </Typography>
-                                </Box>
-                              </Grid>
-                              <Grid item xs={12} sm={6}>
-                                <Box>
-                                  <Typography variant="caption" color="textSecondary">Order Charges</Typography>
-                                  <Typography variant="h6" color="primary">
-                                    Rs. {checkout.financials?.orderCharges.toLocaleString()}
-                                  </Typography>
-                                </Box>
-                              </Grid>
-                            </Grid>
-                          </Box>
-                          
-                          {checkout.rooms && checkout.rooms.length > 0 && (
-                            <Box sx={{ mt: 2 }}>
-                              <Typography variant="subtitle2" gutterBottom>Rooms:</Typography>
-                              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                                {checkout.rooms.map((room, idx) => (
-                                  <Chip 
-                                    key={idx}
-                                    label={`${room.roomNumber} (Rs. ${room.rate?.toLocaleString()})`}
-                                    variant="outlined"
-                                    size="small"
-                                  />
+                      <>
+                        <TableContainer>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Checkout ID</TableCell>
+                                <TableCell>Guest</TableCell>
+                                <TableCell>Rooms</TableCell>
+                                <TableCell>Total Bill</TableCell>
+                                <TableCell>Room Charges</TableCell>
+                                <TableCell>Order Charges</TableCell>
+                                <TableCell>Payment</TableCell>
+                                <TableCell>Date</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {data.dailyCheckouts
+                                .slice(checkoutPage * checkoutRowsPerPage, checkoutPage * checkoutRowsPerPage + checkoutRowsPerPage)
+                                .map((checkout) => (
+                                  <TableRow key={checkout.checkoutId}>
+                                    <TableCell>{checkout.checkoutId?.slice(-6).toUpperCase()}</TableCell>
+                                    <TableCell>{checkout.guest?.name || 'Walk-in'}</TableCell>
+                                    <TableCell>
+                                      {checkout.rooms?.map((room, idx) => (
+                                        <Chip key={idx} label={room.roomNumber} size="small" sx={{ mr: 0.5 }} />
+                                      ))}
+                                    </TableCell>
+                                    <TableCell>Rs. {checkout.financials?.totalBill.toLocaleString()}</TableCell>
+                                    <TableCell>Rs. {checkout.financials?.roomCharges.toLocaleString()}</TableCell>
+                                    <TableCell>Rs. {checkout.financials?.orderCharges.toLocaleString()}</TableCell>
+                                    <TableCell>{checkout.paymentMethod}</TableCell>
+                                    <TableCell>{format(new Date(checkout.checkOutDate), 'MMM dd, yyyy')}</TableCell>
+                                  </TableRow>
                                 ))}
-                              </Box>
-                            </Box>
-                          )}
-                        </Paper>
-                      ))
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                        {/* Pagination for checkouts */}
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                          <Button
+                            size="small"
+                            disabled={checkoutPage === 0}
+                            onClick={() => setCheckoutPage(checkoutPage - 1)}
+                          >Prev</Button>
+                          <Typography variant="body2" sx={{ mx: 2, alignSelf: 'center' }}>
+                            Page {checkoutPage + 1} of {Math.ceil(data.dailyCheckouts.length / checkoutRowsPerPage)}
+                          </Typography>
+                          <Button
+                            size="small"
+                            disabled={(checkoutPage + 1) * checkoutRowsPerPage >= data.dailyCheckouts.length}
+                            onClick={() => setCheckoutPage(checkoutPage + 1)}
+                          >Next</Button>
+                        </Box>
+                      </>
                     )}
                   </AccordionDetails>
                 </Accordion>
