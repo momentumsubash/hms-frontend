@@ -439,9 +439,18 @@ const navLinks = [
 									<Phone className="h-5 w-5 text-gray-500" />
 									<div>
 										<p className="font-medium">{hotel?.contact?.phone}</p>
-										<p className="text-sm text-gray-600">Main Reception</p>
+										<p className="text-sm text-gray-600">Primary Phone</p>
 									</div>
 								</div>
+								{hotel?.contact?.reception && (
+									<div className="flex items-center space-x-3">
+										<Phone className="h-5 w-5 text-gray-500" />
+										<div>
+											<p className="font-medium">{hotel?.contact?.reception}</p>
+											<p className="text-sm text-gray-600">Reception Phone</p>
+										</div>
+									</div>
+								)}
 								<div className="flex items-center space-x-3">
 									<Mail className="h-5 w-5 text-gray-500" />
 									<div>
