@@ -106,10 +106,12 @@ export default function Navbar({hotel}) {
                 Contact
               </a>
               <div className="px-3 py-2 space-y-2">
-                <Button variant="outline" className="w-full bg-transparent">
+                <Button variant="outline" className="w-full bg-transparent" onClick={() => { setIsMenuOpen(false); handleSubmit(); }}>
                   Login
                 </Button>
-                <Button className="w-full">Book Now</Button>
+                <Button className="w-full" onClick={() => { setIsMenuOpen(false); window.scrollTo({ top: document.getElementById('home').offsetTop, behavior: 'smooth' }); }}>
+                  Book Now
+                </Button>
               </div>
             </div>
           </div>

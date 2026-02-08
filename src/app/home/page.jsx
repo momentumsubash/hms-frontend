@@ -151,8 +151,10 @@ export default function HotelLandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg flex items-center gap-2"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg flex items-center gap-2 w-full sm:w-auto"
+              style={{ minHeight: 56, fontSize: '1.125rem', borderRadius: 12 }}
               onClick={handleWhatsAppContact}
+              tabIndex={0}
             >
               <WhatsAppIcon className="w-5 h-5" />
               Book Your Stay
