@@ -1,12 +1,29 @@
 "use client";
 
+
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 import { useDebounce } from "@/hooks/useDebounce";
 
+// Fetch hotel info for nepaliFlag
+const fetchHotel = async (token: string) => {
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const res = await fetch(`${apiBase}/hotels/me`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data?.data || data;
+};
+
 
 export default function OrdersPage() {
+    // Hotel state for nepaliFlag
+    const [hotel, setHotel] = useState<any>(null);
   // Pagination state
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -281,6 +298,15 @@ const handleUpdateOrderItems = async () => {
     // Authentication logic here...
   };
 
+
+  // Fetch hotel info on mount
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      fetchHotel(token).then(setHotel);
+    }
+  }, []);
+
   useEffect(() => {
     fetchAll();
   }, [page]);
@@ -378,7 +404,7 @@ const handleUpdateOrderItems = async () => {
   };
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
-  
+
   return (
     <div className="min-h-screen bg-slate-50">
       <NavBar
@@ -387,8 +413,8 @@ const handleUpdateOrderItems = async () => {
         setShowUserMenu={setShowUserMenu}
         logout={logout}
         navLinks={navLinks}
+        nepaliFlag={hotel?.nepaliFlag}
       />
-      
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Orders Management</h1>

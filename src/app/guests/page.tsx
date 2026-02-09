@@ -158,6 +158,24 @@ const searchGuestByPhone = async (phone: string, token: string): Promise<Guest |
 };
 
 export default function GuestsPage() {
+    // Load hotel from localStorage
+    const [hotel, setHotel] = useState(() => {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('hotel');
+        return stored ? JSON.parse(stored) : null;
+      }
+      return null;
+    });
+    // Listen for localStorage changes (e.g., nepaliLanguage toggle)
+    useEffect(() => {
+      const handleStorage = (event) => {
+        if (event.key === 'hotel') {
+          setHotel(event.newValue ? JSON.parse(event.newValue) : null);
+        }
+      };
+      window.addEventListener('storage', handleStorage);
+      return () => window.removeEventListener('storage', handleStorage);
+    }, []);
   // Notification state
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
@@ -1096,7 +1114,7 @@ export default function GuestsPage() {
         showUserMenu={showUserMenu}
         setShowUserMenu={setShowUserMenu}
         logout={logout}
-        navLinks={navLinks}
+        nepaliFlag={hotel?.nepaliFlag}
       />
       <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">

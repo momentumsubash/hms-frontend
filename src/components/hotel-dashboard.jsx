@@ -19,7 +19,7 @@ import {
 		Star,
 } from "lucide-react";
 import { getMyHotel, getGuests, getRooms, getOrders } from "@/lib/api";
-export function HotelDashboard() {
+export function HotelDashboard({ nepaliFlag }) {
 	// Notes state
 	const [notes, setNotes] = useState([]);
 	const [noteText, setNoteText] = useState("");
@@ -226,13 +226,14 @@ const navLinks = [
 			   return (
 		       <div className="min-h-screen bg-slate-50">
 					{/* Navigation Bar */}
-			      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        navLinks={navLinks}
-      />
+				<NavBar
+					user={user}
+					showUserMenu={showUserMenu}
+					setShowUserMenu={setShowUserMenu}
+					logout={logout}
+					navLinks={navLinks}
+					nepaliFlag={hotel?.nepaliFlag || nepaliFlag}
+				/>
 				<div className="max-w-7xl mx-auto space-y-8 p-6">
 				{/* Header */}
 				<div className="text-center space-y-4">

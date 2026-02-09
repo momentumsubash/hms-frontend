@@ -114,16 +114,21 @@ export default function HotelsPage() {
   // Reset form errors
   const resetFormErrors = () => setFormErrors({});
 
-  const navLinks = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Checkouts", href: "/checkouts" },
-    { label: "Guests", href: "/guests" },
-    { label: "Hotels", href: "/hotels" },
-    { label: "Items", href: "/items" },
-    { label: "Orders", href: "/orders" },
-    { label: "Rooms", href: "/rooms" },
-    { label: "Users", href: "/users" },
-  ];
+  // Nepali translations for nav links
+  // Nav links (labels handled in NavBar)
+  const navLinks = undefined;
+
+  // Hotel setting: show Nepali labels
+  // Hotel setting: show Nepali labels (persisted per hotel)
+  const [showNepali, setShowNepali] = useState(false);
+
+  // Persist setting in localStorage
+  // When Edit Hotel modal opens, sync showNepali with selectedHotel.nepaliLanguage
+  useEffect(() => {
+    if (showEditModal && selectedHotel) {
+      setShowNepali(!!selectedHotel.nepaliLanguage);
+    }
+  }, [showEditModal, selectedHotel]);
   
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -515,35 +520,34 @@ const [newHotel, setNewHotel] = useState<Hotel>({
       setUploadProgress(0);
       const file = e.target.files[0] as File;
       
+
+      // Simulate upload progress
       const interval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) {
             clearInterval(interval);
-            return 90;
+            return prev;
           }
           return prev + 10;
         });
-      }, 200);
-      
-      const formData = new FormData();
-      formData.append('logo', file);
-      
+      }, 100);
+
       const response = await uploadHotelLogo(hotelId, formData);
       setUploadProgress(100);
-      
-      setHotels(prev => prev.map(hotel => 
+
+      setHotels(prev => prev.map(hotel =>
         hotel._id === hotelId ? { ...hotel, logo: response.url } : hotel
       ));
-      
+
       if (selectedHotel?._id === hotelId) {
         setSelectedHotel(prev => prev ? { ...prev, logo: response.url } : null);
       }
-      
+
       setTimeout(() => {
         setUploading(false);
         setUploadProgress(0);
       }, 500);
-      
+
       toast.success("Logo uploaded successfully");
     } catch (e: any) {
       setError(e.message);
@@ -659,12 +663,13 @@ const [newHotel, setNewHotel] = useState<Hotel>({
   
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Removed global Show Nepali labels toggle. Only in Edit Hotel modal. */}
       <NavBar
         user={user}
         showUserMenu={showUserMenu}
         setShowUserMenu={setShowUserMenu}
         logout={logout}
-        navLinks={navLinks}
+        nepaliFlag={hotels.some(h => h.nepaliFlag)}
       />
       <div className="max-w-7xl mx-auto p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -1206,12 +1211,29 @@ setNewHotel({
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Hotel Details Form */}
                 <div className="space-y-4">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                  
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="checkbox"
+                        checked={!!selectedHotel.nepaliFlag}
+                        onChange={e => setSelectedHotel((prev) => prev ? { ...prev, nepaliFlag: e.target.checked } : prev)}
+                        style={{ accentColor: '#2563eb' }}
+                      />
+                      <span>Enable Nepali Flag</span>
+                    </label>
+                  </div>
                   <h3 className="text-lg font-semibold">Hotel Details</h3>
                   <form onSubmit={async (e) => {
                     e.preventDefault();
                     if (!selectedHotel._id) return;
                     try {
-                      await updateHotel(selectedHotel._id, selectedHotel);
+                      // Always send nepaliLanguage from showNepali state and nepaliFlag
+                      const updatedHotel = { ...selectedHotel, nepaliLanguage: showNepali, nepaliFlag: !!selectedHotel.nepaliFlag };
+                      await updateHotel(selectedHotel._id, updatedHotel);
+                      // Update localStorage with new hotel object
+                      localStorage.setItem('hotel', JSON.stringify(updatedHotel));
+                      window.dispatchEvent(new StorageEvent('storage', { key: 'hotel', newValue: JSON.stringify(updatedHotel) }));
                       setShowEditModal(false);
                       loadData();
                       toast.success("Hotel updated successfully");

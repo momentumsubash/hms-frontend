@@ -24,15 +24,19 @@ const getImageUrl = (primaryUrl, fallbackUrl, defaultImage = "/abstract-geometri
 
 // Replace static content with dynamic content from the API
 export default function HotelLandingPage() {
-  const [hotel, setHotel] = useState(null);
+  const [hotel, setHotel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('hotel');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
   const [websiteContent, setWebsiteContent] = useState(null);
   const [seo, setSeo] = useState(null);
   
   const ensureWebsiteDefaults = (website) => {
     const w = website || {};
     return {
-      heroTitle: w.heroTitle || "",
-      heroSubtitle: w.heroSubtitle || "",
       aboutDescription: w.aboutDescription || "",
       amenitiesDescription: w.amenitiesDescription || "",
       experiencesDescription: w.experiencesDescription || "",
@@ -129,9 +133,12 @@ export default function HotelLandingPage() {
     return <div className="min-h-screen flex items-center justify-center text-lg">Loading hotel details...</div>;
   }
   
+  // Determine nepaliFlag for Navbar
+  const nepaliFlag = hotel?.nepaliFlag === true;
+
   return (
     <div className="min-h-screen bg-background">
-      <Navbar hotel={hotel} />
+      <Navbar hotel={hotel} nepaliFlag={nepaliFlag} />
       {/* Hero Section with dynamic content */}
       <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
         <div

@@ -22,6 +22,16 @@ export default function RoomsPage() {
     }
     return null;
   });
+  // Listen for localStorage changes (e.g., nepaliLanguage toggle)
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key === 'hotel') {
+        setHotel(event.newValue ? JSON.parse(event.newValue) : null);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
   const [showUserMenu, setShowUserMenu] = useState(false);
   
   // Pagination and filter state
@@ -454,6 +464,7 @@ export default function RoomsPage() {
         setShowUserMenu={setShowUserMenu}
         logout={logout}
         navLinks={navLinks}
+        nepaliFlag={hotel?.nepaliFlag}
       />
 
       <div className="max-w-7xl mx-auto p-6">

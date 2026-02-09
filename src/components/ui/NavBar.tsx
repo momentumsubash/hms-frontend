@@ -8,12 +8,14 @@ interface NavLink {
   superAdminOnly?: boolean;
 }
 
+
 interface NavBarProps {
   user?: any;
   showUserMenu: boolean;
   setShowUserMenu: (v: boolean) => void;
   logout?: () => void | Promise<void>;
   navLinks?: NavLink[];
+  nepaliFlag?: boolean;
 }
 
 
@@ -21,7 +23,7 @@ interface NavBarProps {
 
 import { useEffect, useState } from "react";
 
-export const NavBar: React.FC<NavBarProps> = ({ user, showUserMenu, setShowUserMenu, logout, navLinks }) => {
+export const NavBar: React.FC<NavBarProps> = ({ user, showUserMenu, setShowUserMenu, logout, navLinks, nepaliFlag }) => {
   const { user: authUser, logout: authLogout } = useAuth();
   type Role = "staff" | "manager" | "super_admin";
 
@@ -33,19 +35,20 @@ interface NavLink {
 
 const displayUser = user || authUser;
 
+
 const defaultNavLinks: NavLink[] = [
-  { label: "Dashboard", href: "/dashboard" }, // open to all
-  { label: "Checkouts", href: "/checkouts" }, // open to all
-  { label: "Guests", href: "/guests" },       // open to all
-  { label: "Hotels", href: "/hotels", roles: ["super_admin","manager"] },
-    { label: "Email Status", href: "/email-status",roles: ["super_admin"]  }, // Add this
-  { label: "Items", href: "/items" , roles: ["super_admin","manager"]},         // open to all
-  { label: "Orders", href: "/orders" },       // open to all
-  { label: "Rooms", href: "/rooms" , roles: ["super_admin","manager"] },         // open to all
-  { label: "Referrers", href: "/referrers" , roles: ["super_admin","manager"] }, 
-  { label: "Stats", href: "/stats", roles: ["super_admin","manager"] },
-  { label: "Users", href: "/users", roles: ["manager", "super_admin"] },
-  { label: "RecordBook", href: "/recordbook", roles: ["manager", "super_admin"] },
+  { label: "Dashboard", href: "/dashboard", np: "ड्यासबोर्ड" },
+  { label: "Checkouts", href: "/checkouts", np: "चेकआउट" },
+  { label: "Guests", href: "/guests", np: "अतिथि" },
+  { label: "Hotels", href: "/hotels", np: "होटलहरू", roles: ["super_admin","manager"] },
+  // { label: "Email Status", href: "/email-status", np: "इमेल स्थिति", roles: ["super_admin"] },
+  { label: "Items", href: "/items", np: "वस्तुहरू", roles: ["super_admin","manager"] },
+  { label: "Orders", href: "/orders", np: "अर्डरहरू" },
+  { label: "Rooms", href: "/rooms", np: "कोठाहरू", roles: ["super_admin","manager"] },
+  { label: "Referrers", href: "/referrers", np: "सिफारिसकर्ता", roles: ["super_admin","manager"] },
+  { label: "Stats", href: "/stats", np: "सांख्यिकी", roles: ["super_admin","manager"] },
+  { label: "Users", href: "/users", np: "प्रयोगकर्ता", roles: ["manager", "super_admin"] },
+  { label: "RecordBook", href: "/recordbook", np: "रेकर्डबुक", roles: ["manager", "super_admin"] },
 ];
 
 // filter by role
@@ -66,7 +69,7 @@ const links = defaultNavLinks.filter(
                 href={link.href}
                 className="text-gray-700 hover:text-primary font-medium px-3 py-2 rounded transition-colors"
               >
-                {link.label}
+                {nepaliFlag && link.np ? `${link.label} (${link.np})` : link.label}
               </a>
             ))}
           </div>

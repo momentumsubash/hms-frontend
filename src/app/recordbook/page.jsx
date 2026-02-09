@@ -52,12 +52,37 @@ function getToken() {
   return localStorage.getItem("token") || sessionStorage.getItem("token");
 }
 
+// Fetch hotel info for nepaliFlag
+const fetchHotel = async (token) => {
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const res = await fetch(`${apiBase}/hotels/me`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data?.data || data;
+};
+
 const RecordBook = () => {
     // Pagination state for checkouts and items
     const [checkoutPage, setCheckoutPage] = useState(0);
     const [checkoutRowsPerPage, setCheckoutRowsPerPage] = useState(5);
     const [itemPage, setItemPage] = useState(0);
     const [itemRowsPerPage, setItemRowsPerPage] = useState(10);
+
+    // Hotel state for nepaliFlag
+    const [hotel, setHotel] = useState(null);
+
+    // Fetch hotel info on mount
+    useEffect(() => {
+      const token = getToken();
+      if (token) {
+        fetchHotel(token).then(setHotel);
+      }
+    }, []);
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -172,6 +197,7 @@ const RecordBook = () => {
           setShowUserMenu={setShowUserMenu}
           logout={logout}
           navLinks={navLinks}
+          nepaliFlag={hotel?.nepaliFlag}
         />
         <Container maxWidth="lg" sx={{ py: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
           <Box textAlign="center">
@@ -191,6 +217,7 @@ const RecordBook = () => {
         setShowUserMenu={setShowUserMenu}
         logout={logout}
         navLinks={navLinks}
+        nepaliFlag={hotel?.nepaliFlag}
       />
       
       <Container maxWidth="lg" sx={{ py: 4 }}>
