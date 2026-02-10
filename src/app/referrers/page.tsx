@@ -69,7 +69,8 @@ export default function ReferrersPage() {
     });
     // Listen for localStorage changes (e.g., nepaliLanguage toggle)
     useEffect(() => {
-      const handleStorage = (event) => {
+      const handleStorage = (event: StorageEvent) => {
+
         if (event.key === 'hotel') {
           setHotel(event.newValue ? JSON.parse(event.newValue) : null);
         }

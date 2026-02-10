@@ -141,6 +141,15 @@ export default function HotelsPage() {
     search: ""
   });
 
+      // Load hotel from localStorage
+    const [hotel, setHotel] = useState(() => {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('hotel');
+        return stored ? JSON.parse(stored) : null;
+      }
+      return null;
+    });
+
 // Update your newHotel state initialization to include all required properties:
 const [newHotel, setNewHotel] = useState<Hotel>({
   name: "",
@@ -532,6 +541,9 @@ const [newHotel, setNewHotel] = useState<Hotel>({
         });
       }, 100);
 
+      // Prepare formData for logo upload
+      const formData = new FormData();
+      formData.append("logo", file);
       const response = await uploadHotelLogo(hotelId, formData);
       setUploadProgress(100);
 
@@ -669,7 +681,7 @@ const [newHotel, setNewHotel] = useState<Hotel>({
         showUserMenu={showUserMenu}
         setShowUserMenu={setShowUserMenu}
         logout={logout}
-        nepaliFlag={hotels.some(h => h.nepaliFlag)}
+        nepaliFlag={hotel?.nepaliFlag}
       />
       <div className="max-w-7xl mx-auto p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
@@ -1216,11 +1228,11 @@ setNewHotel({
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input
                         type="checkbox"
-                        checked={!!selectedHotel.nepaliFlag}
-                        onChange={e => setSelectedHotel((prev) => prev ? { ...prev, nepaliFlag: e.target.checked } : prev)}
+                        checked={!!selectedHotel.nepaliLanguage}
+                        onChange={e => setSelectedHotel((prev) => prev ? { ...prev, nepaliLanguage: e.target.checked } : prev)}
                         style={{ accentColor: '#2563eb' }}
                       />
-                      <span>Enable Nepali Flag</span>
+                      <span>Enable Nepali Language</span>
                     </label>
                   </div>
                   <h3 className="text-lg font-semibold">Hotel Details</h3>
@@ -1229,7 +1241,7 @@ setNewHotel({
                     if (!selectedHotel._id) return;
                     try {
                       // Always send nepaliLanguage from showNepali state and nepaliFlag
-                      const updatedHotel = { ...selectedHotel, nepaliLanguage: showNepali, nepaliFlag: !!selectedHotel.nepaliFlag };
+                      const updatedHotel = { ...selectedHotel, nepaliLanguage: !!selectedHotel.nepaliLanguage };
                       await updateHotel(selectedHotel._id, updatedHotel);
                       // Update localStorage with new hotel object
                       localStorage.setItem('hotel', JSON.stringify(updatedHotel));

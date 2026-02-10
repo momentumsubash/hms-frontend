@@ -30,7 +30,8 @@ export const NavBar: React.FC<NavBarProps> = ({ user, showUserMenu, setShowUserM
 interface NavLink {
   label: string;
   href: string;
-  roles?: Role[]; // allowed roles
+  roles?: Role[];
+  np?:string // allowed roles
 }
 
 const displayUser = user || authUser;

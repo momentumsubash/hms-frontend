@@ -16,5 +16,6 @@ export default function Home() {
 
   if (loading) return <div>Loading...</div>;
   if (!user) return null;
-  return <HotelDashboard />;
+  
+  return <HotelDashboard nepaliFlag={false} />;
 }
