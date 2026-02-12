@@ -234,7 +234,7 @@ const navLinks = [
 					navLinks={navLinks}
 					nepaliFlag={hotel?.nepaliFlag || nepaliFlag}
 				/>
-				<div className="max-w-7xl mx-auto space-y-8 p-6">
+				<div className="max-w-9xl mx-auto space-y-8 p-6">
 				{/* Header */}
 				<div className="text-center space-y-4">
 					<h1 className="text-4xl font-serif font-bold text-gray-800">Welcome to Your Hotel Management Dashboard</h1>
@@ -294,7 +294,7 @@ const navLinks = [
 				   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
-							<div className="flex items-center space-x-4">
+							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-purple-100 rounded-lg">
 									<Users className="h-6 w-6 text-purple-600" />
 								</div>
@@ -307,7 +307,7 @@ const navLinks = [
 					</Card>
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
-							<div className="flex items-center space-x-4">
+							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-blue-100 rounded-lg">
 									<Bed className="h-6 w-6 text-blue-600" />
 								</div>
@@ -320,7 +320,7 @@ const navLinks = [
 					</Card>
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
-							<div className="flex items-center space-x-4">
+							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-green-100 rounded-lg">
 									<Star className="h-6 w-6 text-green-600" />
 								</div>
@@ -333,7 +333,7 @@ const navLinks = [
 					</Card>
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
-							<div className="flex items-center space-x-4">
+							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-orange-100 rounded-lg">
 									<Utensils className="h-6 w-6 text-orange-600" />
 								</div>

@@ -363,7 +363,7 @@ export default function UsersPage() {
         logout={logout}
         nepaliFlag={hotel?.nepaliFlag}
       />
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-9xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Users Management</h1>
           <button

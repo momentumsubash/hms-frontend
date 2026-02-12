@@ -60,10 +60,10 @@ const links = defaultNavLinks.filter(
 
   return (
     <nav className="bg-white shadow mb-6">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="max-w-9xl mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <span className="font-bold text-xl text-primary">Hotel HMS</span>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-8">
             {links.map((link) => (
               <a
                 key={link.href}

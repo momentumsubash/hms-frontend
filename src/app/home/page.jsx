@@ -172,7 +172,7 @@ export default function HotelLandingPage() {
       
       {/* Accommodation Showcase with dynamic rooms */}
       <section id="rooms" className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-9xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground mb-4">Our Accommodations</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -226,7 +226,7 @@ export default function HotelLandingPage() {
       
       {/* Amenities Section */}
       <section id="amenities" className="py-20 bg-muted">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-9xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground mb-4">Hotel Amenities</h2>
             <p className="text-xl text-muted-foreground">{websiteContent.amenitiesDescription || 'Everything you need for a comfortable and memorable stay'}</p>

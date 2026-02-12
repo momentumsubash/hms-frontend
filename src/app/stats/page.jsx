@@ -373,7 +373,7 @@ export default function StatsPage() {
         nepaliFlag={hotel?.nepaliFlag}
       />
 
-      <div className="max-w-7xl mx-auto py-10 px-6 space-y-8">
+      <div className="max-w-9xl mx-auto py-10 px-6 space-y-8">
         <h1 className="text-3xl font-bold mb-6 text-center">Statistics & Financial Management</h1>
         
         {/* Filters */}

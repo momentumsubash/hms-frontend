@@ -466,7 +466,7 @@ export default function ReferrersPage() {
     return (
       <div className="min-h-screen bg-slate-50">
         <NavBar user={user} showUserMenu={showUserMenu} setShowUserMenu={setShowUserMenu} logout={logout} navLinks={navLinks} nepaliFlag={hotel?.nepaliFlag} />
-        <div className="max-w-7xl mx-auto p-6">
+        <div className="max-w-9xl mx-auto p-6">
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
@@ -486,7 +486,7 @@ export default function ReferrersPage() {
         nepaliFlag={hotel?.nepaliFlag}
       />
 
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-9xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Referrers Management</h1>
           <button
