@@ -14,12 +14,12 @@ import {
 } from "@/lib/api";
 import { getHotel } from "@/lib/api";
 import { createExpenditure, getExpenditures, approveExpenditure, rejectExpenditure } from "@/lib/expenditure";
-import { Expenditure, ExpenditureFilters } from "@/types/expenditure";
+import { Expenditure, ExpenditureFilters, ExpenditureResponse } from "@/types/expenditure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import Image from "next/image";
-import { PhotoIcon, PlusIcon, XMarkIcon, BellIcon, ClockIcon, DocumentTextIcon, EnvelopeIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
+import { PhotoIcon, PlusIcon, XMarkIcon, BellIcon, ClockIcon, DocumentTextIcon, EnvelopeIcon, GlobeAltIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +55,8 @@ export default function HotelsPage() {
 
   // Expenditure state
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
+  const [filteredTotal, setFilteredTotal] = useState<number>(0);
+  const [filteredCount, setFilteredCount] = useState<number>(0);
   const [expenditureFilters, setExpenditureFilters] = useState<ExpenditureFilters>({});
   const [newExpenditure, setNewExpenditure] = useState<Partial<Expenditure>>({
     amount: 0,
@@ -237,8 +239,10 @@ const [newHotel, setNewHotel] = useState<Hotel>({
 
   const loadExpenditures = async () => {
     try {
-      const res = await getExpenditures(expenditureFilters);
+      const res = await getExpenditures(expenditureFilters) as ExpenditureResponse;
       setExpenditures(res?.data || []);
+      setFilteredTotal(res?.filteredTotal || 0);
+      setFilteredCount(res?.filteredCount || 0);
     } catch (e: any) {
       setError(e.message);
     }
@@ -294,7 +298,7 @@ const [newHotel, setNewHotel] = useState<Hotel>({
       }
       
       setNewDomain("");
-      toast.success(`Domain ${newDomain} has been added successfully.`);
+      toast.success(`Domain रु{newDomain} has been added successfully.`);
     } catch (e: any) {
       setError(e.message);
       toast.error(e.message || "Failed to add domain");
@@ -324,7 +328,7 @@ const [newHotel, setNewHotel] = useState<Hotel>({
         } : null);
       }
       
-      toast.success(`Domain ${domain} has been removed successfully.`);
+      toast.success(`Domain रु{domain} has been removed successfully.`);
     } catch (e: any) {
       setError(e.message);
       toast.error(e.message || "Failed to remove domain");
@@ -333,7 +337,7 @@ const [newHotel, setNewHotel] = useState<Hotel>({
 
   const isValidDomain = (domain: string) => {
     // Simple domain validation
-    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*रु/;
     return domainRegex.test(domain);
   };
 
@@ -509,11 +513,11 @@ const [newHotel, setNewHotel] = useState<Hotel>({
       );
       
       if (response.success) {
-        toast.success(`Test notification sent successfully: ${response.message}`);
+        toast.success(`Test notification sent successfully: रु{response.message}`);
         setShowTestNotificationModal(false);
       } else {
-        setError(`Failed to send test notification: ${response.message}`);
-        toast.error(`Failed to send test notification: ${response.message}`);
+        setError(`Failed to send test notification: रु{response.message}`);
+        toast.error(`Failed to send test notification: रु{response.message}`);
       }
     } catch (e: any) {
       setError(e.message);
@@ -612,12 +616,12 @@ const [newHotel, setNewHotel] = useState<Hotel>({
         setUploadProgress(0);
       }, 500);
       
-      toast.success(`${files.length} ${type} uploaded successfully`);
+      toast.success(`रु{files.length} रु{type} uploaded successfully`);
     } catch (e: any) {
       setError(e.message);
       setUploading(false);
       setUploadProgress(0);
-      toast.error(`Failed to upload ${type}`);
+      toast.error(`Failed to upload रु{type}`);
     }
   };
 
@@ -1091,7 +1095,7 @@ setNewHotel({
                       </div>
                       {hotel.currentBalance !== undefined && (
                         <div className="text-sm text-green-600 font-medium">
-                          Balance: ${hotel.currentBalance.toFixed(2)}
+                          Balance: रु{hotel.currentBalance.toFixed(2)}
                         </div>
                       )}
                     </td>
@@ -1104,7 +1108,7 @@ setNewHotel({
                       {hotel.license ? (
                         <Badge 
                           variant={hotel.license.status === 'active' ? 'default' : 'destructive'}
-                          className={`capitalize ${hotel.license.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
+                          className={`capitalize रु{hotel.license.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
                         >
                           {hotel.license.status}
                           {hotel.license.expiryDate && (
@@ -1684,7 +1688,7 @@ setNewHotel({
                         <div key={index} className="relative">
                           <img
                             src={image}
-                            alt={`Hotel image ${index + 1}`}
+                            alt={`Hotel image रु{index + 1}`}
                             width={100}
                             height={100}
                             className="rounded-lg object-cover w-full h-24"
@@ -1723,7 +1727,7 @@ setNewHotel({
                         <div key={index} className="relative">
                           <img
                             src={image}
-                            alt={`Gallery image ${index + 1}`}
+                            alt={`Gallery image रु{index + 1}`}
                             width={100}
                             height={100}
                             className="rounded-lg object-cover w-full h-24"
@@ -1764,7 +1768,7 @@ setNewHotel({
                           <div className="w-32 h-2 bg-gray-200 rounded-full mt-1">
                             <div 
                               className="h-full bg-blue-600 rounded-full transition-all"
-                              style={{ width: `${uploadProgress}%` }}
+                              style={{ width: `रु{uploadProgress}%` }}
                             />
                           </div>
                         </div>
@@ -1903,7 +1907,7 @@ setNewHotel({
                   <span className="font-medium">Email Service Status:</span>
                   <Badge 
                     variant="outline"
-                    className={`ml-2 ${emailServiceStatus.global.serviceAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                    className={`ml-2 रु{emailServiceStatus.global.serviceAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
                   >
                     {emailServiceStatus.global.serviceAvailable ? "Available" : "Unavailable"}
                   </Badge>
@@ -2170,7 +2174,7 @@ setNewHotel({
                     <span className="font-medium">Status:</span>
                     <Badge 
                       variant={new Date(licenseInfo.expiryDate) > new Date() ? 'default' : 'destructive'}
-                      className={`ml-2 ${new Date(licenseInfo.expiryDate) > new Date() ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}`}
+                      className={`ml-2 रु{new Date(licenseInfo.expiryDate) > new Date() ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}`}
                     >
                       {new Date(licenseInfo.expiryDate) > new Date() ? "Active" : "Expired"}
                     </Badge>
@@ -2329,7 +2333,21 @@ setNewHotel({
 
             {/* Expenditure Filters */}
             <div className="bg-white p-4 rounded-lg shadow mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {/* Search by text */}
+                <div className="md:col-span-1">
+                  <label className="block text-sm font-medium mb-1 flex items-center">
+                    <MagnifyingGlassIcon className="w-4 h-4 mr-1" />
+                    Search
+                  </label>
+                  <input
+                    type="text"
+                    value={expenditureFilters.search || ''}
+                    onChange={(e) => setExpenditureFilters(prev => ({ ...prev, search: e.target.value }))}
+                    placeholder="Search description..."
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Start Date</label>
                   <input
@@ -2380,6 +2398,35 @@ setNewHotel({
               </div>
             </div>
 
+            {/* Filtered Total Summary */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow mb-6 border border-blue-100">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-600">Filtered Results</h3>
+                  <div className="flex items-baseline gap-3 mt-1">
+                    <span className="text-3xl font-bold text-blue-700">
+                      रु{filteredTotal.toFixed(2)}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      Total amount
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
+                    <span className="text-xs text-gray-500">Count</span>
+                    <div className="text-xl font-semibold text-gray-800">{filteredCount}</div>
+                  </div>
+                  <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
+                    <span className="text-xs text-gray-500">Average</span>
+                    <div className="text-xl font-semibold text-gray-800">
+                      रु{filteredCount > 0 ? (filteredTotal / filteredCount).toFixed(2) : '0.00'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Expenditures Table */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="overflow-x-auto">
@@ -2402,9 +2449,9 @@ setNewHotel({
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap capitalize">{expenditure.category}</td>
                         <td className="px-6 py-4">{expenditure.description}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">${expenditure.amount.toFixed(2)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">रु{expenditure.amount.toFixed(2)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full रु{
                             expenditure.status === 'approved' ? 'bg-green-100 text-green-800' :
                             expenditure.status === 'rejected' ? 'bg-red-100 text-red-800' :
                             'bg-yellow-100 text-yellow-800'
@@ -2471,7 +2518,7 @@ setNewHotel({
                       <option value="supplies">Supplies</option>
                       <option value="maintenance">Maintenance</option>
                       <option value="utilities">Utilities</option>
-                      <option value="salaries">Salaries</option>
+                      <option value="salary">Salaries</option>
                       <option value="marketing">Marketing</option>
                       <option value="other">Other</option>
                     </select>
