@@ -53,6 +53,24 @@ function getToken() {
 }
 
 export default function ItemsPage() {
+  // Load hotel from localStorage
+  const [hotel, setHotel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('hotel');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  // Listen for localStorage changes (e.g., nepaliLanguage toggle)
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'hotel') {
+        setHotel(event.newValue ? JSON.parse(event.newValue) : null);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
   // Pagination state
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
@@ -627,9 +645,9 @@ export default function ItemsPage() {
         showUserMenu={showUserMenu}
         setShowUserMenu={setShowUserMenu}
         logout={logout}
-        navLinks={navLinks}
+        nepaliFlag={hotel?.nepaliFlag}
       />
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-9xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Items Management</h1>
           <button

@@ -17,35 +17,36 @@ import {
 } from "@/lib/expenditure";
 import { Expenditure, ExpenditureFilters, ExpenditureStats, FinancialOverview, SummaryStats } from "@/types/expenditure";
 
-const navLinks = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Checkouts", href: "/checkouts" },
-  { label: "Guests", href: "/guests" },
-  { label: "Hotels", href: "/hotels", superAdminOnly: true },
-  { label: "Items", href: "/items" },
-  { label: "Orders", href: "/orders" },
-  { label: "Rooms", href: "/rooms" },
-  { label: "Stats", href: "/stats" },
-  { label: "Users", href: "/users" },
-];
 
-const ROOM_TYPES = ["deluxe", "suite", "standard"];
-const EXPENDITURE_CATEGORIES = ["supplies", "maintenance", "utilities", "salary", "marketing", "other"];
-
-function getToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("token") || sessionStorage.getItem("token");
-}
-
-// type TabType = 'item' | 'room' | 'expenditure' | 'financial' | 'summary' | 'daily';
-
-// interface Category {
-//   _id: string;
-//   name: string;
-//   description?: string;
-// }
 
 export default function StatsPage() {
+  // Load hotel from localStorage
+  const [hotel, setHotel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('hotel');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  // Listen for localStorage changes (e.g., nepaliLanguage toggle)
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key === 'hotel') {
+        setHotel(event.newValue ? JSON.parse(event.newValue) : null);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const ROOM_TYPES = ["deluxe", "suite", "standard"];
+  const EXPENDITURE_CATEGORIES = ["supplies", "maintenance", "utilities", "salary", "marketing", "other"];
+
+  function getToken() {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("token") || sessionStorage.getItem("token");
+  }
+
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
@@ -393,10 +394,10 @@ export default function StatsPage() {
         showUserMenu={showUserMenu}
         setShowUserMenu={setShowUserMenu}
         logout={logout}
-        navLinks={navLinks}
+        nepaliFlag={hotel?.nepaliFlag}
       />
 
-      <div className="max-w-7xl mx-auto py-10 px-6 space-y-8">
+      <div className="max-w-9xl mx-auto py-10 px-6 space-y-8">
         <h1 className="text-3xl font-bold mb-6 text-center">Statistics & Financial Management</h1>
         
         {/* Filters */}

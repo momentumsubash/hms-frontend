@@ -19,7 +19,7 @@ import {
 		Star,
 } from "lucide-react";
 import { getMyHotel, getGuests, getRooms, getOrders } from "@/lib/api";
-export function HotelDashboard() {
+export function HotelDashboard({ nepaliFlag }) {
 	// Notes state
 	const [notes, setNotes] = useState([]);
 	const [noteText, setNoteText] = useState("");
@@ -226,14 +226,15 @@ const navLinks = [
 			   return (
 		       <div className="min-h-screen bg-slate-50">
 					{/* Navigation Bar */}
-			      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        navLinks={navLinks}
-      />
-				<div className="max-w-7xl mx-auto space-y-8 p-6">
+				<NavBar
+					user={user}
+					showUserMenu={showUserMenu}
+					setShowUserMenu={setShowUserMenu}
+					logout={logout}
+					navLinks={navLinks}
+					nepaliFlag={hotel?.nepaliFlag || nepaliFlag}
+				/>
+				<div className="max-w-9xl mx-auto space-y-8 p-6">
 				{/* Header */}
 				<div className="text-center space-y-4">
 					<h1 className="text-4xl font-serif font-bold text-gray-800">Welcome to Your Hotel Management Dashboard</h1>
@@ -293,7 +294,7 @@ const navLinks = [
 				   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
-							<div className="flex items-center space-x-4">
+							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-purple-100 rounded-lg">
 									<Users className="h-6 w-6 text-purple-600" />
 								</div>
@@ -306,7 +307,7 @@ const navLinks = [
 					</Card>
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
-							<div className="flex items-center space-x-4">
+							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-blue-100 rounded-lg">
 									<Bed className="h-6 w-6 text-blue-600" />
 								</div>
@@ -319,7 +320,7 @@ const navLinks = [
 					</Card>
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
-							<div className="flex items-center space-x-4">
+							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-green-100 rounded-lg">
 									<Star className="h-6 w-6 text-green-600" />
 								</div>
@@ -332,7 +333,7 @@ const navLinks = [
 					</Card>
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
-							<div className="flex items-center space-x-4">
+							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-orange-100 rounded-lg">
 									<Utensils className="h-6 w-6 text-orange-600" />
 								</div>
@@ -439,9 +440,18 @@ const navLinks = [
 									<Phone className="h-5 w-5 text-gray-500" />
 									<div>
 										<p className="font-medium">{hotel?.contact?.phone}</p>
-										<p className="text-sm text-gray-600">Main Reception</p>
+										<p className="text-sm text-gray-600">Primary Phone</p>
 									</div>
 								</div>
+								{hotel?.contact?.reception && (
+									<div className="flex items-center space-x-3">
+										<Phone className="h-5 w-5 text-gray-500" />
+										<div>
+											<p className="font-medium">{hotel?.contact?.reception}</p>
+											<p className="text-sm text-gray-600">Reception Phone</p>
+										</div>
+									</div>
+								)}
 								<div className="flex items-center space-x-3">
 									<Mail className="h-5 w-5 text-gray-500" />
 									<div>

@@ -1,12 +1,29 @@
 "use client";
 
+
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 import { useDebounce } from "@/hooks/useDebounce";
 
+// Fetch hotel info for nepaliFlag
+const fetchHotel = async (token: string) => {
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const res = await fetch(`${apiBase}/hotels/me`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`
+    }
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data?.data || data;
+};
+
 
 export default function OrdersPage() {
+    // Hotel state for nepaliFlag
+    const [hotel, setHotel] = useState<any>(null);
   // Pagination state
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -24,7 +41,8 @@ export default function OrdersPage() {
   const [createError, setCreateError] = useState("");
   const [createForm, setCreateForm] = useState({
     roomNumber: "",
-    items: [{ itemId: "", name: "", quantity: "1", price: 0 }]
+    items: [{ itemId: "", name: "", quantity: "1", price: 0 }],
+    showRoomDropdown: false
   });
   const [itemSearch, setItemSearch] = useState("");
   const [itemList, setItemList] = useState<any[]>([]);
@@ -135,7 +153,8 @@ export default function OrdersPage() {
         name: item.name || item.itemId?.name || "",
         quantity: item.quantity.toString(),
         price: item.price || item.itemId?.price || 0
-      }))
+      })),
+      showRoomDropdown: false
     });
     setShowCreate(true);
   };
@@ -219,7 +238,7 @@ const handleUpdateOrderItems = async () => {
       setNotification({ type: 'success', message: data?.message || 'Order updated successfully' });
       setShowCreate(false);
       setEditingOrder(null);
-      setCreateForm({ roomNumber: "", items: [{ itemId: "", name: "", quantity: "1", price: 0 }] });
+      setCreateForm({ roomNumber: "", items: [{ itemId: "", name: "", quantity: "1", price: 0 }], showRoomDropdown: false });
       
       // Refresh only the orders data instead of the entire page
       await refreshOrders();
@@ -280,6 +299,15 @@ const handleUpdateOrderItems = async () => {
     }
     // Authentication logic here...
   };
+
+
+  // Fetch hotel info on mount
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (token) {
+      fetchHotel(token).then(setHotel);
+    }
+  }, []);
 
   useEffect(() => {
     fetchAll();
@@ -378,7 +406,7 @@ const handleUpdateOrderItems = async () => {
   };
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
-  
+
   return (
     <div className="min-h-screen bg-slate-50">
       <NavBar
@@ -387,9 +415,9 @@ const handleUpdateOrderItems = async () => {
         setShowUserMenu={setShowUserMenu}
         logout={logout}
         navLinks={navLinks}
+        nepaliFlag={hotel?.nepaliFlag}
       />
-      
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-9xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Orders Management</h1>
           <button
@@ -400,9 +428,11 @@ const handleUpdateOrderItems = async () => {
               setCreateError("");
               setCreateForm({
                 roomNumber: "",
-                items: [{ itemId: "", name: "", quantity: "1", price: 0 }]
+                items: [{ itemId: "", name: "", quantity: "1", price: 0 }],
+                showRoomDropdown: false
               });
             }}
+            data-cy="orders-add-btn"
           >+ New Order</button>
         </div>
         
@@ -410,13 +440,14 @@ const handleUpdateOrderItems = async () => {
          {/* Create/Edit Order Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 w-full max-w-6xl max-h-[90vh] flex gap-8 overflow-y-auto">
+          <div data-cy="orders-modal" className="bg-white rounded-lg p-8 w-full max-w-6xl max-h-[90vh] flex gap-8 overflow-y-auto">
             {/* Left: Form */}
             <div className="flex-1 min-w-[320px]">
-              <h2 className="text-2xl font-bold mb-4">
+              <h2 data-cy="orders-modal-title" className="text-2xl font-bold mb-4">
                 {editingOrder ? "Edit Order" : "Create New Order"}
               </h2>
               <form
+                data-cy="orders-create-form"
                 onSubmit={async (e) => {
                   e.preventDefault();
                   if (editingOrder) {
@@ -470,7 +501,7 @@ const handleUpdateOrderItems = async () => {
                         setNotification({ type: 'success', message: data?.message || 'Order created successfully' });
                         setShowCreate(false);
                         resetFormErrors();
-                        setCreateForm({ roomNumber: "", items: [{ itemId: "", name: "", quantity: "1", price: 0 }] });
+                        setCreateForm({ roomNumber: "", items: [{ itemId: "", name: "", quantity: "1", price: 0 }], showRoomDropdown: false });
                         
                         // Refresh only the orders data instead of the entire page
                         await refreshOrders();
@@ -490,7 +521,7 @@ const handleUpdateOrderItems = async () => {
                     </div>
                   )}
                   
-                  <div>
+                  <div data-cy="orders-room-selector-container">
                     <label className="block text-sm font-medium mb-1">Select Room</label>
                     {roomsLoading ? (
                       <div className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100">Loading rooms...</div>
@@ -498,35 +529,59 @@ const handleUpdateOrderItems = async () => {
                       <div className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100">No occupied rooms available</div>
                     ) : (
                       <div>
-                        <select
-                          value={createForm.roomNumber}
-                          onChange={e => setCreateForm(f => ({ ...f, roomNumber: e.target.value }))}
-                          className={`w-full border rounded px-3 py-2 ${formErrors.roomNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                          required
-                          disabled={!!editingOrder}
-                        >
-                          <option value="">Select a room</option>
-                          {occupiedRooms.map((room) => (
-                            <option key={room._id} value={room.roomNumber}>
-                              Room {room.roomNumber} - {room.guestName || 'Guest'} (Check-in: {new Date(room.checkInDate).toLocaleDateString()})
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <div
+                            data-cy="orders-room-select"
+                            onClick={() => setCreateForm(f => ({ ...f, showRoomDropdown: !f.showRoomDropdown }))}
+                            className={`w-full border rounded px-3 py-2 cursor-pointer flex justify-between items-center ${formErrors.roomNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                          >
+                            <span className="text-gray-700">
+                              {createForm.roomNumber 
+                                ? occupiedRooms.find(r => r.roomNumber === createForm.roomNumber)?.roomNumber || 'Select a room'
+                                : 'Select a room'
+                              }
+                            </span>
+                            <span
+                              data-cy="orders-room-select-icon"
+                              className="text-gray-600"
+                            >
+                              ▼
+                            </span>
+                          </div>
+                          {createForm.showRoomDropdown && (
+                            <div data-cy="orders-room-dropdown" className="absolute top-full left-0 right-0 border border-gray-300 rounded mt-1 bg-white z-10 max-h-48 overflow-y-auto">
+                              {occupiedRooms.map((room, index) => (
+                                <div
+                                  key={room._id}
+                                  data-cy={`orders-room-${index}`}
+                                  onClick={() => {
+                                    setCreateForm(f => ({ ...f, roomNumber: room.roomNumber, showRoomDropdown: false }));
+                                  }}
+                                  className="px-3 py-2 hover:bg-blue-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="font-semibold">Room {room.roomNumber}</div>
+                                  <div className="text-sm text-gray-600">{room.guestName || 'Guest'} (Check-in: {new Date(room.checkInDate).toLocaleDateString()})</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         {formErrors.roomNumber && <p className="text-red-600 text-sm mt-1">{formErrors.roomNumber}</p>}
                       </div>
                     )}
                   </div>
                   
                   {/* Items section */}
-                  <div>
+                  <div data-cy="orders-items-container">
                     <label className="block text-sm font-medium mb-1">Items {formErrors.items && <span className="text-red-600">- {formErrors.items}</span>}</label>
                     {formErrors.items && <p className="text-red-600 text-sm mb-2">{formErrors.items}</p>}
                     {createForm.items.map((item, index) => (
-                      <div key={index} className="flex gap-2 mb-2 items-center">
+                      <div key={index} data-cy={`orders-item-row-${index}`} className="flex gap-2 mb-2 items-center">
                         <div className="flex-1">
                           <div className="text-sm font-medium mb-1">{item.name || "Select an item"}</div>
                           <div className="flex gap-2">
                             <button
+                              data-cy={`orders-quantity-decrease-${index}`}
                               type="button"
                               onClick={() => {
                                 const newItems = [...createForm.items];
@@ -538,6 +593,7 @@ const handleUpdateOrderItems = async () => {
                               className="px-2 bg-gray-200 rounded"
                             >-</button>
                             <input
+                              data-cy={`orders-quantity-${index}`}
                               type="number"
                               value={item.quantity}
                               onChange={e => {
@@ -550,6 +606,7 @@ const handleUpdateOrderItems = async () => {
                               required
                             />
                             <button
+                              data-cy={`orders-quantity-increase-${index}`}
                               type="button"
                               onClick={() => {
                                 const newItems = [...createForm.items];
@@ -564,6 +621,7 @@ const handleUpdateOrderItems = async () => {
                           रु{item.price * parseInt(item.quantity) || 0}
                         </div>
                         <button
+                          data-cy={`orders-remove-item-${index}`}
                           type="button"
                           onClick={() => {
                             if (createForm.items.length > 1) {
@@ -578,6 +636,7 @@ const handleUpdateOrderItems = async () => {
                       </div>
                     ))}
                     <button
+                      data-cy="orders-add-another-item"
                       type="button"
                       onClick={() => setCreateForm(f => ({ 
                         ...f, 
@@ -600,14 +659,16 @@ const handleUpdateOrderItems = async () => {
                       }}
                       className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                       disabled={createLoading}
+                      data-cy="orders-cancel"
                     >Cancel</button>
                     <button
                       type="submit"
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                       disabled={createLoading || roomsLoading || occupiedRooms.length === 0}
+                      data-cy="orders-submit"
                     >
                       {createLoading 
-                        ? (editingOrder ? "Updating..." : "Creating...") 
+                        ? (editingOrder ? "Updating..." : "Creating...")
                         : (editingOrder ? "Update Order" : "Create Order")
                       }
                     </button>
@@ -619,6 +680,7 @@ const handleUpdateOrderItems = async () => {
               <div className="flex-1 min-w-[320px] max-w-[400px]">
                 <div className="flex items-center mb-2">
                   <input
+                    data-cy="orders-item-search"
                     type="text"
                     value={itemSearch}
                     onChange={e => setItemSearch(e.target.value)}
@@ -626,7 +688,7 @@ const handleUpdateOrderItems = async () => {
                     placeholder="Search items by name..."
                   />
                 </div>
-                <div className="border rounded h-[400px] overflow-y-auto bg-gray-50 p-2">
+                <div data-cy="orders-items-list" className="border rounded h-[400px] overflow-y-auto bg-gray-50 p-2">
                   {itemLoading ? (
                     <div className="text-center text-gray-500 py-8">Loading...</div>
                   ) : itemList.length === 0 ? (
@@ -636,6 +698,7 @@ const handleUpdateOrderItems = async () => {
                       {itemList.map((item: any) => (
                         <li
                           key={item._id}
+                          data-cy={`orders-item-option-${item._id}`}
                           className={`p-2 rounded cursor-pointer hover:bg-blue-100 ${createForm.items.some(i => i.itemId === item._id) ? 'bg-blue-200' : ''}`}
                           onClick={() => {
                             // Add this item to the form
@@ -710,6 +773,7 @@ const handleUpdateOrderItems = async () => {
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 placeholder="General search..."
+                data-cy="orders-search"
               />
             </div>
             <div>
@@ -718,6 +782,7 @@ const handleUpdateOrderItems = async () => {
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
+                data-cy="orders-status-filter"
               >
                 <option value="">All Status</option>
                 <option value="completed">Completed</option>
@@ -733,6 +798,7 @@ const handleUpdateOrderItems = async () => {
                 onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 placeholder="Room number"
+                data-cy="orders-room-filter"
               />
             </div>
             <div>
@@ -743,6 +809,7 @@ const handleUpdateOrderItems = async () => {
                 onChange={(e) => handleFilterChange('guestName', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 placeholder="Guest name"
+                data-cy="orders-guestname-filter"
               />
             </div>
             <div>
@@ -753,6 +820,7 @@ const handleUpdateOrderItems = async () => {
                 onChange={(e) => handleFilterChange('guestPhone', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 placeholder="Guest phone"
+                data-cy="orders-guestphone-filter"
               />
             </div>
           </div>

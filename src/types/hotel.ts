@@ -145,4 +145,7 @@ export interface Hotel {
   // Timestamps
   createdAt?: string;
   updatedAt?: string;
+
+  // Language setting
+  nepaliLanguage?: boolean;
 }

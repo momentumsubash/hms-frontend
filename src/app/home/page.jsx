@@ -24,15 +24,19 @@ const getImageUrl = (primaryUrl, fallbackUrl, defaultImage = "/abstract-geometri
 
 // Replace static content with dynamic content from the API
 export default function HotelLandingPage() {
-  const [hotel, setHotel] = useState(null);
+  const [hotel, setHotel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('hotel');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
   const [websiteContent, setWebsiteContent] = useState(null);
   const [seo, setSeo] = useState(null);
   
   const ensureWebsiteDefaults = (website) => {
     const w = website || {};
     return {
-      heroTitle: w.heroTitle || "",
-      heroSubtitle: w.heroSubtitle || "",
       aboutDescription: w.aboutDescription || "",
       amenitiesDescription: w.amenitiesDescription || "",
       experiencesDescription: w.experiencesDescription || "",
@@ -129,9 +133,12 @@ export default function HotelLandingPage() {
     return <div className="min-h-screen flex items-center justify-center text-lg">Loading hotel details...</div>;
   }
   
+  // Determine nepaliFlag for Navbar
+  const nepaliFlag = hotel?.nepaliFlag === true;
+
   return (
     <div className="min-h-screen bg-background">
-      <Navbar hotel={hotel} />
+      <Navbar hotel={hotel} nepaliFlag={nepaliFlag} />
       {/* Hero Section with dynamic content */}
       <section id="home" className="relative h-screen flex items-center justify-center overflow-hidden">
         <div
@@ -151,8 +158,10 @@ export default function HotelLandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
               size="lg"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg flex items-center gap-2"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg flex items-center gap-2 w-full sm:w-auto"
+              style={{ minHeight: 56, fontSize: '1.125rem', borderRadius: 12 }}
               onClick={handleWhatsAppContact}
+              tabIndex={0}
             >
               <WhatsAppIcon className="w-5 h-5" />
               Book Your Stay
@@ -163,7 +172,7 @@ export default function HotelLandingPage() {
       
       {/* Accommodation Showcase with dynamic rooms */}
       <section id="rooms" className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-9xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground mb-4">Our Accommodations</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -217,7 +226,7 @@ export default function HotelLandingPage() {
       
       {/* Amenities Section */}
       <section id="amenities" className="py-20 bg-muted">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="max-w-9xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-foreground mb-4">Hotel Amenities</h2>
             <p className="text-xl text-muted-foreground">{websiteContent.amenitiesDescription || 'Everything you need for a comfortable and memorable stay'}</p>
