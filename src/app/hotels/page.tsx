@@ -2359,7 +2359,7 @@ setNewHotel({
                     <option value="supplies">Supplies</option>
                     <option value="maintenance">Maintenance</option>
                     <option value="utilities">Utilities</option>
-                    <option value="salaries">Salaries</option>
+                    <option value="salary">Salaries</option>
                     <option value="marketing">Marketing</option>
                     <option value="other">Other</option>
                   </select>
