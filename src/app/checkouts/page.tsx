@@ -795,7 +795,7 @@ const printBill = () => {
             </div>
 
             {/* Clear Filters Button */}
-            <div className="flex items-end gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 type="submit"
                 className="flex-1 sm:flex-none bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 transition-colors"
