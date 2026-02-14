@@ -116,15 +116,9 @@ export default function HotelsPage() {
   // Reset form errors
   const resetFormErrors = () => setFormErrors({});
 
-  // Nepali translations for nav links
-  // Nav links (labels handled in NavBar)
-  const navLinks = undefined;
-
-  // Hotel setting: show Nepali labels
   // Hotel setting: show Nepali labels (persisted per hotel)
   const [showNepali, setShowNepali] = useState(false);
 
-  // Persist setting in localStorage
   // When Edit Hotel modal opens, sync showNepali with selectedHotel.nepaliLanguage
   useEffect(() => {
     if (showEditModal && selectedHotel) {
@@ -143,76 +137,76 @@ export default function HotelsPage() {
     search: ""
   });
 
-      // Load hotel from localStorage
-    const [hotel, setHotel] = useState(() => {
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('hotel');
-        return stored ? JSON.parse(stored) : null;
-      }
-      return null;
-    });
-
-// Update your newHotel state initialization to include all required properties:
-const [newHotel, setNewHotel] = useState<Hotel>({
-  name: "",
-  description: "",
-  phone: "",
-  logo: "",
-  images: [],
-  vatNumber: "",
-  companyName: "",
-  vatAddress: "",
-  type: "",
-  roomCount: 0,
-  floors: 0,
-  established: new Date().getFullYear(),
-  amenities: [],
-  gallery: [],
-  contact: {
-    phone: "",
-    reception: "",
-    email: "",
-    website: ""
-  },
-  address: {
-    street: "",
-    area: "",
-    city: "",
-    state: "",
-    zip: ""
-  },
-  locationMap: "",
-  nearby: [],
-  notes: [],
-  initialAmount: 0,
-  currentBalance: 0,
-  createdAt: new Date().toISOString(),
-  whitelistedDomains: [],
-  customDomains: [],
-  website: {
-    heroTitle: "",
-    heroSubtitle: "",
-    heroImage: "",
-    aboutDescription: "",
-    amenitiesDescription: "",
-    experiencesDescription: "",
-    testimonialsDescription: "",
-    footerDescription: "",
-    rooms: [],
-    amenities: [],
-    testimonials: [],
-    contactInfo: {
-      phone: "",
-      email: "",
-      address: ""
+  // Load hotel from localStorage
+  const [hotel, setHotel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('hotel');
+      return stored ? JSON.parse(stored) : null;
     }
-  },
-  seo: {
-    title: "",
+    return null;
+  });
+
+  // Update your newHotel state initialization to include all required properties:
+  const [newHotel, setNewHotel] = useState<Hotel>({
+    name: "",
     description: "",
-    keywords: []
-  }
-});
+    phone: "",
+    logo: "",
+    images: [],
+    vatNumber: "",
+    companyName: "",
+    vatAddress: "",
+    type: "",
+    roomCount: 0,
+    floors: 0,
+    established: new Date().getFullYear(),
+    amenities: [],
+    gallery: [],
+    contact: {
+      phone: "",
+      reception: "",
+      email: "",
+      website: ""
+    },
+    address: {
+      street: "",
+      area: "",
+      city: "",
+      state: "",
+      zip: ""
+    },
+    locationMap: "",
+    nearby: [],
+    notes: [],
+    initialAmount: 0,
+    currentBalance: 0,
+    createdAt: new Date().toISOString(),
+    whitelistedDomains: [],
+    customDomains: [],
+    website: {
+      heroTitle: "",
+      heroSubtitle: "",
+      heroImage: "",
+      aboutDescription: "",
+      amenitiesDescription: "",
+      experiencesDescription: "",
+      testimonialsDescription: "",
+      footerDescription: "",
+      rooms: [],
+      amenities: [],
+      testimonials: [],
+      contactInfo: {
+        phone: "",
+        email: "",
+        address: ""
+      }
+    },
+    seo: {
+      title: "",
+      description: "",
+      keywords: []
+    }
+  });
 
   useEffect(() => {
     loadData();
@@ -298,7 +292,7 @@ const [newHotel, setNewHotel] = useState<Hotel>({
       }
       
       setNewDomain("");
-      toast.success(`Domain रु{newDomain} has been added successfully.`);
+      toast.success(`Domain ${newDomain} has been added successfully.`);
     } catch (e: any) {
       setError(e.message);
       toast.error(e.message || "Failed to add domain");
@@ -328,7 +322,7 @@ const [newHotel, setNewHotel] = useState<Hotel>({
         } : null);
       }
       
-      toast.success(`Domain रु{domain} has been removed successfully.`);
+      toast.success(`Domain ${domain} has been removed successfully.`);
     } catch (e: any) {
       setError(e.message);
       toast.error(e.message || "Failed to remove domain");
@@ -337,7 +331,7 @@ const [newHotel, setNewHotel] = useState<Hotel>({
 
   const isValidDomain = (domain: string) => {
     // Simple domain validation
-    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*रु/;
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
     return domainRegex.test(domain);
   };
 
@@ -513,11 +507,11 @@ const [newHotel, setNewHotel] = useState<Hotel>({
       );
       
       if (response.success) {
-        toast.success(`Test notification sent successfully: रु{response.message}`);
+        toast.success(`Test notification sent successfully: ${response.message}`);
         setShowTestNotificationModal(false);
       } else {
-        setError(`Failed to send test notification: रु{response.message}`);
-        toast.error(`Failed to send test notification: रु{response.message}`);
+        setError(`Failed to send test notification: ${response.message}`);
+        toast.error(`Failed to send test notification: ${response.message}`);
       }
     } catch (e: any) {
       setError(e.message);
@@ -533,7 +527,6 @@ const [newHotel, setNewHotel] = useState<Hotel>({
       setUploadProgress(0);
       const file = e.target.files[0] as File;
       
-
       // Simulate upload progress
       const interval = setInterval(() => {
         setUploadProgress(prev => {
@@ -616,12 +609,12 @@ const [newHotel, setNewHotel] = useState<Hotel>({
         setUploadProgress(0);
       }, 500);
       
-      toast.success(`रु{files.length} रु{type} uploaded successfully`);
+      toast.success(`${files.length} ${type} uploaded successfully`);
     } catch (e: any) {
       setError(e.message);
       setUploading(false);
       setUploadProgress(0);
-      toast.error(`Failed to upload रु{type}`);
+      toast.error(`Failed to upload ${type}`);
     }
   };
 
@@ -679,7 +672,6 @@ const [newHotel, setNewHotel] = useState<Hotel>({
   
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Removed global Show Nepali labels toggle. Only in Edit Hotel modal. */}
       <NavBar
         user={user}
         showUserMenu={showUserMenu}
@@ -710,67 +702,66 @@ const [newHotel, setNewHotel] = useState<Hotel>({
                   await addHotel(newHotel);
                   setShowCreateModal(false);
                   loadData();
-// In the create hotel modal onSubmit handler, update the reset function:
-setNewHotel({
-  name: "",
-  description: "",
-  phone: "",
-  logo: "",
-  images: [],
-  vatNumber: "",
-  companyName: "",
-  vatAddress: "",
-  type: "",
-  roomCount: 0,
-  floors: 0,
-  established: new Date().getFullYear(),
-  amenities: [],
-  gallery: [],
-  contact: {
-    phone: "",
-    reception: "",
-    email: "",
-    website: ""
-  },
-  address: {
-    street: "",
-    area: "",
-    city: "",
-    state: "",
-    zip: ""
-  },
-  locationMap: "",
-  nearby: [],
-  notes: [],
-  initialAmount: 0,
-  currentBalance: 0,
-  createdAt: new Date().toISOString(),
-  whitelistedDomains: [],
-  customDomains: [],
-  website: {
-    heroTitle: "",
-    heroSubtitle: "",
-    heroImage: "",
-    aboutDescription: "",
-    amenitiesDescription: "",
-    experiencesDescription: "",
-    testimonialsDescription: "",
-    footerDescription: "",
-    rooms: [],
-    amenities: [],
-    testimonials: [],
-    contactInfo: {
-      phone: "",
-      email: "",
-      address: ""
-    }
-  },
-  seo: {
-    title: "",
-    description: "",
-    keywords: []
-  }
-});
+                  setNewHotel({
+                    name: "",
+                    description: "",
+                    phone: "",
+                    logo: "",
+                    images: [],
+                    vatNumber: "",
+                    companyName: "",
+                    vatAddress: "",
+                    type: "",
+                    roomCount: 0,
+                    floors: 0,
+                    established: new Date().getFullYear(),
+                    amenities: [],
+                    gallery: [],
+                    contact: {
+                      phone: "",
+                      reception: "",
+                      email: "",
+                      website: ""
+                    },
+                    address: {
+                      street: "",
+                      area: "",
+                      city: "",
+                      state: "",
+                      zip: ""
+                    },
+                    locationMap: "",
+                    nearby: [],
+                    notes: [],
+                    initialAmount: 0,
+                    currentBalance: 0,
+                    createdAt: new Date().toISOString(),
+                    whitelistedDomains: [],
+                    customDomains: [],
+                    website: {
+                      heroTitle: "",
+                      heroSubtitle: "",
+                      heroImage: "",
+                      aboutDescription: "",
+                      amenitiesDescription: "",
+                      experiencesDescription: "",
+                      testimonialsDescription: "",
+                      footerDescription: "",
+                      rooms: [],
+                      amenities: [],
+                      testimonials: [],
+                      contactInfo: {
+                        phone: "",
+                        email: "",
+                        address: ""
+                      }
+                    },
+                    seo: {
+                      title: "",
+                      description: "",
+                      keywords: []
+                    }
+                  });
                   toast.success("Hotel created successfully");
                 } catch (e: any) {
                   setError(e.message);
@@ -1108,7 +1099,7 @@ setNewHotel({
                       {hotel.license ? (
                         <Badge 
                           variant={hotel.license.status === 'active' ? 'default' : 'destructive'}
-                          className={`capitalize रु{hotel.license.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
+                          className={`capitalize ${hotel.license.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}`}
                         >
                           {hotel.license.status}
                           {hotel.license.expiryDate && (
@@ -1167,7 +1158,7 @@ setNewHotel({
                             <DocumentTextIcon className="w-4 h-4 mr-1" />
                             License
                           </Button>
-              <Button
+                          <Button
                             onClick={async () => {
                               try {
                                 // Load full hotel including website/seo before opening modal
@@ -1228,7 +1219,6 @@ setNewHotel({
                 {/* Hotel Details Form */}
                 <div className="space-y-4">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input
                         type="checkbox"
@@ -1576,8 +1566,7 @@ setNewHotel({
                                 reception: selectedHotel.website?.contactInfo?.reception, 
                                 website: selectedHotel.website?.contactInfo?.website 
                               } 
-                            },
-                            // Note: address at root level is street/area/city/zip, website.contactInfo.address is full address
+                            }
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2 col-span-1 md:col-span-2"
                           placeholder="Full Address"
@@ -1688,7 +1677,7 @@ setNewHotel({
                         <div key={index} className="relative">
                           <img
                             src={image}
-                            alt={`Hotel image रु{index + 1}`}
+                            alt={`Hotel image ${index + 1}`}
                             width={100}
                             height={100}
                             className="rounded-lg object-cover w-full h-24"
@@ -1727,7 +1716,7 @@ setNewHotel({
                         <div key={index} className="relative">
                           <img
                             src={image}
-                            alt={`Gallery image रु{index + 1}`}
+                            alt={`Gallery image ${index + 1}`}
                             width={100}
                             height={100}
                             className="rounded-lg object-cover w-full h-24"
@@ -1768,7 +1757,7 @@ setNewHotel({
                           <div className="w-32 h-2 bg-gray-200 rounded-full mt-1">
                             <div 
                               className="h-full bg-blue-600 rounded-full transition-all"
-                              style={{ width: `रु{uploadProgress}%` }}
+                              style={{ width: `${uploadProgress}%` }}
                             />
                           </div>
                         </div>
@@ -1907,7 +1896,7 @@ setNewHotel({
                   <span className="font-medium">Email Service Status:</span>
                   <Badge 
                     variant="outline"
-                    className={`ml-2 रु{emailServiceStatus.global.serviceAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                    className={`ml-2 ${emailServiceStatus.global.serviceAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
                   >
                     {emailServiceStatus.global.serviceAvailable ? "Available" : "Unavailable"}
                   </Badge>
@@ -2174,7 +2163,7 @@ setNewHotel({
                     <span className="font-medium">Status:</span>
                     <Badge 
                       variant={new Date(licenseInfo.expiryDate) > new Date() ? 'default' : 'destructive'}
-                      className={`ml-2 रु{new Date(licenseInfo.expiryDate) > new Date() ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}`}
+                      className={`ml-2 ${new Date(licenseInfo.expiryDate) > new Date() ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}`}
                     >
                       {new Date(licenseInfo.expiryDate) > new Date() ? "Active" : "Expired"}
                     </Badge>
@@ -2451,7 +2440,7 @@ setNewHotel({
                         <td className="px-6 py-4">{expenditure.description}</td>
                         <td className="px-6 py-4 whitespace-nowrap">रु{expenditure.amount.toFixed(2)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full रु{
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             expenditure.status === 'approved' ? 'bg-green-100 text-green-800' :
                             expenditure.status === 'rejected' ? 'bg-red-100 text-red-800' :
                             'bg-yellow-100 text-yellow-800'
@@ -2598,9 +2587,7 @@ setNewHotel({
                 </form>
               </DialogContent>
             </Dialog>
-
           </div>
-          
         )}
       </div>
     </div>

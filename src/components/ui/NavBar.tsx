@@ -8,6 +8,8 @@ interface NavLink {
   label: string;
   href: string;
   superAdminOnly?: boolean;
+  roles?: string[]; // Added roles property
+  np?: string; // Nepali translation
 }
 
 interface NavBarProps {
@@ -24,7 +26,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   showUserMenu, 
   setShowUserMenu, 
   logout, 
-  navLinks, 
+  navLinks: propNavLinks, 
   nepaliFlag 
 }) => {
   const { user: authUser, logout: authLogout } = useAuth();
@@ -33,34 +35,53 @@ export const NavBar: React.FC<NavBarProps> = ({
   
   type Role = "staff" | "manager" | "super_admin";
 
-  interface NavLink {
-    label: string;
-    href: string;
-    roles?: Role[];
-    np?: string; // allowed roles
-  }
-
   const displayUser = user || authUser;
+  const userRole = displayUser?.role as Role;
 
+  // Default navigation links with proper role definitions
   const defaultNavLinks: NavLink[] = [
-    { label: "Dashboard", href: "/dashboard", np: "ड्यासबोर्ड" },
-    { label: "Checkouts", href: "/checkouts", np: "चेकआउट" },
-    { label: "Guests", href: "/guests", np: "अतिथि" },
-    { label: "Hotels", href: "/hotels", np: "होटलहरू", roles: ["super_admin", "manager"] },
-    { label: "Items", href: "/items", np: "वस्तुहरू", roles: ["super_admin", "manager"] },
-    { label: "Orders", href: "/orders", np: "अर्डरहरू" },
-    { label: "Rooms", href: "/rooms", np: "कोठाहरू", roles: ["super_admin", "manager"] },
-    { label: "Referrers", href: "/referrers", np: "सिफारिसकर्ता", roles: ["super_admin", "manager"] },
-    { label: "Stats", href: "/stats", np: "सांख्यिकी", roles: ["super_admin", "manager"] },
+    { label: "Dashboard", href: "/dashboard", np: "ड्यासबोर्ड", roles: ["staff", "manager", "super_admin"] },
+    { label: "Checkouts", href: "/checkouts", np: "चेकआउट", roles: ["staff", "manager", "super_admin"] },
+    { label: "Guests", href: "/guests", np: "अतिथि", roles: ["staff", "manager", "super_admin"] },
+    { label: "Hotels", href: "/hotels", np: "होटलहरू", roles: ["manager", "super_admin"] },
+    { label: "Items", href: "/items", np: "वस्तुहरू", roles: ["manager", "super_admin"] },
+    { label: "Orders", href: "/orders", np: "अर्डरहरू", roles: ["staff", "manager", "super_admin"] },
+    { label: "Rooms", href: "/rooms", np: "कोठाहरू", roles: ["manager", "super_admin"] },
+    { label: "Referrers", href: "/referrers", np: "सिफारिसकर्ता", roles: ["manager", "super_admin"] },
+    { label: "Stats", href: "/stats", np: "सांख्यिकी", roles: ["manager", "super_admin"] },
     { label: "Users", href: "/users", np: "प्रयोगकर्ता", roles: ["manager", "super_admin"] },
     { label: "RecordBook", href: "/recordbook", np: "रेकर्डबुक", roles: ["manager", "super_admin"] },
   ];
 
-  // Filter by role
-  const links = defaultNavLinks.filter(
-    (link) =>
-      !link.roles || link.roles.includes(displayUser?.role as Role)
-  );
+  // Use provided navLinks or default
+  const linksToFilter = propNavLinks || defaultNavLinks;
+
+  // Filter links based on user role
+  const links = linksToFilter.filter((link) => {
+    // If no user, don't show any links
+    if (!displayUser) return false;
+    
+    // Handle superAdminOnly for backward compatibility
+    if (link.superAdminOnly) {
+      return userRole === "super_admin";
+    }
+    
+    // If roles array exists, check if user's role is included
+    if (link.roles && Array.isArray(link.roles)) {
+      return link.roles.includes(userRole);
+    }
+    
+    // If no restrictions, show to all authenticated users
+    return true;
+  });
+
+  // Debug: Log filtered links and user role (remove in production)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log("NavBar - User Role:", userRole);
+      console.log("NavBar - Filtered Links:", links.map(l => l.label));
+    }
+  }, [userRole, links]);
 
   // Handle scroll effect for navbar
   useEffect(() => {
@@ -81,6 +102,9 @@ export const NavBar: React.FC<NavBarProps> = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Don't render navbar if no user
+  if (!displayUser) return null;
 
   return (
     <nav className={`sticky top-0 z-50 bg-white transition-shadow ${scrolled ? 'shadow-lg' : 'shadow'}`}>
@@ -130,6 +154,9 @@ export const NavBar: React.FC<NavBarProps> = ({
                     ? `${displayUser?.firstName || ""} ${displayUser?.lastName || ""}`.trim()
                     : displayUser?.email || "User"}
                 </span>
+                <span className="hidden sm:inline text-xs text-gray-500 ml-1">
+                  ({displayUser?.role})
+                </span>
                 <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -138,12 +165,13 @@ export const NavBar: React.FC<NavBarProps> = ({
               {/* User dropdown menu */}
               {showUserMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
-                  <div className="px-4 py-2 border-b border-gray-100 sm:hidden">
+                  <div className="px-4 py-2 border-b border-gray-100">
                     <p className="text-sm font-medium text-gray-900">
                       {displayUser?.firstName || displayUser?.lastName
                         ? `${displayUser?.firstName || ""} ${displayUser?.lastName || ""}`.trim()
                         : displayUser?.email || "User"}
                     </p>
+                    <p className="text-xs text-gray-500">Role: {displayUser?.role}</p>
                     <p className="text-xs text-gray-500 truncate">{displayUser?.email}</p>
                   </div>
                   <button
@@ -207,12 +235,12 @@ export const NavBar: React.FC<NavBarProps> = ({
             ))}
           </div>
           
-          {/* Quick user info for mobile - if needed */}
+          {/* Quick user info for mobile */}
           {mobileMenuOpen && (
-            <div className="mt-4 pt-4 border-t border-gray-200 sm:hidden">
+            <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Logged in as:</span>
-                <span className="text-sm font-medium text-primary">
+                <span className="text-sm font-medium text-primary capitalize">
                   {displayUser?.role || 'User'}
                 </span>
               </div>
