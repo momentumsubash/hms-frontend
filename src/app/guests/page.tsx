@@ -1356,6 +1356,7 @@ export default function GuestsPage() {
           <button
             onClick={handleAddNewGuest}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            data-cy="guests-add-btn"
           >
             Add New Guest
           </button>
@@ -1510,6 +1511,7 @@ export default function GuestsPage() {
                         required
                         disabled={isSearchingGuest || !!editingGuest}
                         placeholder="Enter 10-digit phone number"
+                        data-cy="guests-phone"
                       />
                       {formErrors.phone && <p className="text-red-500 text-sm">{formErrors.phone}</p>}
 
@@ -1533,6 +1535,7 @@ export default function GuestsPage() {
                         onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                         required
+                        data-cy="guests-firstname"
                       />
                     </div>
 
@@ -1544,6 +1547,7 @@ export default function GuestsPage() {
                         onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                         required
+                        data-cy="guests-lastname"
                       />
                     </div>
 
@@ -1555,6 +1559,7 @@ export default function GuestsPage() {
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                         placeholder="Optional"
+                        data-cy="guests-email"
                       />
                       {formErrors.email && <p className="text-red-500 text-sm">{formErrors.email}</p>}
                     </div>
@@ -1566,6 +1571,7 @@ export default function GuestsPage() {
                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                         rows={2}
+                        data-cy="guests-address"
                       />
                     </div>
                   </div>
@@ -1581,6 +1587,7 @@ export default function GuestsPage() {
                         value={formData.idNo}
                         onChange={(e) => setFormData({ ...formData, idNo: e.target.value })}
                         className="w-full border border-gray-300 rounded px-3 py-2"
+                        data-cy="guests-idno"
                       />
                     </div>
 
@@ -1591,6 +1598,7 @@ export default function GuestsPage() {
                         value={formData.occupation}
                         onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
                         className="w-full border border-gray-300 rounded px-3 py-2"
+                        data-cy="guests-occupation"
                       />
                     </div>
 
@@ -1601,6 +1609,7 @@ export default function GuestsPage() {
                         value={formData.vehicleNo}
                         onChange={(e) => setFormData({ ...formData, vehicleNo: e.target.value })}
                         className="w-full border border-gray-300 rounded px-3 py-2"
+                        data-cy="guests-vehicleno"
                       />
                     </div>
 
@@ -1611,6 +1620,7 @@ export default function GuestsPage() {
                         value={formData.purposeOfStay}
                         onChange={(e) => setFormData({ ...formData, purposeOfStay: e.target.value })}
                         className="w-full border border-gray-300 rounded px-3 py-2"
+                        data-cy="guests-purpose"
                       />
                     </div>
 
@@ -1732,6 +1742,7 @@ export default function GuestsPage() {
                         }}
                         className="w-full border border-gray-300 rounded px-3 py-2 h-32"
                         required
+                        data-cy="guests-rooms"
                       >
                         {/* Show all rooms when editing, only available (unoccupied) rooms when creating */}
                         {(editingGuest ? allRooms : availableRooms.filter(r => !r.isOccupied)).map((room) => (
@@ -1769,6 +1780,7 @@ export default function GuestsPage() {
                         className="w-full border border-gray-300 rounded px-3 py-2"
                         min="0"
                         step="0.01"
+                        data-cy="guests-roomdiscount"
                       />
                       {formErrors.roomDiscount && <p className="text-red-500 text-sm">{formErrors.roomDiscount}</p>}
                     </div>
@@ -1782,6 +1794,7 @@ export default function GuestsPage() {
                         className="w-full border border-gray-300 rounded px-3 py-2"
                         min="0"
                         step="0.01"
+                        data-cy="guests-advancepaid"
                       />
                       {formErrors.advancePaid && <p className="text-red-500 text-sm">{formErrors.advancePaid}</p>}
                     </div>
@@ -1798,6 +1811,7 @@ export default function GuestsPage() {
                         onChange={handleCheckInDateChange}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                         required
+                        data-cy="guests-checkin"
                       />
                       {formErrors.checkInDate && <p className="text-red-500 text-sm">{formErrors.checkInDate}</p>}
                     </div>
@@ -1810,6 +1824,7 @@ export default function GuestsPage() {
                         onChange={handleCheckOutDateChange}
                         min={getMinCheckOutDateTime()}
                         className="w-full border border-gray-300 rounded px-3 py-2"
+                        data-cy="guests-checkout"
                       />
                       {formErrors.checkOutDate && <p className="text-red-500 text-sm">{formErrors.checkOutDate}</p>}
                     </div>
@@ -1821,6 +1836,7 @@ export default function GuestsPage() {
                     type="button"
                     onClick={resetForm}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    data-cy="guests-cancel"
                   >
                     Cancel
                   </button>
@@ -1828,6 +1844,7 @@ export default function GuestsPage() {
                     type="submit"
                     disabled={formLoading}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    data-cy="guests-submit"
                   >
                     {formLoading ? "Saving..." : editingGuest ? "Update Guest" : "Add Guest"}
                   </button>
