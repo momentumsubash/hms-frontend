@@ -29,7 +29,15 @@ export default function CheckoutsPage() {
   }, []);
   const [page, setPage] = useState(1);
   const limit = 10;
-  const { user, loading: userLoading, logout } = useAuth();
+    const [user, setUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  const {  loading: userLoading, logout } = useAuth();
+  console.log("CheckoutsPage - User:", user);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const navLinks = [
     { label: "Dashboardss", href: "/dashboard" },

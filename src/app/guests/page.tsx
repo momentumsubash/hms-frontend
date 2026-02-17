@@ -228,7 +228,14 @@ export default function GuestsPage() {
   const [formLoading, setFormLoading] = useState(false);
 
   // User info for nav bar
-  const { user, logout } = useAuth();
+    const [user, setUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  const { logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Form validation errors

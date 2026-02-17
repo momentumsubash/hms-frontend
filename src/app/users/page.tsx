@@ -24,7 +24,14 @@ export default function UsersPage() {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
-  const { user, logout } = useAuth();
+    const [user, setUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  const { logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -46,8 +46,14 @@ export default function StatsPage() {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("token") || sessionStorage.getItem("token");
   }
-
-  const { user, logout } = useAuth();
+  const [user, setUser] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  const { logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
   
