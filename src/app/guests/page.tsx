@@ -27,6 +27,50 @@ interface Referrer {
   createdBy: string;
 }
 
+interface RoomInfo {
+  _id: string;
+  roomNumber: string;
+  type: string;
+  isOccupied: boolean;
+  rate?: number;
+}
+
+interface Checkout {
+  _id: string;
+  status: string;
+  guest: string;
+  rooms: RoomInfo[];
+  orders: any[];
+  hotel: {
+    _id: string;
+    name: string;
+  };
+  totalRoomCharge: number;
+  roomDiscount: number;
+  totalOrderCharge: number;
+  totalExtraCharge: number;
+  vatPercent: number;
+  vatAmount: number;
+  checkInDate: string;
+  checkOutDate: string;
+  totalBill: number;
+  advancePaid: number;
+  createdBy: {
+    _id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    id: string;
+  };
+  nights: number;
+  paymentMethod: string;
+  advancePaymentMethod: string;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
 interface Guest {
   _id: string;
   firstName: string;
@@ -49,19 +93,23 @@ interface Guest {
   totalBill: number;
   roomDiscount?: number;
   advancePaid?: number;
-  createdBy: string;
-  hotel: string;
+  createdBy: string | {
+    _id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    id: string;
+  };
+  hotel: string | {
+    _id: string;
+    name: string;
+  };
   createdAt: string;
   updatedAt: string;
-  checkouts?: {
-    _id: string;
-    rooms: {
-      _id: string;
-      roomNumber: string;
-      type: string;
-      isOccupied: boolean;
-    }[];
-  }[];
+  __v?: number;
+  checkouts?: Checkout[];
+  totalSpent?: number;
 }
 
 interface Room {
@@ -157,25 +205,195 @@ const searchGuestByPhone = async (phone: string, token: string): Promise<Guest |
   }
 };
 
+// Previous Stay Modal Component
+const PreviousStayModal = ({ 
+  guest, 
+  onClose 
+}: { 
+  guest: Guest | null; 
+  onClose: () => void;
+}) => {
+  if (!guest) return null;
+
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString), "MMM dd, yyyy hh:mm a");
+  };
+
+  const formatCurrency = (amount: number) => {
+    return `रु${amount.toLocaleString()}`;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+      <div className="bg-white rounded-lg p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">
+            Previous Stay Details - {guest.firstName} {guest.lastName}
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-2xl font-semibold"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Guest Summary */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-blue-600 font-medium">Total Stays</p>
+              <p className="text-xl font-bold text-gray-900">{guest.checkouts?.length || 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-blue-600 font-medium">Total Spent</p>
+              <p className="text-xl font-bold text-gray-900">{formatCurrency(guest.totalSpent || 0)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-blue-600 font-medium">Phone</p>
+              <p className="text-sm font-medium text-gray-900">{guest.phone}</p>
+            </div>
+            <div>
+              <p className="text-xs text-blue-600 font-medium">Email</p>
+              <p className="text-sm font-medium text-gray-900">{guest.email || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Previous Stays List */}
+        <h3 className="text-lg font-semibold mb-4">Stay History</h3>
+        <div className="space-y-4">
+          {guest.checkouts && guest.checkouts.length > 0 ? (
+            guest.checkouts.map((checkout) => (
+              <div key={checkout._id} className="border rounded-lg p-4 hover:bg-gray-50">
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Checkout ID: {checkout._id.slice(-6)}
+                    </span>
+                    <span className="ml-2 text-sm text-gray-500">
+                      {formatDate(checkout.createdAt)}
+                    </span>
+                  </div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    checkout.status === 'completed' ? 'bg-gray-100 text-gray-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {checkout.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Stay Period */}
+                  <div>
+                    <p className="text-xs text-gray-500">Stay Period</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {formatDate(checkout.checkInDate)} - {formatDate(checkout.checkOutDate)}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{checkout.nights} night(s)</p>
+                  </div>
+
+                  {/* Rooms */}
+                  <div>
+                    <p className="text-xs text-gray-500">Rooms</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {checkout.rooms.map((room) => (
+                        <span
+                          key={room._id}
+                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                          {room.roomNumber} ({room.type})
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Billing */}
+                  <div>
+                    <p className="text-xs text-gray-500">Billing Summary</p>
+                    <div className="space-y-1 mt-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Room Charge:</span>
+                        <span className="font-medium">{formatCurrency(checkout.totalRoomCharge)}</span>
+                      </div>
+                      {checkout.roomDiscount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Discount:</span>
+                          <span className="font-medium text-green-600">-{formatCurrency(checkout.roomDiscount)}</span>
+                        </div>
+                      )}
+                      {checkout.totalOrderCharge > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Orders:</span>
+                          <span className="font-medium">{formatCurrency(checkout.totalOrderCharge)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-sm font-bold border-t pt-1 mt-1">
+                        <span>Total Bill:</span>
+                        <span>{formatCurrency(checkout.totalBill)}</span>
+                      </div>
+                      {checkout.advancePaid > 0 && (
+                        <div className="flex justify-between text-xs text-gray-600">
+                          <span>Advance Paid:</span>
+                          <span>{formatCurrency(checkout.advancePaid)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Details */}
+                <div className="mt-3 pt-3 border-t text-xs text-gray-500">
+                  <div className="flex flex-wrap gap-3">
+                    <span>Payment Method: {checkout.paymentMethod}</span>
+                    {checkout.advancePaymentMethod && (
+                      <span>Advance Method: {checkout.advancePaymentMethod}</span>
+                    )}
+                    <span>Created By: {checkout.createdBy.fullName}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">No previous stay history available for this guest.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function GuestsPage() {
-    // Load hotel from localStorage
-    const [hotel, setHotel] = useState(() => {
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('hotel');
-        return stored ? JSON.parse(stored) : null;
+  // Load hotel from localStorage
+  const [hotel, setHotel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('hotel');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+
+  // Listen for localStorage changes (e.g., nepaliLanguage toggle)
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === 'hotel') {
+        setHotel(event.newValue ? JSON.parse(event.newValue) : null);
       }
-      return null;
-    });
-    // Listen for localStorage changes (e.g., nepaliLanguage toggle)
-    useEffect(() => {
-      const handleStorage = (event: StorageEvent) => {
-        if (event.key === 'hotel') {
-          setHotel(event.newValue ? JSON.parse(event.newValue) : null);
-        }
-      };
-      window.addEventListener('storage', handleStorage);
-      return () => window.removeEventListener('storage', handleStorage);
-    }, []);
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   // Notification state
   const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
@@ -253,6 +471,10 @@ export default function GuestsPage() {
   const [isSearchingGuest, setIsSearchingGuest] = useState(false);
   const [existingGuest, setExistingGuest] = useState<Guest | null>(null);
   const [guestSearchMessage, setGuestSearchMessage] = useState("");
+
+  // Previous stay modal state
+  const [showPreviousStayModal, setShowPreviousStayModal] = useState(false);
+  const [selectedGuestForHistory, setSelectedGuestForHistory] = useState<Guest | null>(null);
 
   // Helper function to get standard headers
   const getRequestHeaders = (token: string) => {
@@ -570,6 +792,18 @@ export default function GuestsPage() {
       purposeOfStay: "",
       referrer: "",
     }));
+  };
+
+  // Handle view previous stays
+  const handleViewPreviousStays = (guest: Guest) => {
+    setSelectedGuestForHistory(guest);
+    setShowPreviousStayModal(true);
+  };
+
+  // Close previous stay modal
+  const handleClosePreviousStayModal = () => {
+    setShowPreviousStayModal(false);
+    setSelectedGuestForHistory(null);
   };
 
   // Validation function
@@ -1222,28 +1456,48 @@ export default function GuestsPage() {
         {showForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold mb-4">
-                {editingGuest ? "Edit Guest" : "Add New Guest"}
-              </h2>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">
+                  {editingGuest ? "Edit Guest" : "Add New Guest"}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="text-gray-500 hover:text-gray-700 text-2xl font-semibold"
+                >
+                  ×
+                </button>
+              </div>
 
               {/* Existing Guest Notification */}
               {existingGuest && (
-                <div className="bg-green-50 border border-green-200 rounded p-3 mb-4">
-                  <div className="flex justify-between items-center">
+                <div className="bg-green-50 border border-green-200 rounded p-4 mb-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                      <p className="text-green-800 font-medium">Existing Guest Found</p>
+                      <p className="text-green-800 font-medium text-lg">
+                        Existing Guest Found
+                      </p>
                       <p className="text-green-600 text-sm">
-                        {existingGuest.firstName} {existingGuest.lastName} -
-                        Previous stays: {existingGuest.checkouts?.length || 0}
+                        {existingGuest.firstName} {existingGuest.lastName} - 
+                        Previous stays: {existingGuest.checkouts?.length || 0} | 
+                        Total spent: रु{existingGuest.totalSpent?.toLocaleString() || 0}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={clearGuestSearch}
-                      className="text-green-600 hover:text-green-800 text-sm underline"
-                    >
-                      Clear & Start New
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleViewPreviousStays(existingGuest)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                      >
+                        View Previous Stays
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearGuestSearch}
+                        className="px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-50 text-sm"
+                      >
+                        Clear & Start New
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1607,6 +1861,14 @@ export default function GuestsPage() {
           </div>
         )}
 
+        {/* Previous Stay Modal */}
+        {showPreviousStayModal && (
+          <PreviousStayModal
+            guest={selectedGuestForHistory}
+            onClose={handleClosePreviousStayModal}
+          />
+        )}
+
         {/* Notification Toast */}
         {notification && (
           <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
@@ -1659,6 +1921,16 @@ export default function GuestsPage() {
                         </div>
                         {guest.address && (
                           <div className="text-sm text-gray-500">{guest.address}</div>
+                        )}
+                        {/* Previous stays badge */}
+                        {guest.checkouts && guest.checkouts.length > 0 && (
+                          <button
+                            onClick={() => handleViewPreviousStays(guest)}
+                            className="mt-1 inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200"
+                          >
+                            <span className="mr-1">📋</span>
+                            {guest.checkouts.length} {guest.checkouts.length === 1 ? 'Stay' : 'Stays'} · रु{guest.totalSpent?.toLocaleString() || 0}
+                          </button>
                         )}
                       </div>
                     </td>
@@ -1729,12 +2001,14 @@ export default function GuestsPage() {
                       >
                         Edit
                       </button>
-                      <button
-                        onClick={() => {/* Add view orders functionality */ }}
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        View Orders
-                      </button>
+                      {guest.checkouts && guest.checkouts.length > 0 && (
+                        <button
+                          onClick={() => handleViewPreviousStays(guest)}
+                          className="text-purple-600 hover:text-purple-900"
+                        >
+                          View History
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

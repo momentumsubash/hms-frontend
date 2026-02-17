@@ -14,12 +14,12 @@ import {
 } from "@/lib/api";
 import { getHotel } from "@/lib/api";
 import { createExpenditure, getExpenditures, approveExpenditure, rejectExpenditure } from "@/lib/expenditure";
-import { Expenditure, ExpenditureFilters } from "@/types/expenditure";
+import { Expenditure, ExpenditureFilters, ExpenditureResponse } from "@/types/expenditure";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import Image from "next/image";
-import { PhotoIcon, PlusIcon, XMarkIcon, BellIcon, ClockIcon, DocumentTextIcon, EnvelopeIcon, GlobeAltIcon } from "@heroicons/react/24/outline";
+import { PhotoIcon, PlusIcon, XMarkIcon, BellIcon, ClockIcon, DocumentTextIcon, EnvelopeIcon, GlobeAltIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,6 +55,8 @@ export default function HotelsPage() {
 
   // Expenditure state
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
+  const [filteredTotal, setFilteredTotal] = useState<number>(0);
+  const [filteredCount, setFilteredCount] = useState<number>(0);
   const [expenditureFilters, setExpenditureFilters] = useState<ExpenditureFilters>({});
   const [newExpenditure, setNewExpenditure] = useState<Partial<Expenditure>>({
     amount: 0,
@@ -114,15 +116,9 @@ export default function HotelsPage() {
   // Reset form errors
   const resetFormErrors = () => setFormErrors({});
 
-  // Nepali translations for nav links
-  // Nav links (labels handled in NavBar)
-  const navLinks = undefined;
-
-  // Hotel setting: show Nepali labels
   // Hotel setting: show Nepali labels (persisted per hotel)
   const [showNepali, setShowNepali] = useState(false);
 
-  // Persist setting in localStorage
   // When Edit Hotel modal opens, sync showNepali with selectedHotel.nepaliLanguage
   useEffect(() => {
     if (showEditModal && selectedHotel) {
@@ -147,76 +143,76 @@ export default function HotelsPage() {
     search: ""
   });
 
-      // Load hotel from localStorage
-    const [hotel, setHotel] = useState(() => {
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('hotel');
-        return stored ? JSON.parse(stored) : null;
-      }
-      return null;
-    });
-
-// Update your newHotel state initialization to include all required properties:
-const [newHotel, setNewHotel] = useState<Hotel>({
-  name: "",
-  description: "",
-  phone: "",
-  logo: "",
-  images: [],
-  vatNumber: "",
-  companyName: "",
-  vatAddress: "",
-  type: "",
-  roomCount: 0,
-  floors: 0,
-  established: new Date().getFullYear(),
-  amenities: [],
-  gallery: [],
-  contact: {
-    phone: "",
-    reception: "",
-    email: "",
-    website: ""
-  },
-  address: {
-    street: "",
-    area: "",
-    city: "",
-    state: "",
-    zip: ""
-  },
-  locationMap: "",
-  nearby: [],
-  notes: [],
-  initialAmount: 0,
-  currentBalance: 0,
-  createdAt: new Date().toISOString(),
-  whitelistedDomains: [],
-  customDomains: [],
-  website: {
-    heroTitle: "",
-    heroSubtitle: "",
-    heroImage: "",
-    aboutDescription: "",
-    amenitiesDescription: "",
-    experiencesDescription: "",
-    testimonialsDescription: "",
-    footerDescription: "",
-    rooms: [],
-    amenities: [],
-    testimonials: [],
-    contactInfo: {
-      phone: "",
-      email: "",
-      address: ""
+  // Load hotel from localStorage
+  const [hotel, setHotel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('hotel');
+      return stored ? JSON.parse(stored) : null;
     }
-  },
-  seo: {
-    title: "",
+    return null;
+  });
+
+  // Update your newHotel state initialization to include all required properties:
+  const [newHotel, setNewHotel] = useState<Hotel>({
+    name: "",
     description: "",
-    keywords: []
-  }
-});
+    phone: "",
+    logo: "",
+    images: [],
+    vatNumber: "",
+    companyName: "",
+    vatAddress: "",
+    type: "",
+    roomCount: 0,
+    floors: 0,
+    established: new Date().getFullYear(),
+    amenities: [],
+    gallery: [],
+    contact: {
+      phone: "",
+      reception: "",
+      email: "",
+      website: ""
+    },
+    address: {
+      street: "",
+      area: "",
+      city: "",
+      state: "",
+      zip: ""
+    },
+    locationMap: "",
+    nearby: [],
+    notes: [],
+    initialAmount: 0,
+    currentBalance: 0,
+    createdAt: new Date().toISOString(),
+    whitelistedDomains: [],
+    customDomains: [],
+    website: {
+      heroTitle: "",
+      heroSubtitle: "",
+      heroImage: "",
+      aboutDescription: "",
+      amenitiesDescription: "",
+      experiencesDescription: "",
+      testimonialsDescription: "",
+      footerDescription: "",
+      rooms: [],
+      amenities: [],
+      testimonials: [],
+      contactInfo: {
+        phone: "",
+        email: "",
+        address: ""
+      }
+    },
+    seo: {
+      title: "",
+      description: "",
+      keywords: []
+    }
+  });
 
   useEffect(() => {
     loadData();
@@ -243,8 +239,10 @@ const [newHotel, setNewHotel] = useState<Hotel>({
 
   const loadExpenditures = async () => {
     try {
-      const res = await getExpenditures(expenditureFilters);
+      const res = await getExpenditures(expenditureFilters) as ExpenditureResponse;
       setExpenditures(res?.data || []);
+      setFilteredTotal(res?.filteredTotal || 0);
+      setFilteredCount(res?.filteredCount || 0);
     } catch (e: any) {
       setError(e.message);
     }
@@ -535,7 +533,6 @@ const [newHotel, setNewHotel] = useState<Hotel>({
       setUploadProgress(0);
       const file = e.target.files[0] as File;
       
-
       // Simulate upload progress
       const interval = setInterval(() => {
         setUploadProgress(prev => {
@@ -681,7 +678,6 @@ const [newHotel, setNewHotel] = useState<Hotel>({
   
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Removed global Show Nepali labels toggle. Only in Edit Hotel modal. */}
       <NavBar
         user={user}
         showUserMenu={showUserMenu}
@@ -712,67 +708,66 @@ const [newHotel, setNewHotel] = useState<Hotel>({
                   await addHotel(newHotel);
                   setShowCreateModal(false);
                   loadData();
-// In the create hotel modal onSubmit handler, update the reset function:
-setNewHotel({
-  name: "",
-  description: "",
-  phone: "",
-  logo: "",
-  images: [],
-  vatNumber: "",
-  companyName: "",
-  vatAddress: "",
-  type: "",
-  roomCount: 0,
-  floors: 0,
-  established: new Date().getFullYear(),
-  amenities: [],
-  gallery: [],
-  contact: {
-    phone: "",
-    reception: "",
-    email: "",
-    website: ""
-  },
-  address: {
-    street: "",
-    area: "",
-    city: "",
-    state: "",
-    zip: ""
-  },
-  locationMap: "",
-  nearby: [],
-  notes: [],
-  initialAmount: 0,
-  currentBalance: 0,
-  createdAt: new Date().toISOString(),
-  whitelistedDomains: [],
-  customDomains: [],
-  website: {
-    heroTitle: "",
-    heroSubtitle: "",
-    heroImage: "",
-    aboutDescription: "",
-    amenitiesDescription: "",
-    experiencesDescription: "",
-    testimonialsDescription: "",
-    footerDescription: "",
-    rooms: [],
-    amenities: [],
-    testimonials: [],
-    contactInfo: {
-      phone: "",
-      email: "",
-      address: ""
-    }
-  },
-  seo: {
-    title: "",
-    description: "",
-    keywords: []
-  }
-});
+                  setNewHotel({
+                    name: "",
+                    description: "",
+                    phone: "",
+                    logo: "",
+                    images: [],
+                    vatNumber: "",
+                    companyName: "",
+                    vatAddress: "",
+                    type: "",
+                    roomCount: 0,
+                    floors: 0,
+                    established: new Date().getFullYear(),
+                    amenities: [],
+                    gallery: [],
+                    contact: {
+                      phone: "",
+                      reception: "",
+                      email: "",
+                      website: ""
+                    },
+                    address: {
+                      street: "",
+                      area: "",
+                      city: "",
+                      state: "",
+                      zip: ""
+                    },
+                    locationMap: "",
+                    nearby: [],
+                    notes: [],
+                    initialAmount: 0,
+                    currentBalance: 0,
+                    createdAt: new Date().toISOString(),
+                    whitelistedDomains: [],
+                    customDomains: [],
+                    website: {
+                      heroTitle: "",
+                      heroSubtitle: "",
+                      heroImage: "",
+                      aboutDescription: "",
+                      amenitiesDescription: "",
+                      experiencesDescription: "",
+                      testimonialsDescription: "",
+                      footerDescription: "",
+                      rooms: [],
+                      amenities: [],
+                      testimonials: [],
+                      contactInfo: {
+                        phone: "",
+                        email: "",
+                        address: ""
+                      }
+                    },
+                    seo: {
+                      title: "",
+                      description: "",
+                      keywords: []
+                    }
+                  });
                   toast.success("Hotel created successfully");
                 } catch (e: any) {
                   setError(e.message);
@@ -1097,7 +1092,7 @@ setNewHotel({
                       </div>
                       {hotel.currentBalance !== undefined && (
                         <div className="text-sm text-green-600 font-medium">
-                          Balance: ${hotel.currentBalance.toFixed(2)}
+                          Balance: रु{hotel.currentBalance.toFixed(2)}
                         </div>
                       )}
                     </td>
@@ -1169,7 +1164,7 @@ setNewHotel({
                             <DocumentTextIcon className="w-4 h-4 mr-1" />
                             License
                           </Button>
-              <Button
+                          <Button
                             onClick={async () => {
                               try {
                                 // Load full hotel including website/seo before opening modal
@@ -1230,7 +1225,6 @@ setNewHotel({
                 {/* Hotel Details Form */}
                 <div className="space-y-4">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input
                         type="checkbox"
@@ -1578,8 +1572,7 @@ setNewHotel({
                                 reception: selectedHotel.website?.contactInfo?.reception, 
                                 website: selectedHotel.website?.contactInfo?.website 
                               } 
-                            },
-                            // Note: address at root level is street/area/city/zip, website.contactInfo.address is full address
+                            }
                           })}
                           className="w-full border border-gray-300 rounded px-3 py-2 col-span-1 md:col-span-2"
                           placeholder="Full Address"
@@ -2335,7 +2328,21 @@ setNewHotel({
 
             {/* Expenditure Filters */}
             <div className="bg-white p-4 rounded-lg shadow mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                {/* Search by text */}
+                <div className="md:col-span-1">
+                  <label className="block text-sm font-medium mb-1 flex items-center">
+                    <MagnifyingGlassIcon className="w-4 h-4 mr-1" />
+                    Search
+                  </label>
+                  <input
+                    type="text"
+                    value={expenditureFilters.search || ''}
+                    onChange={(e) => setExpenditureFilters(prev => ({ ...prev, search: e.target.value }))}
+                    placeholder="Search description..."
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Start Date</label>
                   <input
@@ -2365,7 +2372,7 @@ setNewHotel({
                     <option value="supplies">Supplies</option>
                     <option value="maintenance">Maintenance</option>
                     <option value="utilities">Utilities</option>
-                    <option value="salaries">Salaries</option>
+                    <option value="salary">Salaries</option>
                     <option value="marketing">Marketing</option>
                     <option value="other">Other</option>
                   </select>
@@ -2382,6 +2389,35 @@ setNewHotel({
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
                   </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Filtered Total Summary */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow mb-6 border border-blue-100">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-600">Filtered Results</h3>
+                  <div className="flex items-baseline gap-3 mt-1">
+                    <span className="text-3xl font-bold text-blue-700">
+                      रु{filteredTotal.toFixed(2)}
+                    </span>
+                    <span className="text-sm text-gray-500">
+                      Total amount
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
+                    <span className="text-xs text-gray-500">Count</span>
+                    <div className="text-xl font-semibold text-gray-800">{filteredCount}</div>
+                  </div>
+                  <div className="bg-white px-4 py-2 rounded-lg shadow-sm">
+                    <span className="text-xs text-gray-500">Average</span>
+                    <div className="text-xl font-semibold text-gray-800">
+                      रु{filteredCount > 0 ? (filteredTotal / filteredCount).toFixed(2) : '0.00'}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2408,7 +2444,7 @@ setNewHotel({
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap capitalize">{expenditure.category}</td>
                         <td className="px-6 py-4">{expenditure.description}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">${expenditure.amount.toFixed(2)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">रु{expenditure.amount.toFixed(2)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             expenditure.status === 'approved' ? 'bg-green-100 text-green-800' :
@@ -2477,7 +2513,7 @@ setNewHotel({
                       <option value="supplies">Supplies</option>
                       <option value="maintenance">Maintenance</option>
                       <option value="utilities">Utilities</option>
-                      <option value="salaries">Salaries</option>
+                      <option value="salary">Salaries</option>
                       <option value="marketing">Marketing</option>
                       <option value="other">Other</option>
                     </select>
@@ -2557,9 +2593,7 @@ setNewHotel({
                 </form>
               </DialogContent>
             </Dialog>
-
           </div>
-          
         )}
       </div>
     </div>

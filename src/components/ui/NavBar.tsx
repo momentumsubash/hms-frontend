@@ -8,8 +8,8 @@ interface NavLink {
   label: string;
   href: string;
   superAdminOnly?: boolean;
-  roles?: string[];
-  np?: string;
+  roles?: string[]; // Added roles property
+  np?: string; // Nepali translation
 }
 
 interface NavBarProps {
@@ -37,7 +37,7 @@ export const NavBar: React.FC<NavBarProps> = ({
 
   const displayUser = user || authUser;
   const userRole = displayUser?.role as Role;
-console.log("NavBar - User Role:", userRole,displayUser); 
+
   // Default navigation links with proper role definitions
   const defaultNavLinks: NavLink[] = [
     { label: "Dashboard", href: "/dashboard", np: "ड्यासबोर्ड", roles: ["staff", "manager", "super_admin"] },
@@ -58,18 +58,30 @@ console.log("NavBar - User Role:", userRole,displayUser);
 
   // Filter links based on user role
   const links = linksToFilter.filter((link) => {
+    // If no user, don't show any links
     if (!displayUser) return false;
     
+    // Handle superAdminOnly for backward compatibility
     if (link.superAdminOnly) {
       return userRole === "super_admin";
     }
     
+    // If roles array exists, check if user's role is included
     if (link.roles && Array.isArray(link.roles)) {
       return link.roles.includes(userRole);
     }
     
+    // If no restrictions, show to all authenticated users
     return true;
   });
+
+  // Debug: Log filtered links and user role (remove in production)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log("NavBar - User Role:", userRole);
+      console.log("NavBar - Filtered Links:", links.map(l => l.label));
+    }
+  }, [userRole, links]);
 
   // Handle scroll effect for navbar
   useEffect(() => {
@@ -95,9 +107,7 @@ console.log("NavBar - User Role:", userRole,displayUser);
   if (!displayUser) return null;
 
   return (
-    <nav className={`sticky top-0 z-50 bg-white transition-all duration-300 ${
-      scrolled ? 'shadow-lg py-2' : 'shadow py-1'
-    }`}>
+    <nav className={`sticky top-0 z-50 bg-white transition-shadow ${scrolled ? 'shadow-lg' : 'shadow'}`}>
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo/Brand */}
@@ -136,24 +146,17 @@ console.log("NavBar - User Role:", userRole,displayUser);
                 className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 border border-gray-200 transition-colors"
                 onClick={() => setShowUserMenu(!showUserMenu)}
               >
-                {/* Avatar with initial */}
                 <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs sm:text-sm font-bold">
                   {displayUser?.firstName?.charAt(0) || displayUser?.email?.charAt(0) || 'U'}
                 </div>
-                
-                {/* User info - hidden on very small screens */}
-                <div className="hidden sm:block">
-                  <span className="font-medium text-gray-700 max-w-[120px] truncate block text-left">
-                    {displayUser?.firstName || displayUser?.lastName
-                      ? `${displayUser?.firstName || ""} ${displayUser?.lastName || ""}`.trim()
-                      : displayUser?.email || "User"}
-                  </span>
-                  <span className="text-xs text-gray-500 block text-left">
-                    {displayUser?.role}
-                  </span>
-                </div>
-                
-                {/* Dropdown icon */}
+                <span className="hidden sm:inline font-medium text-gray-700 max-w-[120px] truncate">
+                  {displayUser?.firstName || displayUser?.lastName
+                    ? `${displayUser?.firstName || ""} ${displayUser?.lastName || ""}`.trim()
+                    : displayUser?.email || "User"}
+                </span>
+                <span className="hidden sm:inline text-xs text-gray-500 ml-1">
+                  ({displayUser?.role})
+                </span>
                 <svg className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -204,30 +207,6 @@ console.log("NavBar - User Role:", userRole,displayUser);
               )}
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Mobile/Tablet Navigation Menu */}
-      <div className={`lg:hidden transition-all duration-300 ease-in-out overflow-hidden ${
-        mobileMenuOpen ? 'max-h-[calc(100vh-4rem)] opacity-100' : 'max-h-0 opacity-0'
-      }`}>
-        <div className="px-4 sm:px-6 py-3 bg-white border-t border-gray-200 shadow-inner">
-          {/* Mobile user info - visible at top of mobile menu */}
-          <div className="mb-4 pb-4 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold">
-                {displayUser?.firstName?.charAt(0) || displayUser?.email?.charAt(0) || 'U'}
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">
-                  {displayUser?.firstName || displayUser?.lastName
-                    ? `${displayUser?.firstName || ""} ${displayUser?.lastName || ""}`.trim()
-                    : displayUser?.email || "User"}
-                </p>
-                <p className="text-xs text-gray-500">Role: {displayUser?.role}</p>
-              </div>
-            </div>
-          </div>
 
           {/* Mobile navigation links grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto">
@@ -266,6 +245,45 @@ console.log("NavBar - User Role:", userRole,displayUser);
                 </svg>
                 <span>Sign out</span>
               </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile/Tablet Navigation Menu */}
+      <div className={`lg:hidden transition-all duration-300 ease-in-out overflow-hidden ${
+        mobileMenuOpen ? 'max-h-[calc(100vh-4rem)] opacity-100' : 'max-h-0 opacity-0'
+      }`}>
+        <div className="px-4 sm:px-6 py-3 bg-white border-t border-gray-200 shadow-inner">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[70vh] overflow-y-auto">
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-gray-700 hover:text-primary hover:bg-gray-50 font-medium px-3 py-2.5 rounded-lg text-sm transition-colors text-center border border-gray-100 hover:border-primary"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {nepaliFlag && link.np ? (
+                  <div className="flex flex-col items-center">
+                    <span>{link.label}</span>
+                    <span className="text-xs text-gray-500">{link.np}</span>
+                  </div>
+                ) : (
+                  link.label
+                )}
+              </Link>
+            ))}
+          </div>
+          
+          {/* Quick user info for mobile */}
+          {mobileMenuOpen && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Logged in as:</span>
+                <span className="text-sm font-medium text-primary capitalize">
+                  {displayUser?.role || 'User'}
+                </span>
+              </div>
             </div>
           )}
         </div>
