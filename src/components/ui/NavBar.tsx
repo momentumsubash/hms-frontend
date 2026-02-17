@@ -209,7 +209,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           </div>
 
           {/* Mobile navigation links grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto">
+          {/* <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto">
             {links.map((link) => (
               <Link
                 key={link.href}
@@ -227,7 +227,7 @@ export const NavBar: React.FC<NavBarProps> = ({
                 )}
               </Link>
             ))}
-          </div>
+          </div> */}
           
           {/* Mobile sign out button */}
           {mobileMenuOpen && links.length > 0 && (
