@@ -1,6 +1,7 @@
 // Create a new user
 import { Hotel } from '@/types/hotel';
 import { WebsiteContent, SEOData } from '@/types/website';
+import { rateLimiter } from './rateLimit';
 // import { Hotel } from 'lucide-react';
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -854,10 +855,10 @@ export async function updateOrderStatus(id: string, status: string) {
 }
 
 // CHECKOUTS
-export async function getCheckouts(params: Record<string, any> = {}) {
+export async function getCheckouts(params: Record<string, any> = {}, signal?: AbortSignal) {
   const query = new URLSearchParams(params).toString();
   const res = await fetch(`${API_URL}/checkouts${query ? `?${query}` : ""}`, {
-    headers: mergeHeaders({}, getAuthHeaders()),
+    headers: mergeHeaders({}, getAuthHeaders()),signal 
   });
   if (res.status === 401) {
     localStorage.removeItem('token');
@@ -869,9 +870,9 @@ export async function getCheckouts(params: Record<string, any> = {}) {
 }
 
 // Add this function to get checkout by ID
-export async function getCheckoutById(id: string) {
+export async function getCheckoutById(id: string, signal?: AbortSignal) {
   const res = await fetch(`${API_URL}/checkouts/${id}`, {
-    headers: mergeHeaders({ 'Accept': 'application/json' }, getAuthHeaders()),
+    headers: mergeHeaders({ 'Accept': 'application/json' }, getAuthHeaders()),signal 
   });
   if (res.status === 401) {
     localStorage.removeItem('token');

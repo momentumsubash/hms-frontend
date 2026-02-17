@@ -7,18 +7,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NavBar } from "@/components/ui/NavBar";
 import {
-		MapPin,
-		Phone,
-		Mail,
-		Globe,
-		Users,
-		Bed,
-		Utensils,
-		ChevronLeft,
-		ChevronRight,
-		Star,
+	MapPin,
+	Phone,
+	Mail,
+	Globe,
+	Users,
+	Bed,
+	Utensils,
+	ChevronLeft,
+	ChevronRight,
+	Star,
 } from "lucide-react";
 import { getMyHotel, getGuests, getRooms, getOrders } from "@/lib/api";
+
 export function HotelDashboard({ nepaliFlag }) {
 	// Notes state
 	const [notes, setNotes] = useState([]);
@@ -34,7 +35,7 @@ export function HotelDashboard({ nepaliFlag }) {
 	const [showUserMenu, setShowUserMenu] = useState(false);
 
 	// Fetch notes
-		const [hotel, setHotel] = useState(null);
+	const [hotel, setHotel] = useState(null);
 	// Notes hotelId/token must be after hotel is defined
 	const hotelId = hotel?._id
 	const notesToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -113,15 +114,6 @@ export function HotelDashboard({ nepaliFlag }) {
 		}
 	};
 
-
-	// ...existing code...
-
-	// ...existing code...
-
-	// Fetch notes when hotel/user is loaded (must be after hotelId/notesToken are defined)
-	// This must be after hotel, hotelId, and notesToken are declared
-	// so move this useEffect below those declarations
-
 	const { logout, loading: authLoading } = useAuth();
 	const [user, setUser] = useState(() => {
 		if (typeof window !== 'undefined') {
@@ -131,11 +123,10 @@ export function HotelDashboard({ nepaliFlag }) {
 		return null;
 	});
 
-		// Fetch notes when hotel/user is loaded (must be after hotelId/notesToken are defined)
-		useEffect(() => {
-			if (hotelId && notesToken) fetchNotes();
-			// eslint-disable-next-line react-hooks/exhaustive-deps
-		}, [hotelId, notesToken]);
+	// Fetch notes when hotel/user is loaded
+	useEffect(() => {
+		if (hotelId && notesToken) fetchNotes();
+	}, [hotelId, notesToken]);
 
 	useEffect(() => {
 		async function fetchUserAndData() {
@@ -171,18 +162,14 @@ export function HotelDashboard({ nepaliFlag }) {
 						}
 					}
 				}
-				// const [hotelRes, guestsRes, roomsRes, ordersRes] = await Promise.all([
-					const [hotelRes,guestRes] = await Promise.all([
+				
+				const [hotelRes, guestRes] = await Promise.all([
 					getMyHotel(),
 					getGuests(),
-					// getRooms(),
-					// getOrders(),
 				]);
 	
 				setHotel(hotelRes?.data || null);
 				setGuests(guestRes?.data || []);
-				// setRooms(roomsRes?.data || []);
-				// setOrders(ordersRes?.data || []);
 			} finally {
 				setLoading(false);
 			}
@@ -201,18 +188,7 @@ export function HotelDashboard({ nepaliFlag }) {
 	if (!user) {
 		return <div className="min-h-screen flex items-center justify-center text-xl">Please log in to access the dashboard.</div>;
 	}
-const navLinks = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Checkouts", href: "/checkouts" },
-  { label: "Guests", href: "/guests" },
-  { label: "Hotels", href: "/hotels", superAdminOnly: true },
-  { label: "Items", href: "/items" },
-  { label: "Orders", href: "/orders" },
-  { label: "Rooms", href: "/rooms" },
-    { label: "Referrers", href: "/referrers" },
-  { label: "Stats", href: "/stats" },
-  { label: "Users", href: "/users" },
-];
+
 	const occupiedRooms = rooms.filter((r) => r.isOccupied).length;
 	const totalRooms = rooms.length;
 	const hotelName = hotel?.name || "Hotel Name";
@@ -223,18 +199,18 @@ const navLinks = [
 	const hotelWebsite = hotel?.website || "www.hotel.com";
 	const hotelAmenities = hotel?.amenities?.length ? hotel.amenities : ["Free WiFi", "Parking", "Restaurant", "Spa", "Pool", "Gym"];
 
-			   return (
-		       <div className="min-h-screen bg-slate-50">
-					{/* Navigation Bar */}
-				<NavBar
-					user={user}
-					showUserMenu={showUserMenu}
-					setShowUserMenu={setShowUserMenu}
-					logout={logout}
-					navLinks={navLinks}
-					nepaliFlag={hotel?.nepaliFlag || nepaliFlag}
-				/>
-				<div className="max-w-9xl mx-auto space-y-8 p-6">
+	return (
+		<div className="min-h-screen bg-slate-50">
+			{/* Navigation Bar - No navLinks prop, using internal navigation */}
+			<NavBar
+				user={user}
+				showUserMenu={showUserMenu}
+				setShowUserMenu={setShowUserMenu}
+				logout={logout}
+				nepaliFlag={hotel?.nepaliFlag || nepaliFlag}
+			/>
+			
+			<div className="max-w-9xl mx-auto space-y-8 p-6">
 				{/* Header */}
 				<div className="text-center space-y-4">
 					<h1 className="text-4xl font-serif font-bold text-gray-800">Welcome to Your Hotel Management Dashboard</h1>
@@ -243,55 +219,56 @@ const navLinks = [
 					</p>
 				</div>
 
-				   {/* Hotel Notes Section - full width above hotel info */}
-					 <div className="bg-white rounded-lg shadow p-6 mt-8 mb-8">
-						 <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-							 <span>Hotel Notes</span>
-						 </h2>
-							 <form onSubmit={handleCreateNote} className="flex flex-row gap-2 mb-4 w-full">
-								 <input
-									 type="text"
-									 className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-									 placeholder="Add a new note..."
-									 value={noteText}
-									 onChange={e => setNoteText(e.target.value)}
-									 disabled={notesLoading}
-								 />
-								 <div className="flex flex-col items-end w-36">{/* fixed width for button */}
-									 <Button
-										 type="submit"
-										 className="w-full min-w-[120px] bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded font-medium shadow-sm"
-										 disabled={notesLoading || !noteText.trim()}
-									 >
-										 Add Note
-									 </Button>
-								 </div>
-							 </form>
-						 {notesError && <div className="text-red-600 mb-2">{notesError}</div>}
-							 {notesLoading ? (
-								 <div>Loading notes...</div>
-							 ) : (
-								 <ul className="space-y-2 w-full">
-									 {notes.length === 0 && <li className="text-gray-500">No notes yet.</li>}
-											 {notes.map((note) => (
-												 <li key={note._id} className="flex items-center gap-2 bg-slate-100 rounded px-3 py-2 w-full">
-													 <span className="flex-1 break-words">{note.text}</span>
-																	 <Button
-																		 type="button"
-																		 size="sm"
-																		 className="w-36 min-w-[120px] bg-red-600 text-white hover:bg-red-700 px-4 py-1.5 rounded font-medium shadow-sm"
-																		 onClick={() => handleDeleteNote(note._id)}
-																		 disabled={notesLoading}
-																	 >
-																		 Delete
-																	 </Button>
-												 </li>
-											 ))}
-								 </ul>
-							 )}
-					 </div>
-				   {/* Hotel Overview Cards */}
-				   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+				{/* Hotel Notes Section - full width above hotel info */}
+				<div className="bg-white rounded-lg shadow p-6 mt-8 mb-8">
+					<h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+						<span>Hotel Notes</span>
+					</h2>
+					<form onSubmit={handleCreateNote} className="flex flex-row gap-2 mb-4 w-full">
+						<input
+							type="text"
+							className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+							placeholder="Add a new note..."
+							value={noteText}
+							onChange={e => setNoteText(e.target.value)}
+							disabled={notesLoading}
+						/>
+						<div className="flex flex-col items-end w-36">
+							<Button
+								type="submit"
+								className="w-full min-w-[120px] bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded font-medium shadow-sm"
+								disabled={notesLoading || !noteText.trim()}
+							>
+								Add Note
+							</Button>
+						</div>
+					</form>
+					{notesError && <div className="text-red-600 mb-2">{notesError}</div>}
+					{notesLoading ? (
+						<div>Loading notes...</div>
+					) : (
+						<ul className="space-y-2 w-full">
+							{notes.length === 0 && <li className="text-gray-500">No notes yet.</li>}
+							{notes.map((note) => (
+								<li key={note._id} className="flex items-center gap-2 bg-slate-100 rounded px-3 py-2 w-full">
+									<span className="flex-1 break-words">{note.text}</span>
+									<Button
+										type="button"
+										size="sm"
+										className="w-36 min-w-[120px] bg-red-600 text-white hover:bg-red-700 px-4 py-1.5 rounded font-medium shadow-sm"
+										onClick={() => handleDeleteNote(note._id)}
+										disabled={notesLoading}
+									>
+										Delete
+									</Button>
+								</li>
+							))}
+						</ul>
+					)}
+				</div>
+				
+				{/* Hotel Overview Cards */}
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 					<Card className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
 							<div className="flex items-center space-x-8">
@@ -490,7 +467,6 @@ const navLinks = [
 										className="w-full h-32 object-cover rounded"
 									/>
 								</div>
-								
 							</CardContent>
 						</Card>
 					</div>

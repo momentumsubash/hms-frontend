@@ -463,7 +463,6 @@ export default function RoomsPage() {
         showUserMenu={showUserMenu}
         setShowUserMenu={setShowUserMenu}
         logout={logout}
-        navLinks={navLinks}
         nepaliFlag={hotel?.nepaliFlag}
       />
 

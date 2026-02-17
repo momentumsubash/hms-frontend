@@ -46,38 +46,38 @@ interface PaymentForm {
   guestIndex?: number;
 }
 
-const navLinks = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Checkouts", href: "/checkouts" },
-  { label: "Guests", href: "/guests" },
-  { label: "Referrers", href: "/referrers" },
-  { label: "Hotels", href: "/hotels" },
-  { label: "Items", href: "/items" },
-  { label: "Orders", href: "/orders" },
-  { label: "Rooms", href: "/rooms" },
-  { label: "Users", href: "/users" },
-];
+// const navLinks = [
+//   { label: "Dashboard", href: "/dashboard" },
+//   { label: "Checkouts", href: "/checkouts" },
+//   { label: "Guests", href: "/guests" },
+//   { label: "Referrers", href: "/referrers" },
+//   { label: "Hotels", href: "/hotels" },
+//   { label: "Items", href: "/items" },
+//   { label: "Orders", href: "/orders" },
+//   { label: "Rooms", href: "/rooms" },
+//   { label: "Users", href: "/users" },
+// ];
 
 export default function ReferrersPage() {
-    // Load hotel from localStorage
-    const [hotel, setHotel] = useState(() => {
-      if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('hotel');
-        return stored ? JSON.parse(stored) : null;
-      }
-      return null;
-    });
-    // Listen for localStorage changes (e.g., nepaliLanguage toggle)
-    useEffect(() => {
-      const handleStorage = (event: StorageEvent) => {
+  // Load hotel from localStorage
+  const [hotel, setHotel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('hotel');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  // Listen for localStorage changes (e.g., nepaliLanguage toggle)
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
 
-        if (event.key === 'hotel') {
-          setHotel(event.newValue ? JSON.parse(event.newValue) : null);
-        }
-      };
-      window.addEventListener('storage', handleStorage);
-      return () => window.removeEventListener('storage', handleStorage);
-    }, []);
+      if (event.key === 'hotel') {
+        setHotel(event.newValue ? JSON.parse(event.newValue) : null);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
   const [referrers, setReferrers] = useState<Referrer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -109,8 +109,14 @@ export default function ReferrersPage() {
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalReferrers, setTotalReferrers] = useState(0);
-
-  const { user, logout } = useAuth();
+  const [user, setUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  const { logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const getRequestHeaders = (token: string) => {
@@ -221,7 +227,7 @@ export default function ReferrersPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       setNotification({ type: 'error', message: 'Please fix validation errors' });
       return;
@@ -425,11 +431,10 @@ export default function ReferrersPage() {
         <button
           key={i}
           onClick={() => setPage(i)}
-          className={`px-3 py-2 text-sm font-medium rounded-md ${
-            page === i
+          className={`px-3 py-2 text-sm font-medium rounded-md ${page === i
               ? 'text-white bg-blue-600 border border-blue-600'
               : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-          }`}
+            }`}
         >
           {i}
         </button>
@@ -465,8 +470,13 @@ export default function ReferrersPage() {
   if (loading && referrers.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <NavBar user={user} showUserMenu={showUserMenu} setShowUserMenu={setShowUserMenu} logout={logout} navLinks={navLinks} nepaliFlag={hotel?.nepaliFlag} />
-        <div className="max-w-9xl mx-auto p-6">
+<NavBar
+	user={user}
+	showUserMenu={showUserMenu}
+	setShowUserMenu={setShowUserMenu}
+	logout={logout}
+	nepaliFlag={hotel?.nepaliFlag}
+/>        <div className="max-w-9xl mx-auto p-6">
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           </div>
@@ -482,7 +492,6 @@ export default function ReferrersPage() {
         showUserMenu={showUserMenu}
         setShowUserMenu={setShowUserMenu}
         logout={logout}
-        navLinks={navLinks}
         nepaliFlag={hotel?.nepaliFlag}
       />
 
@@ -604,11 +613,10 @@ export default function ReferrersPage() {
                       <select
                         value={referrer.status}
                         onChange={(e) => handleStatusChange(referrer._id, e.target.value as 'active' | 'inactive' | 'paid')}
-                        className={`text-xs font-medium px-2 py-1 rounded ${
-                          referrer.status === 'active' ? 'bg-green-100 text-green-800' :
-                          referrer.status === 'paid' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}
+                        className={`text-xs font-medium px-2 py-1 rounded ${referrer.status === 'active' ? 'bg-green-100 text-green-800' :
+                            referrer.status === 'paid' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                          }`}
                       >
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
@@ -819,9 +827,8 @@ export default function ReferrersPage() {
 
         {/* Notification */}
         {notification && (
-          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white ${
-            notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-          }`}>
+          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            }`}>
             {notification.message}
           </div>
         )}
