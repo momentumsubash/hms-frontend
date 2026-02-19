@@ -1,3 +1,4 @@
+// types/expenditure.ts
 export interface Expenditure {
   _id: string;
   amount: number;
@@ -31,8 +32,57 @@ export interface ExpenditureFilters {
   endDate?: string;
   category?: string;
   status?: string;
+  search?: string;  // Add this for text search
+  minAmount?: number;  // Add this for amount filtering
+  maxAmount?: number;  // Add this for amount filtering
+  userId?: string;  // Add this for user filtering
   page?: number;
   limit?: number;
+  sortBy?: string;  // Add this for sorting
+  sortOrder?: 'asc' | 'desc';  // Add this for sorting
+}
+
+// Add this new interface for the API response
+export interface ExpenditureResponse {
+  success: boolean;
+  data: Expenditure[];
+  summary: Array<{
+    _id: {
+      status: string;
+      category: string;
+    };
+    totalAmount: number;
+    count: number;
+  }>;
+  statusTotals: Array<{
+    _id: string;
+    totalAmount: number;
+    count: number;
+  }>;
+  totals?: {
+    totalAmount: number;
+    totalCount: number;
+    averageAmount: number;
+    minAmount: number;
+    maxAmount: number;
+  };
+  filteredTotal?: number;
+  filteredCount?: number;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+    hasNext?: boolean;
+    hasPrev?: boolean;
+  };
+  filters?: {
+    available?: {
+      categories: string[];
+      statuses: string[];
+    };
+    applied?: Record<string, any>;
+  };
 }
 
 export interface ExpenditureStats {

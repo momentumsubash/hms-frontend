@@ -35,17 +35,17 @@ import {
   Download as DownloadIcon
 } from '@mui/icons-material';
 
-const navLinks = [
-  { label: "Dashboard", href: "/dashboard" },
-  { label: "Checkouts", href: "/checkouts" },
-  { label: "Guests", href: "/guests" },
-  { label: "Hotels", href: "/hotels", superAdminOnly: true },
-  { label: "Items", href: "/items" },
-  { label: "Orders", href: "/orders" },
-  { label: "Rooms", href: "/rooms" },
-  { label: "Stats", href: "/stats" },
-  { label: "Users", href: "/users" },
-];
+// const navLinks = [
+//   { label: "Dashboard", href: "/dashboard" },
+//   { label: "Checkouts", href: "/checkouts" },
+//   { label: "Guests", href: "/guests" },
+//   { label: "Hotels", href: "/hotels", superAdminOnly: true },
+//   { label: "Items", href: "/items" },
+//   { label: "Orders", href: "/orders" },
+//   { label: "Rooms", href: "/rooms" },
+//   { label: "Stats", href: "/stats" },
+//   { label: "Users", href: "/users" },
+// ];
 
 function getToken() {
   if (typeof window === "undefined") return null;
@@ -83,7 +83,14 @@ const RecordBook = () => {
         fetchHotel(token).then(setHotel);
       }
     }, []);
-  const { user, logout } = useAuth();
+      const [user, setUser] = useState(() => {
+        if (typeof window !== 'undefined') {
+          const stored = localStorage.getItem('user');
+          return stored ? JSON.parse(stored) : null;
+        }
+        return null;
+      });
+  const { logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [data, setData] = useState(null);
@@ -196,10 +203,9 @@ const RecordBook = () => {
           showUserMenu={showUserMenu}
           setShowUserMenu={setShowUserMenu}
           logout={logout}
-          navLinks={navLinks}
           nepaliFlag={hotel?.nepaliFlag}
         />
-        <Container maxWidth="lg" sx={{ py: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <Container maxWidth="2xl" sx={{ py: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
           <Box textAlign="center">
             <CircularProgress size={60} sx={{ mb: 2 }} />
             <Typography variant="h6">Loading Record Book...</Typography>
@@ -216,11 +222,10 @@ const RecordBook = () => {
         showUserMenu={showUserMenu}
         setShowUserMenu={setShowUserMenu}
         logout={logout}
-        navLinks={navLinks}
         nepaliFlag={hotel?.nepaliFlag}
       />
       
-      <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Container maxWidth="2xl" sx={{ py: 4 }}>
         {/* Header */}
         <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
           <Box>
