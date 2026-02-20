@@ -26,7 +26,7 @@ describe('Test HMS', () => {
   })
 
   it('should navigate to guests after login', () => {
-    cy.get('[href="/guests"]').click().wait(3000)
+    cy.get('[href="/guests"]').eq(0).click({force:true}).wait(3000)
     cy.get('[data-cy="guests-add-btn"]').should('be.visible').click()
   })
 
@@ -53,7 +53,7 @@ cy.get('[data-cy="guests-submit"]').scrollIntoView().click().wait(3000)
 
   it('Should add order', () => {
     // cy.pause()
-    cy.get('[href="/orders"]').click().wait(3000)
+    cy.get('[href="/orders"]').eq(0).click({force:true}).wait(3000)
 
     cy.get('[data-cy="orders-add-btn"]').should('be.visible').click()
     cy.get('[data-cy="orders-room-select"]',{timeout: 10000}).realClick()
@@ -61,6 +61,23 @@ cy.get('[data-cy="guests-submit"]').scrollIntoView().click().wait(3000)
      cy.get('[data-cy="orders-room-0"]').scrollIntoView().realClick()
     cy.get('[data-cy="orders-items-list"]').click()
     cy.get('[data-cy="orders-submit"]').scrollIntoView().click().wait(3000)
+  })
+
+  it('Should change order status', () => {
+    cy.get('[data-cy="orders-status-btn-0"]').click()
+    cy.get('[data-cy="orders-status-modal"]').should('be.visible').click()
+    cy.get('[data-cy="orders-status-select"]').select(1)
+cy.get('[data-cy="orders-status-modal-update"]').click().wait(3000)
+
+  })
+
+  it('Should checkout out', () => {
+    cy.get('[href="/checkouts"]').eq(0).click({force:true}).wait(3000)
+    cy.get('[data-cy="checkouts-edit-btn-0"]').click()
+    cy.get('[data-cy="checkouts-edit-status"]').select(1)
+    cy.get('#editVatPercent').scrollIntoView().clear().type('13')
+    cy.get('[data-cy="checkouts-edit-save-btn"]').scrollIntoView().click().wait(3000)
+
   })
 
 })
