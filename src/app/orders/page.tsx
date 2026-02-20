@@ -1,10 +1,10 @@
 "use client";
 
-
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { NavBar } from "@/components/ui/NavBar";
 import { useDebounce } from "@/hooks/useDebounce";
+import { format } from "date-fns";
 
 // Fetch hotel info for nepaliFlag
 const fetchHotel = async (token: string) => {
@@ -20,10 +20,9 @@ const fetchHotel = async (token: string) => {
   return data?.data || data;
 };
 
-
 export default function OrdersPage() {
-    // Hotel state for nepaliFlag
-    const [hotel, setHotel] = useState<any>(null);
+  // Hotel state for nepaliFlag
+  const [hotel, setHotel] = useState<any>(null);
   // Pagination state
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -47,6 +46,49 @@ export default function OrdersPage() {
   const [itemSearch, setItemSearch] = useState("");
   const [itemList, setItemList] = useState<any[]>([]);
   const [itemLoading, setItemLoading] = useState(false);
+  
+  // KOT States
+  const [kotLoading, setKotLoading] = useState(false);
+  const [kotError, setKotError] = useState("");
+  const [showKOTModal, setShowKOTModal] = useState(false);
+  const [selectedKOTOrder, setSelectedKOTOrder] = useState<any | null>(null);
+  const [specialInstructions, setSpecialInstructions] = useState("");
+  const [kotStats, setKotStats] = useState({
+    pending: { count: 0, amount: 0 },
+    preparing: { count: 0, amount: 0 },
+    ready: { count: 0, amount: 0 },
+    served: { count: 0, amount: 0 },
+    cancelled: { count: 0, amount: 0 },
+    total: 0,
+    totalAmount: 0,
+    averages: {
+      preparationTime: 0,
+      servingTime: 0
+    }
+  });
+
+  // Add this near your other state declarations (around line 50-60)
+const [printerInfo, setPrinterInfo] = useState<any>(() => {
+  // Load from localStorage on initial render ONLY
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('printerInfo');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse printer info");
+      }
+    }
+  }
+  return null;
+});
+  
+  // Printer status
+  const [printerStatus, setPrinterStatus] = useState<any>(null);
+  const [checkingPrinter, setCheckingPrinter] = useState(false);
+  
+  // Print job history
+  const [printHistory, setPrintHistory] = useState<{[key: string]: any}>({});
   
   // Form errors state
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
@@ -76,15 +118,66 @@ export default function OrdersPage() {
   const [roomsLoading, setRoomsLoading] = useState(false);
   
   // Notification state for bottom-right toast
-  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning', message: string } | null>(null);
   
   useEffect(() => {
     if (notification) {
-      const t = setTimeout(() => setNotification(null), 3000);
+      const t = setTimeout(() => setNotification(null), 5000);
       return () => clearTimeout(t);
     }
   }, [notification]);
   
+  // Fetch KOT stats
+  const fetchKOTStats = useCallback(async () => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) return;
+      
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const res = await fetch(`${apiBase}/kot/stats?period=today`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setKotStats(data.data);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching KOT stats:", error);
+    }
+  }, []);
+
+  // Check printer status
+  const checkPrinterStatus = useCallback(async () => {
+    setCheckingPrinter(true);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) return;
+      
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const res = await fetch(`${apiBase}/kot/printer-status`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setPrinterStatus(data.data);
+        }
+      }
+    } catch (error) {
+      console.error("Error checking printer status:", error);
+    } finally {
+      setCheckingPrinter(false);
+    }
+  }, []);
+
   // Fetch occupied rooms for modal
   const fetchOccupiedRooms = useCallback(async () => {
     setRoomsLoading(true);
@@ -136,7 +229,193 @@ export default function OrdersPage() {
     
     fetchItems();
     fetchOccupiedRooms();
+    // checkPrinterStatus();
   }, [showCreate, itemSearch, fetchOccupiedRooms]);
+
+  // Send KOT to kitchen
+  const handleSendKOT = async (orderId: string) => {
+    setKotLoading(true);
+    setKotError("");
+    
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) throw new Error("No token found");
+      
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const res = await fetch(`${apiBase}/kot/send/${orderId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ specialInstructions })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to send KOT");
+      
+      // Store print result in history
+      setPrintHistory(prev => ({
+        ...prev,
+        [orderId]: data.data.printResult
+      }));
+      
+      // Show detailed print status
+      const printResult = data.data?.printResult;
+      if (printResult?.success) {
+        const successfulMethod = printResult.attempts?.find((a: any) => a.success)?.method || 'unknown';
+        setNotification({ 
+          type: 'success', 
+          message: `✅ KOT #${data.data.kotNumber} sent and printed (${successfulMethod})` 
+        });
+      } else if (printResult) {
+        setNotification({ 
+          type: 'warning', 
+          message: `⚠️ KOT #${data.data.kotNumber} sent but printing failed. Check printer.` 
+        });
+      } else {
+        setNotification({ type: 'success', message: `KOT #${data.data.kotNumber} sent to kitchen` });
+      }
+      
+      setShowKOTModal(false);
+      setSelectedKOTOrder(null);
+      setSpecialInstructions("");
+      
+      // Refresh orders and stats
+      await refreshOrders();
+      await fetchKOTStats();
+    } catch (err: any) {
+      setKotError(err.message);
+      setNotification({ type: 'error', message: err.message });
+    } finally {
+      setKotLoading(false);
+    }
+  };
+
+  // Update KOT status
+  const handleUpdateKOTStatus = async (orderId: string, status: string) => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) throw new Error("No token found");
+      
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const res = await fetch(`${apiBase}/kot/status/${orderId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update KOT status");
+      
+      setNotification({ type: 'success', message: `KOT status updated to ${status}` });
+      
+      // Refresh orders and stats
+      await refreshOrders();
+      await fetchKOTStats();
+    } catch (err: any) {
+      setNotification({ type: 'error', message: err.message });
+    }
+  };
+
+  // Reprint KOT
+  const handleReprintKOT = async (orderId: string) => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) throw new Error("No token found");
+      
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const res = await fetch(`${apiBase}/kot/reprint/${orderId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to reprint KOT");
+      
+      // Update print history
+      setPrintHistory(prev => ({
+        ...prev,
+        [orderId]: data.data.printResult
+      }));
+      
+      const printResult = data.data?.printResult;
+      if (printResult?.success) {
+        setNotification({ type: 'success', message: `KOT #${data.data.kotNumber} reprinted successfully` });
+      } else {
+        setNotification({ type: 'warning', message: `Reprint attempted but may have failed` });
+      }
+    } catch (err: any) {
+      setNotification({ type: 'error', message: err.message });
+    }
+  };
+
+// Update the test printer function to update localStorage with the response
+const handleTestPrinter = async () => {
+  try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) throw new Error("No token found");
+    
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const res = await fetch(`${apiBase}/kot/test-print`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Test print failed");
+    
+    if (data.data?.success) {
+      setNotification({ type: 'success', message: 'Test print successful!' });
+      
+      // Extract printer info from the test response
+      const testResult = data.data;
+      
+      // Create printer info object from the test response
+      const newPrinterInfo = {
+        name: testResult.printerName || 'Unknown Printer',
+        type: testResult.printerType || 'unknown',
+        detectedType: testResult.detectedType || 'standard',
+        lastTested: new Date().toISOString(),
+        success: testResult.success,
+        method: testResult.attempts?.find((a: any) => a.success)?.method || 'unknown',
+        // Store the full result for reference
+        fullResult: testResult
+      };
+      
+      // Update state and localStorage
+      setPrinterInfo(newPrinterInfo);
+      localStorage.setItem('printerInfo', JSON.stringify(newPrinterInfo));
+      
+    } else {
+      setNotification({ type: 'warning', message: 'Test print completed with issues' });
+      
+      // Still save the attempt even if it had issues
+      const testResult = data.data;
+      const newPrinterInfo = {
+        name: testResult?.printerName || 'Unknown Printer',
+        type: testResult?.printerType || 'unknown',
+        detectedType: testResult?.detectedType || 'standard',
+        lastTested: new Date().toISOString(),
+        success: false,
+        error: data.message || 'Print had issues',
+        fullResult: testResult
+      };
+      
+      setPrinterInfo(newPrinterInfo);
+      localStorage.setItem('printerInfo', JSON.stringify(newPrinterInfo));
+    }
+  } catch (err: any) {
+    setNotification({ type: 'error', message: err.message });
+  }
+};
 
   const handleSelectOrder = (order: any) => {
     setSelectedOrder(order);
@@ -145,6 +424,11 @@ export default function OrdersPage() {
   };
 
   const handleEditOrder = (order: any) => {
+    if (order.kotPrinted) {
+      setNotification({ type: 'warning', message: 'Cannot edit order after KOT has been sent' });
+      return;
+    }
+    
     setEditingOrder(order);
     setCreateForm({
       roomNumber: order.roomNumber,
@@ -164,7 +448,7 @@ export default function OrdersPage() {
     setUpdating(true);
     setUpdateError("");
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api";
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No token found");
       const res = await fetch(`${apiBase}/orders/${selectedOrder._id}/status`, {
@@ -177,7 +461,6 @@ export default function OrdersPage() {
       });
       if (!res.ok) throw new Error("Failed to update order status");
       
-      // Update the order in the local state instead of reloading everything
       const updatedOrder = await res.json();
       setOrders(prevOrders => 
         prevOrders.map(order => 
@@ -197,7 +480,7 @@ export default function OrdersPage() {
     }
   };
 
-const handleUpdateOrderItems = async () => {
+  const handleUpdateOrderItems = async () => {
     if (!editingOrder) return;
     setCreateLoading(true);
     setCreateError("");
@@ -219,7 +502,6 @@ const handleUpdateOrderItems = async () => {
 
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
       
-      // Use the new update endpoint
       const res = await fetch(`${apiBase}/orders/${editingOrder._id}`, {
         method: "PUT",
         headers: {
@@ -240,7 +522,6 @@ const handleUpdateOrderItems = async () => {
       setEditingOrder(null);
       setCreateForm({ roomNumber: "", items: [{ itemId: "", name: "", quantity: "1", price: 0 }], showRoomDropdown: false });
       
-      // Refresh only the orders data instead of the entire page
       await refreshOrders();
     } catch (err: any) {
       setCreateError(err.message);
@@ -277,10 +558,13 @@ const handleUpdateOrderItems = async () => {
   // Enhanced filter state
   const [filters, setFilters] = useState({
     status: "",
+    kotStatus: "",
     roomNumber: "",
     guestName: "",
     guestPhone: "",
-    search: ""
+    search: "",
+    fromDate: "",
+    toDate: ""
   });
 
   // Use debounced values for filters
@@ -297,17 +581,17 @@ const handleUpdateOrderItems = async () => {
       setOrders([]);
       return;
     }
-    // Authentication logic here...
   };
-
 
   // Fetch hotel info on mount
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (token) {
       fetchHotel(token).then(setHotel);
+      fetchKOTStats();
+      // checkPrinterStatus();
     }
-  }, []);
+  }, [fetchKOTStats]);
 
   useEffect(() => {
     fetchAll();
@@ -319,36 +603,26 @@ const handleUpdateOrderItems = async () => {
       setPage(1);
       loadData(token);
     }
-  }, [filters.status, debouncedRoomNumber, debouncedGuestName, debouncedGuestPhone, debouncedSearch]);
+  }, [filters.status, filters.kotStatus, debouncedRoomNumber, debouncedGuestName, debouncedGuestPhone, debouncedSearch, filters.fromDate, filters.toDate]);
 
   const loadData = async (token: string) => {
     try {
       setLoading(true);
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001/api";
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
       
       // Build query parameters
       const params = new URLSearchParams();
       params.set('page', page.toString());
       params.set('limit', limit.toString());
       
-      // Add filters to query parameters only if they have values
-      if (filters.status) {
-        params.set('status', filters.status);
-      }
+      if (filters.status) params.set('status', filters.status);
+      if (filters.kotStatus) params.set('kotStatus', filters.kotStatus);
+      if (debouncedRoomNumber) params.set('roomNumber', debouncedRoomNumber);
+      if (debouncedGuestName) params.set('guestName', debouncedGuestName);
+      if (debouncedGuestPhone) params.set('guestPhone', debouncedGuestPhone);
+      if (filters.fromDate) params.set('fromDate', filters.fromDate);
+      if (filters.toDate) params.set('toDate', filters.toDate);
       
-      if (debouncedRoomNumber) {
-        params.set('roomNumber', debouncedRoomNumber);
-      }
-      
-      if (debouncedGuestName) {
-        params.set('guestName', debouncedGuestName);
-      }
-      
-      if (debouncedGuestPhone) {
-        params.set('guestPhone', debouncedGuestPhone);
-      }
-      
-      // Use search parameter only if no specific filters are set
       if (debouncedSearch && !debouncedRoomNumber && !debouncedGuestName && !debouncedGuestPhone) {
         params.set('search', debouncedSearch);
       }
@@ -384,8 +658,9 @@ const handleUpdateOrderItems = async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (token) {
       await loadData(token);
+      await fetchKOTStats();
     }
-  }, []);
+  }, [fetchKOTStats]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -394,64 +669,173 @@ const handleUpdateOrderItems = async () => {
   const clearFilters = () => {
     setFilters({
       status: "",
+      kotStatus: "",
       roomNumber: "",
       guestName: "",
       guestPhone: "",
-      search: ""
+      search: "",
+      fromDate: "",
+      toDate: ""
     });
   };
 
   const hasActiveFilters = () => {
-    return filters.status || filters.roomNumber || filters.guestName || filters.guestPhone || filters.search;
+    return Object.values(filters).some(v => v);
   };
+
+  // Get KOT status badge color
+  const getKOTStatusBadge = (status: string) => {
+    const colors: {[key: string]: string} = {
+      'pending': 'bg-orange-100 text-orange-800 border-orange-200',
+      'preparing': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'ready': 'bg-green-100 text-green-800 border-green-200',
+      'served': 'bg-blue-100 text-blue-800 border-blue-200',
+      'cancelled': 'bg-red-100 text-red-800 border-red-200'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+  };
+
+  // Get printer status indicator
+
+
+// Remove or comment out the checkPrinterStatus function entirely
+// We don't need it anymore since we only update on test
+
+
+
+// Update the printer status indicator to show info from localStorage
+const getPrinterStatusIndicator = () => {
+  if (!printerInfo) {
+    return (
+      <span className="text-gray-400 flex items-center gap-1">
+        <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+        Not Tested
+      </span>
+    );
+  }
+  
+  if (printerInfo.success) {
+    return (
+      <span className="text-green-600 font-semibold flex items-center gap-1" title={`Last tested: ${new Date(printerInfo.lastTested).toLocaleString()}`}>
+        <span className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></span>
+        {printerInfo.name} ({printerInfo.method})
+      </span>
+    );
+  }
+  
+  return (
+    <span className="text-red-600 font-semibold flex items-center gap-1" title={`Last tested: ${new Date(printerInfo.lastTested).toLocaleString()}`}>
+      <span className="w-2 h-2 bg-red-600 rounded-full"></span>
+      {printerInfo.name} (Failed)
+    </span>
+  );
+};
+
+// Remove any useEffect that calls checkPrinterStatus
+// Remove or comment out these lines from your existing code:
+// useEffect(() => {
+//   checkPrinterStatus();
+// }, []);
+
+// Also remove the checkPrinterStatus button onClick handler
+// Keep only the Test Printer button
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-slate-50">
-    <NavBar
-	user={user}
-	showUserMenu={showUserMenu}
-	setShowUserMenu={setShowUserMenu}
-	logout={logout}
-	nepaliFlag={hotel?.nepaliFlag}
-/>
+      <NavBar
+        user={user}
+        showUserMenu={showUserMenu}
+        setShowUserMenu={setShowUserMenu}
+        logout={logout}
+        nepaliFlag={hotel?.nepaliFlag}
+      />
+      
       <div className="max-w-9xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Orders Management</h1>
-          <button
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            onClick={() => {
-              setShowCreate(true);
-              setEditingOrder(null);
-              setCreateError("");
-              setCreateForm({
-                roomNumber: "",
-                items: [{ itemId: "", name: "", quantity: "1", price: 0 }],
-                showRoomDropdown: false
-              });
-            }}
-            data-cy="orders-add-btn"
-          >+ New Order</button>
+<div className="flex gap-2">
+  {/* Remove this entire button - we don't need separate status check */}
+  {/* <button
+    onClick={checkPrinterStatus}
+    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm flex items-center gap-2"
+    disabled={checkingPrinter}
+  >
+    <span>Printer: {getPrinterStatusIndicator()}</span>
+    {checkingPrinter && <span className="animate-spin">⟳</span>}
+  </button> */}
+  
+  {/* Keep only the Test Printer button */}
+  <button
+    onClick={handleTestPrinter}
+    className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm flex items-center gap-2"
+  >
+    <span>Printer: {getPrinterStatusIndicator()}</span>
+  </button>
+  
+  <button
+    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+    onClick={() => {
+      setShowCreate(true);
+      setEditingOrder(null);
+      setCreateError("");
+      setCreateForm({
+        roomNumber: "",
+        items: [{ itemId: "", name: "", quantity: "1", price: 0 }],
+        showRoomDropdown: false
+      });
+    }}
+    data-cy="orders-add-btn"
+  >+ New Order</button>
+</div>
+        </div>
+        
+        {/* KOT Statistics Dashboard */}
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="bg-orange-50 p-4 rounded-lg shadow border-l-4 border-orange-500">
+            <div className="text-2xl font-bold text-orange-600">{kotStats.pending.count}</div>
+            <div className="text-sm text-gray-600">Pending in Kitchen</div>
+            <div className="text-xs text-gray-500">रु{kotStats.pending.amount.toLocaleString()}</div>
+          </div>
+          <div className="bg-yellow-50 p-4 rounded-lg shadow border-l-4 border-yellow-500">
+            <div className="text-2xl font-bold text-yellow-600">{kotStats.preparing.count}</div>
+            <div className="text-sm text-gray-600">Preparing</div>
+            <div className="text-xs text-gray-500">रु{kotStats.preparing.amount.toLocaleString()}</div>
+          </div>
+          <div className="bg-green-50 p-4 rounded-lg shadow border-l-4 border-green-500">
+            <div className="text-2xl font-bold text-green-600">{kotStats.ready.count}</div>
+            <div className="text-sm text-gray-600">Ready to Serve</div>
+            <div className="text-xs text-gray-500">रु{kotStats.ready.amount.toLocaleString()}</div>
+          </div>
+          <div className="bg-blue-50 p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div className="text-2xl font-bold text-blue-600">{kotStats.served.count}</div>
+            <div className="text-sm text-gray-600">Served Today</div>
+            <div className="text-xs text-gray-500">रु{kotStats.served.amount.toLocaleString()}</div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg shadow border-l-4 border-purple-500">
+            <div className="text-2xl font-bold text-purple-600">{kotStats.averages.preparationTime} min</div>
+            <div className="text-sm text-gray-600">Avg Prep Time</div>
+            <div className="text-xs text-gray-500">Serving: {kotStats.averages.servingTime} min</div>
+          </div>
         </div>
         
         {/* Create/Edit Order Modal */}
-         {/* Create/Edit Order Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div data-cy="orders-modal" className="bg-white rounded-lg p-8 w-full max-w-6xl max-h-[90vh] flex gap-8 overflow-y-auto">
-            {/* Left: Form */}
-            <div className="flex-1 min-w-[320px]">
-              <h2 data-cy="orders-modal-title" className="text-2xl font-bold mb-4">
-                {editingOrder ? "Edit Order" : "Create New Order"}
-              </h2>
-              <form
-                data-cy="orders-create-form"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (editingOrder) {
-                    await handleUpdateOrderItems();
-                  } else {
+        {showCreate && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div data-cy="orders-modal" className="bg-white rounded-lg p-8 w-full max-w-6xl max-h-[90vh] flex gap-8 overflow-y-auto">
+              {/* Left: Form */}
+              <div className="flex-1 min-w-[320px]">
+                <h2 data-cy="orders-modal-title" className="text-2xl font-bold mb-4">
+                  {editingOrder ? "Edit Order" : "Create New Order"}
+                </h2>
+                <form
+                  data-cy="orders-create-form"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (editingOrder) {
+                      await handleUpdateOrderItems();
+                    } else {
                       if (!validateOrderForm()) {
                         setCreateError("Please fix validation errors");
                         return;
@@ -462,7 +846,6 @@ const handleUpdateOrderItems = async () => {
                         const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
                         if (!token) throw new Error("No token found");
                         
-                        // Prepare items array with proper format
                         const items = createForm.items
                           .filter(item => item.itemId && item.quantity)
                           .map(item => ({
@@ -484,7 +867,6 @@ const handleUpdateOrderItems = async () => {
                         });
                         const data = await res.json().catch(() => ({}));
                         if (!res.ok) {
-                          // Handle API validation errors
                           if (data?.details) {
                             const errorDetails = data.details;
                             const fieldMatch = errorDetails.match(/"(\w+)"/);
@@ -502,7 +884,6 @@ const handleUpdateOrderItems = async () => {
                         resetFormErrors();
                         setCreateForm({ roomNumber: "", items: [{ itemId: "", name: "", quantity: "1", price: 0 }], showRoomDropdown: false });
                         
-                        // Refresh only the orders data instead of the entire page
                         await refreshOrders();
                       } catch (err: any) {
                         setCreateError(err.message);
@@ -515,7 +896,10 @@ const handleUpdateOrderItems = async () => {
                 >
                   {/* Notification Toast */}
                   {notification && (
-                    <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+                    <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white transition-all ${
+                      notification.type === 'success' ? 'bg-green-600' : 
+                      notification.type === 'warning' ? 'bg-orange-600' : 'bg-red-600'
+                    }`}>
                       {notification.message}
                     </div>
                   )}
@@ -700,12 +1084,10 @@ const handleUpdateOrderItems = async () => {
                           data-cy={`orders-item-option-${item._id}`}
                           className={`p-2 rounded cursor-pointer hover:bg-blue-100 ${createForm.items.some(i => i.itemId === item._id) ? 'bg-blue-200' : ''}`}
                           onClick={() => {
-                            // Add this item to the form
                             const newItems = [...createForm.items];
                             const emptyIndex = newItems.findIndex(i => !i.itemId);
                             
                             if (emptyIndex >= 0) {
-                              // Replace the first empty item
                               newItems[emptyIndex] = {
                                 itemId: item._id,
                                 name: item.name,
@@ -713,7 +1095,6 @@ const handleUpdateOrderItems = async () => {
                                 price: item.price
                               };
                             } else {
-                              // Add a new item
                               newItems.push({
                                 itemId: item._id,
                                 name: item.name,
@@ -763,29 +1144,44 @@ const handleUpdateOrderItems = async () => {
               </button>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Search (General)</label>
+              <label className="block text-sm font-medium mb-1">Search</label>
               <input
                 type="text"
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="General search..."
+                placeholder="Search..."
                 data-cy="orders-search"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
+              <label className="block text-sm font-medium mb-1">Order Status</label>
               <select
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 data-cy="orders-status-filter"
               >
-                <option value="">All Status</option>
-                <option value="completed">Completed</option>
+                <option value="">All</option>
                 <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">KOT Status</label>
+              <select
+                value={filters.kotStatus}
+                onChange={(e) => handleFilterChange('kotStatus', e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              >
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="preparing">Preparing</option>
+                <option value="ready">Ready</option>
+                <option value="served">Served</option>
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
@@ -801,25 +1197,21 @@ const handleUpdateOrderItems = async () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Guest Name</label>
+              <label className="block text-sm font-medium mb-1">From Date</label>
               <input
-                type="text"
-                value={filters.guestName}
-                onChange={(e) => handleFilterChange('guestName', e.target.value)}
+                type="date"
+                value={filters.fromDate}
+                onChange={(e) => handleFilterChange('fromDate', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Guest name"
-                data-cy="orders-guestname-filter"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Guest Phone</label>
+              <label className="block text-sm font-medium mb-1">To Date</label>
               <input
-                type="text"
-                value={filters.guestPhone}
-                onChange={(e) => handleFilterChange('guestPhone', e.target.value)}
+                type="date"
+                value={filters.toDate}
+                onChange={(e) => handleFilterChange('toDate', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Guest phone"
-                data-cy="orders-guestphone-filter"
               />
             </div>
           </div>
@@ -831,11 +1223,14 @@ const handleUpdateOrderItems = async () => {
             <table data-cy="orders-table" className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KOT #</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KOT Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Print Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -846,28 +1241,22 @@ const handleUpdateOrderItems = async () => {
                   const guest = order.guestId && typeof order.guestId === 'object'
                     ? `${order.guestId.firstName || ''} ${order.guestId.lastName || ''}`.trim() || "-"
                     : (order.guestId ? String(order.guestId) : "-");
-                  const room = typeof order.roomNumber === 'string' || typeof order.roomNumber === 'number'
-                    ? String(order.roomNumber)
-                    : (order.room && typeof order.room === 'object' && order.room.roomNumber ? String(order.room.roomNumber) : (order.room ? String(order.room) : "-"));
+                  const room = order.roomNumber;
                   const items = Array.isArray(order.items) && order.items.length > 0
-                    ? order.items.map((i: any) => {
-                        const name = i.name ? String(i.name) : "-";
-                        const qty = i.quantity ? String(i.quantity) : "-";
-                        const price = i.price ? String(i.price) : "-";
-                        let category = "";
-                        if (i.itemId && typeof i.itemId === 'object') {
-                          category = i.itemId.category || i.itemId.name || "";
-                        } else if (i.itemId) {
-                          category = String(i.itemId);
-                        }
-                        return `${name} (x${qty}) - रु${price}${category ? ` [${category}]` : ''}`;
-                      }).join("; ")
+                    ? order.items.map((i: any) => `${i.name} (x${i.quantity})`).join(", ")
                     : "-";
-                  const total = order.totalAmount !== undefined ? `रु${String(order.totalAmount)}` : "-";
-                  const status = order.status ? String(order.status) : "-";
+                  const total = order.totalAmount !== undefined ? `रु${order.totalAmount.toLocaleString()}` : "-";
+                  const status = order.status;
+                  const kotStatus = order.kotStatus || "pending";
+                  const kotNumber = order.kotNumber || "-";
                   const createdBy = order.createdBy && typeof order.createdBy === 'object'
                     ? `${order.createdBy.firstName || ''} ${order.createdBy.lastName || ''}`.trim() || "-"
                     : (order.createdBy ? String(order.createdBy) : "-");
+                  
+                  const printInfo = printHistory[order._id];
+                  const printStatus = printInfo ? 
+                    (printInfo.success ? '✅' : '❌') : 
+                    (order.kotPrinted ? '📄' : '⏳');
                   
                   return (
                     <tr key={order._id} data-cy={`orders-row-${index}`} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`}>
@@ -883,6 +1272,20 @@ const handleUpdateOrderItems = async () => {
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {order.kotPrinted ? (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getKOTStatusBadge(kotStatus)}`}>
+                            {kotStatus}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">Not sent</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span title={printInfo ? `Printed: ${printInfo.printerType}` : ''}>
+                          {printStatus}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{createdBy}</td>
@@ -941,46 +1344,17 @@ const handleUpdateOrderItems = async () => {
                     onClick={() => setPage(1)}
                     disabled={page === 1}
                   >«</button>
-                  
                   <button
                     className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
                     onClick={() => setPage(page - 1)}
                     disabled={page === 1}
                   >‹</button>
-                  
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (page <= 3) {
-                      pageNum = i + 1;
-                    } else if (page >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = page - 2 + i;
-                    }
-                    
-                    return (
-                      <button
-                        key={pageNum}
-                        className={`px-3 py-1 rounded border text-sm ${
-                          page === pageNum ? 'bg-blue-500 text-white' : 'bg-white'
-                        }`}
-                        onClick={() => setPage(pageNum)}
-                      >{pageNum}</button>
-                    );
-                  })}
-                  
-                  {totalPages > 5 && page < totalPages - 2 && (
-                    <span className="px-2 py-1">...</span>
-                  )}
-                  
+                  <span className="px-3 py-1">Page {page} of {totalPages}</span>
                   <button
                     className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
                     onClick={() => setPage(page + 1)}
                     disabled={page === totalPages}
                   >›</button>
-                  
                   <button
                     className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
                     onClick={() => setPage(totalPages)}
@@ -991,14 +1365,18 @@ const handleUpdateOrderItems = async () => {
             </div>
           </div>
           
+          {/* Status Update Modal */}
           {selectedOrder && (
             <div data-cy="orders-status-modal" className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
               <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
                 <h2 className="text-xl font-bold mb-4">Update Order Status</h2>
                 <div className="mb-4">
-                  <div className="mb-2"><b>Order ID:</b> {selectedOrder._id}</div>
+                  <div className="mb-2"><b>KOT #:</b> {selectedOrder.kotNumber || 'Not generated'}</div>
                   <div className="mb-2"><b>Guest:</b> {selectedOrder.guestId ? `${selectedOrder.guestId.firstName} ${selectedOrder.guestId.lastName}` : "-"}</div>
                   <div className="mb-2"><b>Current Status:</b> {selectedOrder.status}</div>
+                  {selectedOrder.kotStatus && (
+                    <div className="mb-2"><b>KOT Status:</b> {selectedOrder.kotStatus}</div>
+                  )}
                 </div>
                 <div className="mb-4">
                   <label className="block text-sm font-medium mb-1">New Status</label>
@@ -1026,7 +1404,65 @@ const handleUpdateOrderItems = async () => {
                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     onClick={handleUpdateOrderStatus}
                     disabled={updating}
-                    >{updating ? 'Updating...' : 'Update'}</button>
+                  >{updating ? 'Updating...' : 'Update'}</button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* KOT Modal */}
+          {showKOTModal && selectedKOTOrder && (
+            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+                <h2 className="text-xl font-bold mb-4">Send Order to Kitchen</h2>
+                <div className="mb-4">
+                  <div className="mb-2"><b>Room:</b> {selectedKOTOrder.roomNumber}</div>
+                  <div className="mb-2"><b>Items:</b></div>
+                  <ul className="list-disc pl-5 mb-2 max-h-40 overflow-y-auto">
+                    {selectedKOTOrder.items.map((item: any, idx: number) => (
+                      <li key={idx} className="text-sm">
+                        {item.name} x{item.quantity} - रु{item.total}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium mb-1">Special Instructions</label>
+                  <textarea
+                    value={specialInstructions}
+                    onChange={(e) => setSpecialInstructions(e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    rows={3}
+                    placeholder="e.g., extra spicy, no onions, etc."
+                  />
+                </div>
+                {printerStatus && (
+                  <div className="mb-4 p-2 bg-gray-50 rounded text-sm">
+                    <span className="font-medium">Printer: </span>
+                    {getPrinterStatusIndicator()}
+                    {printerStatus.type && <span className="ml-2 text-gray-600">({printerStatus.type})</span>}
+                  </div>
+                )}
+                {kotError && <div className="text-red-600 mb-2">{kotError}</div>}
+                <div className="flex justify-end space-x-2">
+                  <button
+                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    onClick={() => {
+                      setShowKOTModal(false);
+                      setSelectedKOTOrder(null);
+                      setSpecialInstructions("");
+                    }}
+                    disabled={kotLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+                    onClick={() => handleSendKOT(selectedKOTOrder._id)}
+                    disabled={kotLoading}
+                  >
+                    {kotLoading ? 'Sending...' : 'Send to Kitchen'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -1070,10 +1506,10 @@ const handleUpdateOrderItems = async () => {
             <div className="text-sm text-gray-600">Pending</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-red-600">
-              {orders.filter((o: any) => o.status === "cancelled").length}
+            <div className="text-2xl font-bold text-orange-600">
+              {orders.filter((o: any) => o.kotStatus === 'preparing' || o.kotStatus === 'ready').length}
             </div>
-            <div className="text-sm text-gray-600">Cancelled</div>
+            <div className="text-sm text-gray-600">In Kitchen</div>
           </div>
         </div>
       </div>

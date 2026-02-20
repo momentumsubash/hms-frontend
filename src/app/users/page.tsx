@@ -5,6 +5,7 @@ import { useAuth } from "@/components/ui/auth-provider";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { NavBar } from "@/components/ui/NavBar";
+
 export default function UsersPage() {
   // Load hotel from localStorage
   const [hotel, setHotel] = useState(() => {
@@ -14,6 +15,7 @@ export default function UsersPage() {
     }
     return null;
   });
+
   // Listen for localStorage changes (e.g., nepaliLanguage toggle)
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -24,13 +26,15 @@ export default function UsersPage() {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
-    const [user, setUser] = useState<any>(() => {
+
+  const [user, setUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('user');
       return stored ? JSON.parse(stored) : null;
     }
     return null;
   });
+
   const { logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
@@ -103,6 +107,7 @@ export default function UsersPage() {
 
   // For super admin: list of hotels
   const [hotels, setHotels] = useState<any[]>([]);
+
   // Fetch hotels for super admin
   useEffect(() => {
     if (user?.role === 'super_admin') {
@@ -327,6 +332,13 @@ export default function UsersPage() {
 
   const openCreateModal = () => {
     setCurrentUser(null);
+    
+    // Set default hotel for managers
+    let defaultHotel = "";
+    if (user?.role === 'manager' && user?.hotel) {
+      defaultHotel = typeof user.hotel === 'object' ? user.hotel._id : user.hotel;
+    }
+    
     setFormData({
       email: "",
       password: "",
@@ -334,7 +346,7 @@ export default function UsersPage() {
       lastName: "",
       role: "staff",
       isActive: true,
-      hotel: ""
+      hotel: defaultHotel
     });
     setShowModal(true);
   };
@@ -347,6 +359,15 @@ export default function UsersPage() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+
+    // Clear error for this field when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   // Filter users on client side if needed (though we're doing server-side now)
@@ -358,6 +379,27 @@ export default function UsersPage() {
       (user.email && user.email.toLowerCase().includes(filters.search.toLowerCase()));
     return matchesRole && matchesActive && matchesSearch;
   });
+
+  // Get available roles based on current user's role
+  const getAvailableRoles = () => {
+    if (user?.role === 'super_admin') {
+      return [
+        { value: 'staff', label: 'Staff' },
+        { value: 'manager', label: 'Manager' },
+        { value: 'kitchen_staff', label: 'Kitchen Staff' },
+        { value: 'super_admin', label: 'Super Admin' }
+      ];
+    } else if (user?.role === 'manager') {
+      return [
+        { value: 'staff', label: 'Staff' },
+        { value: 'kitchen_staff', label: 'Kitchen Staff' }
+      ];
+    }
+    return [
+      { value: 'staff', label: 'Staff' },
+      { value: 'kitchen_staff', label: 'Kitchen Staff' }
+    ];
+  };
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
   
@@ -416,8 +458,9 @@ export default function UsersPage() {
               >
                 <option value="">All Roles</option>
                 <option value="super_admin">Super Admin</option>
-                <option value="admin">Admin</option>
+                <option value="manager">Manager</option>
                 <option value="staff">Staff</option>
+                <option value="kitchen_staff">Kitchen Staff</option>
               </select>
             </div>
             <div>
@@ -453,7 +496,16 @@ export default function UsersPage() {
                   <tr key={user._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">{user.firstName} {user.lastName}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap capitalize">{user.role.replace('_', ' ')}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.role === 'super_admin' ? 'bg-purple-100 text-purple-800' :
+                        user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
+                        user.role === 'kitchen_staff' ? 'bg-orange-100 text-orange-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {user.role.replace('_', ' ')}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {user.isActive ? "Active" : "Inactive"}
@@ -550,7 +602,7 @@ export default function UsersPage() {
         </div>
 
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-blue-600">{pagination.total}</div>
             <div className="text-sm text-gray-600">Total Users</div>
@@ -560,13 +612,17 @@ export default function UsersPage() {
             <div className="text-sm text-gray-600">Active</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-orange-600">{users.filter((u: any) => u.role === 'kitchen_staff').length}</div>
+            <div className="text-sm text-gray-600">Kitchen Staff</div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-red-600">{users.filter((u: any) => !u.isActive).length}</div>
             <div className="text-sm text-gray-600">Inactive</div>
           </div>
         </div>
       </div>
 
-      {/* User Form Modal (rewritten for consistency) */}
+      {/* User Form Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -607,6 +663,7 @@ export default function UsersPage() {
                   {formErrors.lastName && <p className="text-red-600 text-sm mt-1">{formErrors.lastName}</p>}
                 </div>
               </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Email *</label>
@@ -636,6 +693,7 @@ export default function UsersPage() {
                   </div>
                 )}
               </div>
+
               <div>
                 <label className="block text-sm font-medium mb-1">Role *</label>
                 <select
@@ -645,15 +703,18 @@ export default function UsersPage() {
                   className={`w-full border rounded px-3 py-2 ${formErrors.role ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
                   required
                 >
-                  <option value="staff">Staff</option>
-                  <option value="manager">Manager</option>
-                  {user?.role === 'super_admin' && <option value="super_admin">Super Admin</option>}
+                  {getAvailableRoles().map(role => (
+                    <option key={role.value} value={role.value}>{role.label}</option>
+                  ))}
                 </select>
                 {formErrors.role && <p className="text-red-600 text-sm mt-1">{formErrors.role}</p>}
               </div>
+
               <div>
-                <label className="block text-sm font-medium mb-1">Hotel ID *</label>
-                {hotels.length > 0 ? (
+                <label className="block text-sm font-medium mb-1">
+                  {user?.role === 'super_admin' ? 'Hotel *' : 'Hotel'}
+                </label>
+                {user?.role === 'super_admin' ? (
                   <select
                     name="hotel"
                     value={formData.hotel}
@@ -663,7 +724,7 @@ export default function UsersPage() {
                   >
                     <option value="">Select Hotel</option>
                     {hotels.map((h: any) => (
-                      <option key={h._id} value={h._id}>{h.name || h._id}</option>
+                      <option key={h._id} value={h._id}>{h.name}</option>
                     ))}
                   </select>
                 ) : (
@@ -671,12 +732,13 @@ export default function UsersPage() {
                     type="text"
                     name="hotel"
                     value={formData.hotel}
-                    onChange={handleFormChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    required
+                    className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                    readOnly
+                    disabled
                   />
                 )}
               </div>
+
               <div className="flex items-center">
                 <input
                   type="checkbox"
@@ -690,6 +752,7 @@ export default function UsersPage() {
                   Active
                 </label>
               </div>
+
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"

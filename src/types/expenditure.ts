@@ -32,14 +32,15 @@ export interface ExpenditureFilters {
   endDate?: string;
   category?: string;
   status?: string;
-  search?: string;  // Add this for text search
-  minAmount?: number;  // Add this for amount filtering
-  maxAmount?: number;  // Add this for amount filtering
-  userId?: string;  // Add this for user filtering
+  search?: string;  // For text search
+  minAmount?: number;  // For amount filtering
+  maxAmount?: number;  // For amount filtering
+  userId?: string;  // For user filtering
   page?: number;
   limit?: number;
-  sortBy?: string;  // Add this for sorting
-  sortOrder?: 'asc' | 'desc';  // Add this for sorting
+  sortBy?: string;  // For sorting
+  sortOrder?: 'asc' | 'desc';  // For sorting
+  filter?: 'today' | 'yesterday' | 'week' | 'month' | 'quarter' | 'halfYear' | 'year' | 'custom' | 'all'; // Date preset
 }
 
 // Add this new interface for the API response
@@ -76,6 +77,11 @@ export interface ExpenditureResponse {
     hasNext?: boolean;
     hasPrev?: boolean;
   };
+  dateRange?: {
+    start: string;
+    end: string;
+    filter: string;
+  };
   filters?: {
     available?: {
       categories: string[];
@@ -106,8 +112,17 @@ export interface ExpenditureStats {
 export interface FinancialOverview {
   hotel: {
     name: string;
+    initialAmount?: number;
+    currentBalance?: number;
+    lastBalanceUpdate?: string;
   };
-  sales: {
+  earnings?: {
+    total: number;
+    advance: number;
+    discount: number;
+    checkoutCount: number;
+  };
+  sales?: {
     roomSales: {
       total: number;
       count: number;
@@ -122,27 +137,34 @@ export interface FinancialOverview {
     approved: {
       total: number;
       count: number;
+      byCategory?: Record<string, { amount: number; count: number }>;
     };
     pending: {
       total: number;
       count: number;
     };
     totalExpenditures: number;
+    byStatus?: Record<string, { total: number; count: number }>;
   };
   financial: {
     netProfit: number;
-    profitMargin: number;
+    profitMargin: number | string;
     totalExpenditures: number;
     pendingExpenditures: number;
   };
-  profitLoss: {
+  profitLoss?: {
     grossProfit: number;
     netProfit: number;
     profitMargin: number;
   };
-  hotelBalance: {
+  hotelBalance?: {
     initialAmount: number;
     currentBalance: number;
+  };
+  dateRange?: {
+    start: string;
+    end: string;
+    filter: string;
   };
 }
 
@@ -152,4 +174,97 @@ export interface SummaryStats {
   netProfit: number;
   profitMargin: number;
   period: string;
+  dateRange?: {
+    start: string;
+    end: string;
+    filter: string;
+  };
+  earnings?: {
+    total: number;
+    roomRevenue: number;
+    itemSales: number;
+    checkoutCount: number;
+  };
+  expenditures?: {
+    total: number;
+    count: number;
+  };
+  financial?: {
+    netProfit: number;
+    profitMargin: string;
+  };
+  business?: {
+    occupiedRooms: number;
+    totalGuests: number;
+  };
+  guests?: {
+    total: number;
+    checkedIn: number;
+  };
+  rooms?: {
+    total: number;
+    occupied: number;
+    occupancyRate: string;
+  };
+  orders?: number;
+  checkouts?: number;
+  hotelBalance?: {
+    initialAmount: number;
+    currentBalance: number;
+    lastBalanceUpdate: string | null;
+  };
+}
+
+// Item Sales Types
+export interface ItemSale {
+  item: string;
+  name: string;
+  quantity: number;
+  totalSales: number;
+  averagePrice: number;
+  salesCount: number;
+  category?: {
+    _id: string;
+    name: string;
+  } | null;
+}
+
+export interface ItemSalesData {
+  items: ItemSale[];
+  summary: {
+    totalQuantity: number;
+    totalRevenue: number;
+    uniqueItems: number;
+  };
+  dateRange: {
+    start: string;
+    end: string;
+    filter: string;
+  };
+}
+
+// Room Sales Types
+export interface RoomSale {
+  roomId: string;
+  roomNumber: string;
+  type: string;
+  totalRoomCharge: number;
+  checkoutCount: number;
+  totalNights: number;
+  averageRoomCharge: number;
+}
+
+export interface RoomSalesData {
+  roomSales: RoomSale[];
+  totals: {
+    totalRoomCharge: number;
+    totalCheckouts: number;
+    averageRoomCharge: number;
+    totalNights: number;
+  };
+  dateRange?: {
+    start: string;
+    end: string;
+    filter: string;
+  };
 }
