@@ -2178,7 +2178,7 @@ export default function HotelsPage() {
                 <Select value={expenditureFilters.category || ''} onValueChange={(value) => setExpenditureFilters(prev => ({ ...prev, category: value }))}>
                   <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="supplies">Supplies</SelectItem>
                     <SelectItem value="maintenance">Maintenance</SelectItem>
                     <SelectItem value="utilities">Utilities</SelectItem>
@@ -2190,7 +2190,7 @@ export default function HotelsPage() {
                 <Select value={expenditureFilters.status || ''} onValueChange={(value) => setExpenditureFilters(prev => ({ ...prev, status: value }))}>
                   <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="approved">Approved</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>

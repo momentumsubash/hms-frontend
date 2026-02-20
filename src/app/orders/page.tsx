@@ -66,6 +66,22 @@ export default function OrdersPage() {
       servingTime: 0
     }
   });
+
+  // Add this near your other state declarations (around line 50-60)
+const [printerInfo, setPrinterInfo] = useState<any>(() => {
+  // Load from localStorage on initial render ONLY
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('printerInfo');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse printer info");
+      }
+    }
+  }
+  return null;
+});
   
   // Printer status
   const [printerStatus, setPrinterStatus] = useState<any>(null);
@@ -213,8 +229,8 @@ export default function OrdersPage() {
     
     fetchItems();
     fetchOccupiedRooms();
-    checkPrinterStatus();
-  }, [showCreate, itemSearch, fetchOccupiedRooms, checkPrinterStatus]);
+    // checkPrinterStatus();
+  }, [showCreate, itemSearch, fetchOccupiedRooms]);
 
   // Send KOT to kitchen
   const handleSendKOT = async (orderId: string) => {
@@ -339,32 +355,67 @@ export default function OrdersPage() {
     }
   };
 
-  // Test printer
-  const handleTestPrinter = async () => {
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) throw new Error("No token found");
-      
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const res = await fetch(`${apiBase}/kot/test-print`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Test print failed");
-      
-      if (data.data?.success) {
-        setNotification({ type: 'success', message: 'Test print successful!' });
-      } else {
-        setNotification({ type: 'warning', message: 'Test print completed with issues' });
+// Update the test printer function to update localStorage with the response
+const handleTestPrinter = async () => {
+  try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) throw new Error("No token found");
+    
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+    const res = await fetch(`${apiBase}/kot/test-print`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
       }
-    } catch (err: any) {
-      setNotification({ type: 'error', message: err.message });
+    });
+    
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Test print failed");
+    
+    if (data.data?.success) {
+      setNotification({ type: 'success', message: 'Test print successful!' });
+      
+      // Extract printer info from the test response
+      const testResult = data.data;
+      
+      // Create printer info object from the test response
+      const newPrinterInfo = {
+        name: testResult.printerName || 'Unknown Printer',
+        type: testResult.printerType || 'unknown',
+        detectedType: testResult.detectedType || 'standard',
+        lastTested: new Date().toISOString(),
+        success: testResult.success,
+        method: testResult.attempts?.find((a: any) => a.success)?.method || 'unknown',
+        // Store the full result for reference
+        fullResult: testResult
+      };
+      
+      // Update state and localStorage
+      setPrinterInfo(newPrinterInfo);
+      localStorage.setItem('printerInfo', JSON.stringify(newPrinterInfo));
+      
+    } else {
+      setNotification({ type: 'warning', message: 'Test print completed with issues' });
+      
+      // Still save the attempt even if it had issues
+      const testResult = data.data;
+      const newPrinterInfo = {
+        name: testResult?.printerName || 'Unknown Printer',
+        type: testResult?.printerType || 'unknown',
+        detectedType: testResult?.detectedType || 'standard',
+        lastTested: new Date().toISOString(),
+        success: false,
+        error: data.message || 'Print had issues',
+        fullResult: testResult
+      };
+      
+      setPrinterInfo(newPrinterInfo);
+      localStorage.setItem('printerInfo', JSON.stringify(newPrinterInfo));
     }
-  };
+  } catch (err: any) {
+    setNotification({ type: 'error', message: err.message });
+  }
+};
 
   const handleSelectOrder = (order: any) => {
     setSelectedOrder(order);
@@ -538,9 +589,9 @@ export default function OrdersPage() {
     if (token) {
       fetchHotel(token).then(setHotel);
       fetchKOTStats();
-      checkPrinterStatus();
+      // checkPrinterStatus();
     }
-  }, [fetchKOTStats, checkPrinterStatus]);
+  }, [fetchKOTStats]);
 
   useEffect(() => {
     fetchAll();
@@ -645,13 +696,49 @@ export default function OrdersPage() {
   };
 
   // Get printer status indicator
-  const getPrinterStatusIndicator = () => {
-    if (!printerStatus) return <span className="text-gray-400">Unknown</span>;
-    if (printerStatus.reachable) {
-      return <span className="text-green-600 font-semibold">● Online</span>;
-    }
-    return <span className="text-red-600 font-semibold">● Offline</span>;
-  };
+
+
+// Remove or comment out the checkPrinterStatus function entirely
+// We don't need it anymore since we only update on test
+
+
+
+// Update the printer status indicator to show info from localStorage
+const getPrinterStatusIndicator = () => {
+  if (!printerInfo) {
+    return (
+      <span className="text-gray-400 flex items-center gap-1">
+        <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
+        Not Tested
+      </span>
+    );
+  }
+  
+  if (printerInfo.success) {
+    return (
+      <span className="text-green-600 font-semibold flex items-center gap-1" title={`Last tested: ${new Date(printerInfo.lastTested).toLocaleString()}`}>
+        <span className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></span>
+        {printerInfo.name} ({printerInfo.method})
+      </span>
+    );
+  }
+  
+  return (
+    <span className="text-red-600 font-semibold flex items-center gap-1" title={`Last tested: ${new Date(printerInfo.lastTested).toLocaleString()}`}>
+      <span className="w-2 h-2 bg-red-600 rounded-full"></span>
+      {printerInfo.name} (Failed)
+    </span>
+  );
+};
+
+// Remove any useEffect that calls checkPrinterStatus
+// Remove or comment out these lines from your existing code:
+// useEffect(() => {
+//   checkPrinterStatus();
+// }, []);
+
+// Also remove the checkPrinterStatus button onClick handler
+// Keep only the Test Printer button
 
   if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
@@ -668,36 +755,40 @@ export default function OrdersPage() {
       <div className="max-w-9xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Orders Management</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={checkPrinterStatus}
-              className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm flex items-center gap-2"
-              disabled={checkingPrinter}
-            >
-              <span>Printer: {getPrinterStatusIndicator()}</span>
-              {checkingPrinter && <span className="animate-spin">⟳</span>}
-            </button>
-            <button
-              onClick={handleTestPrinter}
-              className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm"
-            >
-              Test Printer
-            </button>
-            <button
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              onClick={() => {
-                setShowCreate(true);
-                setEditingOrder(null);
-                setCreateError("");
-                setCreateForm({
-                  roomNumber: "",
-                  items: [{ itemId: "", name: "", quantity: "1", price: 0 }],
-                  showRoomDropdown: false
-                });
-              }}
-              data-cy="orders-add-btn"
-            >+ New Order</button>
-          </div>
+<div className="flex gap-2">
+  {/* Remove this entire button - we don't need separate status check */}
+  {/* <button
+    onClick={checkPrinterStatus}
+    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm flex items-center gap-2"
+    disabled={checkingPrinter}
+  >
+    <span>Printer: {getPrinterStatusIndicator()}</span>
+    {checkingPrinter && <span className="animate-spin">⟳</span>}
+  </button> */}
+  
+  {/* Keep only the Test Printer button */}
+  <button
+    onClick={handleTestPrinter}
+    className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm flex items-center gap-2"
+  >
+    <span>Printer: {getPrinterStatusIndicator()}</span>
+  </button>
+  
+  <button
+    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+    onClick={() => {
+      setShowCreate(true);
+      setEditingOrder(null);
+      setCreateError("");
+      setCreateForm({
+        roomNumber: "",
+        items: [{ itemId: "", name: "", quantity: "1", price: 0 }],
+        showRoomDropdown: false
+      });
+    }}
+    data-cy="orders-add-btn"
+  >+ New Order</button>
+</div>
         </div>
         
         {/* KOT Statistics Dashboard */}

@@ -33,8 +33,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   
-  type Role = "staff" | "manager" | "super_admin";
-
+type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
   const displayUser = user || authUser;
   const userRole = displayUser?.role as Role;
 
@@ -51,6 +50,7 @@ export const NavBar: React.FC<NavBarProps> = ({
     { label: "Stats", href: "/stats", np: "सांख्यिकी", roles: ["manager", "super_admin"] },
     { label: "Users", href: "/users", np: "प्रयोगकर्ता", roles: ["manager", "super_admin"] },
     { label: "RecordBook", href: "/recordbook", np: "रेकर्डबुक", roles: ["manager", "super_admin"] },
+     { label: "Kitchen", href: "/kitchen", np: "भान्सा", roles: ["kitchen_staff", "manager", "super_admin"] },
   ];
 
   // Use provided navLinks or default

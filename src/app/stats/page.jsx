@@ -70,7 +70,7 @@ export default function StatsPage() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
   
-  // Date Filter States (Global for date, but will be used by all tabs)
+  // Date Filter States
   const [dateFilter, setDateFilter] = useState('month');
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
@@ -533,7 +533,7 @@ export default function StatsPage() {
   
   // Transform item stats array into breakdown format
   const itemBreakdown = itemSalesData?.items?.map((item) => ({
-    itemId: item.item,
+    itemId: item.itemId || item.item,
     name: item.name,
     category: item.category?.name || item.category || 'Uncategorized',
     quantity: item.quantity || 0,
@@ -694,86 +694,102 @@ export default function StatsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Summary Overview Tab */}
-            {activeTab === 'summary' && (
-              <div className="space-y-6">
-                {loadingStates.summary ? (
-                  <div className="text-center py-10">Loading summary data...</div>
-                ) : errorStates.summary ? (
-                  <div className="text-red-600 text-center bg-red-50 p-4 rounded">{errorStates.summary}</div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Hotel Balance</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span>Total Sales:</span>
-                            <span className="font-semibold">रु{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Total Expenditures:</span>
-                            <span className="font-semibold">रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
-                          </div>
-                          <div className="flex justify-between border-t pt-2">
-                            <span>Net Balance:</span>
-                            <span className="font-semibold text-blue-600">
-                              रु{((financialOverview?.summary?.totalGainedMoney || 0) - (financialOverview?.summary?.totalExpenditures || 0)).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Sales Summary</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span>Room Sales:</span>
-                            <span className="font-semibold text-green-600">रु{totalRoomRevenue.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Item Sales:</span>
-                            <span className="font-semibold text-blue-600">रु{totalItemSales.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between border-t pt-2">
-                            <span>Total Sales (without VAT):</span>
-                            <span className="font-semibold">रु{totalCombined.toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">Profit/Loss</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span>Net Profit/Loss:</span>
-                            <span className={`font-semibold ${financialOverview?.summary?.netProfit && financialOverview.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              रु{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Profit Margin:</span>
-                            <span className="font-semibold">
-                              {isNaN(Number(financialOverview?.summary?.profitMargin))
-                                ? (financialOverview?.summary?.profitMargin ?? '0%')
-                                : (Number(financialOverview?.summary?.profitMargin).toFixed(1) + '%')}
-                            </span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
+{/* Summary Overview Tab */}
+{activeTab === 'summary' && (
+  <div className="space-y-6">
+    {loadingStates.summary ? (
+      <div className="text-center py-10">Loading summary data...</div>
+    ) : errorStates.summary ? (
+      <div className="text-red-600 text-center bg-red-50 p-4 rounded">{errorStates.summary}</div>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Hotel Balance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Initial Amount:</span>
+                <span className="font-semibold">रु{summaryStats?.hotelBalance?.initialAmount?.toLocaleString() ?? 0}</span>
               </div>
-            )}
+              <div className="flex justify-between">
+                <span>Total Gained:</span>
+                <span className="font-semibold text-green-600">रु{summaryStats?.hotelBalance?.currentBalance && summaryStats?.hotelBalance?.initialAmount 
+                  ? (summaryStats.hotelBalance.currentBalance - summaryStats.hotelBalance.initialAmount).toLocaleString() 
+                  : 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Expenditures:</span>
+                <span className="font-semibold text-red-600">रु{summaryStats?.expenditures?.total?.toLocaleString() ?? 0}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span>Current Balance:</span>
+                <span className="font-semibold text-blue-600">
+                  रु{summaryStats?.hotelBalance?.currentBalance?.toLocaleString() ?? 0}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Sales Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Room Sales:</span>
+                <span className="font-semibold text-green-600">
+                  रु{summaryStats?.earnings?.roomRevenue?.toLocaleString() ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Item Sales:</span>
+                <span className="font-semibold text-blue-600">
+                  रु{summaryStats?.earnings?.itemSales?.toLocaleString() ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between border-t pt-2">
+                <span>Total Sales (without VAT):</span>
+                <span className="font-semibold">
+                  रु{summaryStats?.earnings?.total?.toLocaleString() ?? 0}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Profit/Loss</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Net Profit/Loss:</span>
+                <span className={`font-semibold ${(summaryStats?.financial?.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  रु{summaryStats?.financial?.netProfit?.toLocaleString() ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Profit Margin:</span>
+                <span className="font-semibold">
+                  {summaryStats?.financial?.profitMargin ?? '0'}%
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Checkouts:</span>
+                <span className="font-semibold">{summaryStats?.earnings?.checkoutCount ?? 0}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )}
+  </div>
+)}
 
             {/* Item Sales Tab */}
             {activeTab === 'item' && (
@@ -834,7 +850,7 @@ export default function StatsPage() {
                           <th className="px-3 py-2 border text-left">Item Name</th>
                           <th className="px-3 py-2 border text-left">Category</th>
                           <th className="px-3 py-2 border text-center">Quantity Sold</th>
-                          <th className="px-3 py-2 border text-right">Avg Price</th>
+                          <th className="px-3 py-2 border text-right">Price</th>
                           <th className="px-3 py-2 border text-right">Total Sales</th>
                           <th className="px-3 py-2 border text-center">Transactions</th>
                         </tr>
@@ -897,10 +913,11 @@ export default function StatsPage() {
                         <tr className="bg-gray-100">
                           <th className="px-3 py-2 border text-left">Room Number</th>
                           <th className="px-3 py-2 border text-left">Type</th>
-                          <th className="px-3 py-2 border text-center">Nights Sold</th>
+                          <th className="px-3 py-2 border text-center">Nights</th>
                           <th className="px-3 py-2 border text-center">Checkouts</th>
+                          <th className="px-3 py-2 border text-right">Base Rate</th>
                           <th className="px-3 py-2 border text-right">Total Revenue</th>
-                          <th className="px-3 py-2 border text-right">Avg. Per Checkout</th>
+                          <th className="px-3 py-2 border text-right">Avg. Per Night</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -910,16 +927,18 @@ export default function StatsPage() {
                             <td className="px-3 py-2 border">{row.type || '-'}</td>
                             <td className="px-3 py-2 border text-center">{row.totalNights || '-'}</td>
                             <td className="px-3 py-2 border text-center">{row.checkoutCount || '-'}</td>
+                            <td className="px-3 py-2 border text-right">रु{(row.baseRate || 0).toFixed(2)}</td>
                             <td className="px-3 py-2 border text-right font-medium text-green-600">रु{row.actualRoomRevenue?.toFixed(2) || 0}</td>
-                            <td className="px-3 py-2 border text-right">रु{row.averageRoomCharge?.toFixed(2) || 0}</td>
+                            <td className="px-3 py-2 border text-right">रु{(row.averageDailyRate || 0).toFixed(2)}</td>
                           </tr>
                         ))}
                         <tr className="bg-gray-50 font-bold">
-                          <td colSpan={2} className="px-3 py-2 border text-right">Total Room Revenue:</td>
+                          <td colSpan={2} className="px-3 py-2 border text-right">Total:</td>
                           <td className="px-3 py-2 border text-center">{totalNights}</td>
                           <td className="px-3 py-2 border text-center">{totalRoomCheckouts}</td>
+                          <td className="px-3 py-2 border text-right">-</td>
                           <td className="px-3 py-2 border text-right">रु{totalRoomRevenue.toFixed(2)}</td>
-                          <td className="px-3 py-2 border text-right">रु{(totalRoomRevenue / (totalRoomCheckouts || 1)).toFixed(2)}</td>
+                          <td className="px-3 py-2 border text-right">रु{(totalRoomRevenue / (totalNights || 1)).toFixed(2)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -940,6 +959,31 @@ export default function StatsPage() {
                     Create New Expenditure
                   </Button>
                 </div>
+
+                {/* Expenditure Summary Cards */}
+                {expenditureStats && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-sm text-gray-600">Total Expenditures</div>
+                        <div className="text-2xl font-bold text-red-600">रु{expenditureStats?.totals?.totalAmount?.toLocaleString() ?? 0}</div>
+                        <div className="text-xs text-gray-500">Count: {expenditureStats?.totals?.totalCount ?? 0}</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-sm text-gray-600">Average Amount</div>
+                        <div className="text-2xl font-bold text-blue-600">रु{expenditureStats?.totals?.averageAmount?.toLocaleString() ?? 0}</div>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                        <div className="text-sm text-gray-600">Filtered Total</div>
+                        <div className="text-2xl font-bold text-purple-600">रु{expenditureStats?.filteredTotal?.toLocaleString() ?? 0}</div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
 
                 {/* Expenditure Filters with Search */}
                 <div className="flex flex-wrap gap-4 p-4 bg-gray-50 rounded-lg">
@@ -1068,6 +1112,13 @@ export default function StatsPage() {
                         )}
                       </tbody>
                     </table>
+                    
+                    {/* Pagination Info */}
+                    {expenditureStats?.pagination && (
+                      <div className="mt-4 text-sm text-gray-600">
+                        Showing {expenditures.length} of {expenditureStats.pagination.total} entries
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1089,35 +1140,55 @@ export default function StatsPage() {
                       <CardContent>
                         <div className="space-y-4">
                           <div className="flex justify-between items-center p-3 bg-teal-50 rounded">
-                            <span className="font-medium">Hotel Balance</span>
+                            <span className="font-medium">Current Balance</span>
                             <span className="text-lg font-bold text-teal-600">
-                              <span className="font-semibold">Current Balance: रु{((Number(financialOverview?.hotel?.initialAmount) || 0) + (Number(financialOverview?.summary?.totalGainedMoney) || 0) - (Number(financialOverview?.summary?.totalExpenditures) || 0)).toLocaleString()}</span>
+                              रु{financialOverview?.hotel?.currentBalance?.toLocaleString() ?? 0}
                             </span>
                           </div>
                         
+                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                            <span className="font-medium">Initial Amount</span>
+                            <span className="font-bold">रु{financialOverview?.hotel?.initialAmount?.toLocaleString() ?? 0}</span>
+                          </div>
+                          
                           <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                             <span className="font-medium">Total Sales without VAT</span>
-                            <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
                           </div>
+                          
+                          <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                            <span className="font-medium">Room Revenue</span>
+                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalRoomRevenue?.toLocaleString() ?? 0}</span>
+                          </div>
+                          
+                          <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                            <span className="font-medium">Item Sales</span>
+                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalItemSales?.toLocaleString() ?? 0}</span>
+                          </div>
+                          
                           <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                             <span className="font-medium">Total VAT Amount</span>
-                            <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalVatAmount?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalVatAmount?.toLocaleString() ?? 0}</span>
                           </div>
+                          
                           <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                             <span className="font-medium">Total Advance Paid</span>
-                            <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalAdvancePaid?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalAdvancePaid?.toLocaleString() ?? 0}</span>
                           </div>
+                          
                           <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                             <span className="font-medium">Total Room Discounts</span>
-                            <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalRoomDiscount?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalRoomDiscount?.toLocaleString() ?? 0}</span>
                           </div>
+                          
                           <div className="flex justify-between items-center p-3 bg-green-50 rounded">
                             <span className="font-medium">Total Money Collected</span>
-                            <span className="text-lg font-bold text-green-600">रु{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
                           </div>
+                          
                           <div className="flex justify-between items-center p-3 bg-red-50 rounded">
                             <span className="font-medium">Total Expenditures</span>
-                            <span className="text-lg font-bold text-red-600">रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-red-600">रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
                           </div>
                         </div>
                       </CardContent>
@@ -1128,27 +1199,31 @@ export default function StatsPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                            <span className="font-medium">Initial Amount</span>
-                            <span className="text-lg font-bold">रु{financialOverview?.hotel?.initialAmount?.toLocaleString() ?? 0}</span>
-                          </div>
-                          <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
-                            <span className="font-medium">Current Balance</span>
-                            <span className="text-lg font-bold text-blue-600">रु{financialOverview?.hotel?.currentBalance?.toLocaleString() ?? 0}</span>
-                          </div>
-                          <div className="flex justify-between items-center p-3 bg-green-50 rounded">
-                            <span className="font-medium">Gross Profit</span>
-                            <span className="text-lg font-bold text-green-600">रु{(totalCombined - (financialOverview?.summary?.totalExpenditures || 0)).toLocaleString()}</span>
-                          </div>
                           <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
                             <span className="font-medium">Net Profit/Loss</span>
-                            <span className={`text-lg font-bold ${financialOverview?.summary?.netProfit && financialOverview.summary.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <span className={`text-lg font-bold ${financialOverview?.summary?.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               रु{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
                             </span>
                           </div>
+                          
                           <div className="flex justify-between items-center p-3 bg-purple-50 rounded">
                             <span className="font-medium">Profit Margin</span>
                             <span className="text-lg font-bold text-purple-600">{financialOverview?.summary?.profitMargin ?? '0%'}</span>
+                          </div>
+                          
+                          <div className="flex justify-between items-center p-3 bg-indigo-50 rounded">
+                            <span className="font-medium">Item Transactions</span>
+                            <span className="font-bold text-indigo-600">{financialOverview?.summary?.totalItemTransactions ?? 0}</span>
+                          </div>
+                          
+                          <div className="flex justify-between items-center p-3 bg-indigo-50 rounded">
+                            <span className="font-medium">Item Quantity Sold</span>
+                            <span className="font-bold text-indigo-600">{financialOverview?.summary?.totalItemQuantity ?? 0}</span>
+                          </div>
+                          
+                          <div className="flex justify-between items-center p-3 bg-indigo-50 rounded">
+                            <span className="font-medium">Billed Amount with Advance</span>
+                            <span className="font-bold text-indigo-600">रु{financialOverview?.summary?.totalBilledAmountWithAdvance?.toLocaleString() ?? 0}</span>
                           </div>
                         </div>
                       </CardContent>
@@ -1209,10 +1284,7 @@ export default function StatsPage() {
                         <div className={`text-2xl font-bold ${dailySummary.financial?.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           रु{dailySummary.financial?.netProfit?.toLocaleString() ?? 0}
                         </div>
-                        <div className="text-sm text-gray-600">Margin: {isNaN(Number(dailySummary.financial?.profitMargin))
-                          ? (dailySummary.financial?.profitMargin ?? '0%')
-                          : (Number(dailySummary.financial?.profitMargin).toFixed(1) + '%')}
-                        </div>
+                        <div className="text-sm text-gray-600">Margin: {dailySummary.financial?.profitMargin ?? '0%'}</div>
                       </CardContent>
                     </Card>
                     <Card>
@@ -1239,6 +1311,7 @@ export default function StatsPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold text-teal-600">रु{dailySummary.hotelBalance?.currentBalance?.toLocaleString() ?? 0}</div>
+                        <div className="text-sm text-gray-600">Initial: रु{dailySummary.hotelBalance?.initialAmount?.toLocaleString() ?? 0}</div>
                         <div className="text-sm text-gray-600">Last updated: {dailySummary.hotelBalance?.lastBalanceUpdate ? format(new Date(dailySummary.hotelBalance.lastBalanceUpdate), "MMM dd, yyyy") : 'N/A'}</div>
                       </CardContent>
                     </Card>
@@ -1363,19 +1436,31 @@ export default function StatsPage() {
                 <div>
                   <span className="font-medium">Created By:</span> {selectedExpenditure.createdBy?.firstName} {selectedExpenditure.createdBy?.lastName}
                 </div>
+                {selectedExpenditure.approvedBy && (
+                  <div>
+                    <span className="font-medium">Approved By:</span> {selectedExpenditure.approvedBy?.firstName} {selectedExpenditure.approvedBy?.lastName}
+                  </div>
+                )}
+                {selectedExpenditure.approvedAt && (
+                  <div>
+                    <span className="font-medium">Approved At:</span> {format(new Date(selectedExpenditure.approvedAt), "MMM dd, yyyy HH:mm")}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Rejection Reason (if rejecting)</label>
-                  <textarea
-                    value={rejectionReason}
-                    onChange={e => setRejectionReason(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    rows={3}
-                    placeholder="Enter reason for rejection (optional)"
-                  />
-                </div>
+                {selectedExpenditure.status === 'pending' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Rejection Reason (if rejecting)</label>
+                    <textarea
+                      value={rejectionReason}
+                      onChange={e => setRejectionReason(e.target.value)}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      rows={3}
+                      placeholder="Enter reason for rejection (optional)"
+                    />
+                  </div>
+                )}
 
                 <div className="flex justify-end space-x-3">
                   <Button
@@ -1388,18 +1473,22 @@ export default function StatsPage() {
                   >
                     Cancel
                   </Button>
-                  <Button
-                    onClick={handleRejectExpenditure}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                  >
-                    Reject
-                  </Button>
-                  <Button
-                    onClick={handleApproveExpenditure}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                  >
-                    Approve
-                  </Button>
+                  {selectedExpenditure.status === 'pending' && (
+                    <>
+                      <Button
+                        onClick={handleRejectExpenditure}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                      >
+                        Reject
+                      </Button>
+                      <Button
+                        onClick={handleApproveExpenditure}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                      >
+                        Approve
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
