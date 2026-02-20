@@ -766,6 +766,7 @@ const printBill = () => {
               <label className="block text-sm font-medium mb-2">Search</label>
               <div className="relative">
                 <input
+                  data-cy="checkouts-search"
                   type="text"
                   placeholder="Search by guest name or room number..."
                   value={searchInput}
@@ -774,6 +775,7 @@ const printBill = () => {
                 />
                 {searchInput && (
                   <button
+                    data-cy="checkouts-search-clear"
                     type="button"
                     onClick={() => {
                       setSearchInput("");
@@ -792,6 +794,7 @@ const printBill = () => {
             <div className="w-full sm:w-48">
               <label className="block text-sm font-medium mb-2">Status</label>
               <select
+                data-cy="checkouts-status-filter"
                 value={filters.status}
                 onChange={(e) => handleStatusChange(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -805,12 +808,14 @@ const printBill = () => {
             {/* Clear Filters Button */}
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
+                data-cy="checkouts-search-btn"
                 type="submit"
                 className="flex-1 sm:flex-none bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 transition-colors"
               >
                 Search
               </button>
               <button
+                data-cy="checkouts-clear-filters-btn"
                 type="button"
                 onClick={clearFilters}
                 className="flex-1 sm:flex-none bg-gray-200 text-gray-700 rounded-lg px-4 py-2 hover:bg-gray-300 transition-colors"
@@ -843,7 +848,7 @@ const printBill = () => {
           <div className="overflow-x-auto">
             {checkouts.length > 0 ? (
               <>
-                <table className="min-w-full divide-y divide-gray-200">
+                <table data-cy="checkouts-table" className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
@@ -854,9 +859,9 @@ const printBill = () => {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {checkouts.map((checkout: any) => (
-                      <tr key={checkout._id} className="hover:bg-gray-50">
+                  <tbody data-cy="checkouts-table-body" className="bg-white divide-y divide-gray-200">
+                    {checkouts.map((checkout: any, index: number) => (
+                      <tr key={checkout._id} data-cy={`checkouts-row-${index}`} className="hover:bg-gray-50">
                         <td className="px-4 py-4 whitespace-nowrap cursor-pointer" onClick={() => {
                           setDetailsCheckout(checkout);
                           setShowDetails(true);
@@ -901,6 +906,7 @@ const printBill = () => {
                         }}>{checkout.createdAt ? new Date(checkout.createdAt).toLocaleString() : ""}</td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <button
+                            data-cy={`checkouts-view-btn-${index}`}
                             className="text-blue-600 hover:underline text-sm mr-3"
                             onClick={() => {
                               setDetailsCheckout(checkout);
@@ -911,6 +917,7 @@ const printBill = () => {
                             View
                           </button>
                           <button
+                            data-cy={`checkouts-edit-btn-${index}`}
                             className="text-green-600 hover:underline text-sm"
                             onClick={() => {
                               setEditCheckout(checkout);
@@ -987,11 +994,12 @@ const printBill = () => {
 
       {/* Edit Modal */}
       {showEdit && editCheckout && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-start justify-center p-4 z-50">
+        <div data-cy="checkouts-edit-modal" className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-start justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
               <h3 className="text-lg sm:text-xl font-semibold">Edit Checkout</h3>
               <button
+                data-cy="checkouts-edit-modal-close"
                 onClick={() => setShowEdit(false)}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
               >
@@ -1006,6 +1014,7 @@ const printBill = () => {
                   <div>
                     <label htmlFor="editStatus" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <select
+                      data-cy="checkouts-edit-status"
                       id="editStatus"
                       value={editStatus}
                       onChange={(e) => setEditStatus(e.target.value)}
@@ -1246,6 +1255,7 @@ const printBill = () => {
                     Cancel
                   </button>
                   <button
+                    data-cy="checkouts-edit-save-btn"
                     type="submit"
                     className={`px-4 py-2 rounded-md text-white order-1 sm:order-2 ${editLoading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}
                     disabled={editLoading}
@@ -1328,7 +1338,7 @@ const printBill = () => {
 
       {/* View Details Modal */}
       {showDetails && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-start justify-center p-4 z-50">
+        <div data-cy="checkouts-details-modal" className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-start justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl my-8 max-h-[90vh] overflow-y-auto">
             {/* Sticky Header */}
             <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1338,6 +1348,7 @@ const printBill = () => {
                 <div className="flex items-center gap-2 flex-1 sm:flex-none">
                   <label htmlFor="paperType" className="text-sm whitespace-nowrap">Paper:</label>
                   <select
+                    data-cy="checkouts-paper-type"
                     id="paperType"
                     value={paperType}
                     onChange={(e) => setPaperType(e.target.value as "a4" | "a5" | "thermal")}
@@ -1349,12 +1360,14 @@ const printBill = () => {
                   </select>
                 </div>
                 <button
+                  data-cy="checkouts-print-bill-btn"
                   onClick={printBill}
                   className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 flex-1 sm:flex-none"
                 >
                   Print Bill
                 </button>
                 <button
+                  data-cy="checkouts-details-modal-close"
                   onClick={() => setShowDetails(false)}
                   className="text-gray-500 hover:text-gray-700 text-2xl bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center flex-1 sm:flex-none"
                   aria-label="Close"
