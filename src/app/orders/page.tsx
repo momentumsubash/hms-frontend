@@ -1217,275 +1217,301 @@ const getPrinterStatusIndicator = () => {
           </div>
         </div>
 
-        {/* Orders Table */}
-        <div data-cy="orders-table-container" className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table data-cy="orders-table" className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KOT #</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KOT Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Print Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody data-cy="orders-table-body" className="bg-white divide-y divide-gray-200">
-                {orders.map((order: any, index: number) => {
-                  // Defensive extraction for all fields
-                  const guest = order.guestId && typeof order.guestId === 'object'
-                    ? `${order.guestId.firstName || ''} ${order.guestId.lastName || ''}`.trim() || "-"
-                    : (order.guestId ? String(order.guestId) : "-");
-                  const room = order.roomNumber;
-                  const items = Array.isArray(order.items) && order.items.length > 0
-                    ? order.items.map((i: any) => `${i.name} (x${i.quantity})`).join(", ")
-                    : "-";
-                  const total = order.totalAmount !== undefined ? `रु${order.totalAmount.toLocaleString()}` : "-";
-                  const status = order.status;
-                  const kotStatus = order.kotStatus || "pending";
-                  const kotNumber = order.kotNumber || "-";
-                  const createdBy = order.createdBy && typeof order.createdBy === 'object'
-                    ? `${order.createdBy.firstName || ''} ${order.createdBy.lastName || ''}`.trim() || "-"
-                    : (order.createdBy ? String(order.createdBy) : "-");
-                  
-                  const printInfo = printHistory[order._id];
-                  const printStatus = printInfo ? 
-                    (printInfo.success ? '✅' : '❌') : 
-                    (order.kotPrinted ? '📄' : '⏳');
-                  
-                  return (
-                    <tr key={order._id} data-cy={`orders-row-${index}`} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`}>
-                      <td className="px-6 py-4 whitespace-nowrap">{guest}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{room}</td>
-                      <td className="px-6 py-4 whitespace-nowrap max-w-xs truncate" title={items}>{items}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">{total}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          status === 'completed' ? 'bg-green-100 text-green-800' :
-                          status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {order.kotPrinted ? (
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getKOTStatusBadge(kotStatus)}`}>
-                            {kotStatus}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 text-xs">Not sent</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span title={printInfo ? `Printed: ${printInfo.printerType}` : ''}>
-                          {printStatus}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{createdBy}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex space-x-2">
-                          <button
-                            data-cy={`orders-status-btn-${index}`}
-                            onClick={() => handleSelectOrder(order)}
-                            className="text-blue-600 hover:text-blue-800 text-sm"
-                          >
-                            Status
-                          </button>
-                          <button
-                            data-cy={`orders-edit-btn-${index}`}
-                            onClick={() => handleEditOrder(order)}
-                            className="text-green-600 hover:text-green-800 text-sm"
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+{/* Orders Table */}
+<div data-cy="orders-table-container" className="bg-white rounded-lg shadow overflow-hidden">
+  <div className="overflow-x-auto">
+    <table data-cy="orders-table" className="min-w-full divide-y divide-gray-200">
+      <thead className="bg-gray-50">
+        <tr>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KOT #</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Status</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KOT Status</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Print Status</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+      <tbody data-cy="orders-table-body" className="bg-white divide-y divide-gray-200">
+        {orders.map((order: any, index: number) => {
+          const guest = order.guestId && typeof order.guestId === 'object'
+            ? `${order.guestId.firstName || ''} ${order.guestId.lastName || ''}`.trim() || "-"
+            : (order.guestId ? String(order.guestId) : "-");
+          const room = order.roomNumber;
+          const items = Array.isArray(order.items) && order.items.length > 0
+            ? order.items.map((i: any) => `${i.name} (x${i.quantity})`).join(", ")
+            : "-";
+          const total = order.totalAmount !== undefined ? `रु${order.totalAmount.toLocaleString()}` : "-";
+          const status = order.status;
+          const kotStatus = order.kotStatus || "pending";
+          const kotNumber = order.kotNumber || "-";
+          const createdBy = order.createdBy && typeof order.createdBy === 'object'
+            ? `${order.createdBy.firstName || ''} ${order.createdBy.lastName || ''}`.trim() || "-"
+            : (order.createdBy ? String(order.createdBy) : "-");
           
-          {/* Pagination Controls */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-              <div className="text-sm text-gray-700">
-                Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{" "}
-                <span className="font-medium">{Math.min(page * limit, totalCount)}</span> of{" "}
-                <span className="font-medium">{totalCount}</span> results
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <select
-                  value={limit}
-                  onChange={(e) => {
-                    setLimit(Number(e.target.value));
-                    setPage(1);
-                  }}
-                  className="border border-gray-300 rounded-md px-3 py-1 text-sm"
-                >
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                  <option value="100">100 per page</option>
-                </select>
-                
-                <div className="flex space-x-1">
-                  <button
-                    className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
-                    onClick={() => setPage(1)}
-                    disabled={page === 1}
-                  >«</button>
-                  <button
-                    className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
-                    onClick={() => setPage(page - 1)}
-                    disabled={page === 1}
-                  >‹</button>
-                  <span className="px-3 py-1">Page {page} of {totalPages}</span>
-                  <button
-                    className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
-                    onClick={() => setPage(page + 1)}
-                    disabled={page === totalPages}
-                  >›</button>
-                  <button
-                    className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
-                    onClick={() => setPage(totalPages)}
-                    disabled={page === totalPages}
-                  >»</button>
-                </div>
-              </div>
-            </div>
-          </div>
+          const printInfo = printHistory[order._id];
+          const printStatus = printInfo ? 
+            (printInfo.success ? '✅' : '❌') : 
+            (order.kotPrinted ? '📄' : '⏳');
           
-          {/* Status Update Modal */}
-          {selectedOrder && (
-            <div data-cy="orders-status-modal" className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-              <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-                <h2 className="text-xl font-bold mb-4">Update Order Status</h2>
-                <div className="mb-4">
-                  <div className="mb-2"><b>KOT #:</b> {selectedOrder.kotNumber || 'Not generated'}</div>
-                  <div className="mb-2"><b>Guest:</b> {selectedOrder.guestId ? `${selectedOrder.guestId.firstName} ${selectedOrder.guestId.lastName}` : "-"}</div>
-                  <div className="mb-2"><b>Current Status:</b> {selectedOrder.status}</div>
-                  {selectedOrder.kotStatus && (
-                    <div className="mb-2"><b>KOT Status:</b> {selectedOrder.kotStatus}</div>
-                  )}
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">New Status</label>
-                  <select
-                    data-cy="orders-status-select"
-                    value={updateStatus}
-                    onChange={e => setUpdateStatus(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  >
-                    <option value="pending" data-cy="orders-status-pending">Pending</option>
-                    <option value="completed" data-cy="orders-status-completed">Completed</option>
-                    <option value="cancelled" data-cy="orders-status-cancelled">Cancelled</option>
-                  </select>
-                </div>
-                {updateError && <div className="text-red-600 mb-2">{updateError}</div>}
-                <div className="flex justify-end space-x-2">
-                  <button
-                    data-cy="orders-status-modal-cancel"
-                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                    onClick={() => setSelectedOrder(null)}
-                    disabled={updating}
-                  >Cancel</button>
-                  <button
-                    data-cy="orders-status-modal-update"
-                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                    onClick={handleUpdateOrderStatus}
-                    disabled={updating}
-                  >{updating ? 'Updating...' : 'Update'}</button>
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* KOT Modal */}
-          {showKOTModal && selectedKOTOrder && (
-            <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-                <h2 className="text-xl font-bold mb-4">Send Order to Kitchen</h2>
-                <div className="mb-4">
-                  <div className="mb-2"><b>Room:</b> {selectedKOTOrder.roomNumber}</div>
-                  <div className="mb-2"><b>Items:</b></div>
-                  <ul className="list-disc pl-5 mb-2 max-h-40 overflow-y-auto">
-                    {selectedKOTOrder.items.map((item: any, idx: number) => (
-                      <li key={idx} className="text-sm">
-                        {item.name} x{item.quantity} - रु{item.total}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium mb-1">Special Instructions</label>
-                  <textarea
-                    value={specialInstructions}
-                    onChange={(e) => setSpecialInstructions(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    rows={3}
-                    placeholder="e.g., extra spicy, no onions, etc."
-                  />
-                </div>
-                {printerStatus && (
-                  <div className="mb-4 p-2 bg-gray-50 rounded text-sm">
-                    <span className="font-medium">Printer: </span>
-                    {getPrinterStatusIndicator()}
-                    {printerStatus.type && <span className="ml-2 text-gray-600">({printerStatus.type})</span>}
-                  </div>
+          return (
+            <tr key={order._id} data-cy={`orders-row-${index}`} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`}>
+              <td className="px-6 py-4 whitespace-nowrap font-mono text-sm">{kotNumber}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{guest}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{room}</td>
+              <td className="px-6 py-4 whitespace-nowrap max-w-xs truncate" title={items}>{items}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{total}</td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  status === 'completed' ? 'bg-green-100 text-green-800' :
+                  status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {status}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                {order.kotPrinted ? (
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getKOTStatusBadge(kotStatus)}`}>
+                    {kotStatus}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 text-xs">Not sent</span>
                 )}
-                {kotError && <div className="text-red-600 mb-2">{kotError}</div>}
-                <div className="flex justify-end space-x-2">
-                  <button
-                    className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-                    onClick={() => {
-                      setShowKOTModal(false);
-                      setSelectedKOTOrder(null);
-                      setSpecialInstructions("");
-                    }}
-                    disabled={kotLoading}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
-                    onClick={() => handleSendKOT(selectedKOTOrder._id)}
-                    disabled={kotLoading}
-                  >
-                    {kotLoading ? 'Sending...' : 'Send to Kitchen'}
-                  </button>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap text-center">
+                <span title={printInfo ? `Printed: ${printInfo.printerType}` : ''}>
+                  {printStatus}
+                </span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">{createdBy}</td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex flex-col gap-1">
+                  <div className="flex space-x-2">
+                    <button
+                      data-cy={`orders-status-btn-${index}`}
+                      onClick={() => handleSelectOrder(order)}
+                      className="text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      Status
+                    </button>
+                    {!order.kotPrinted && (
+                      <button
+                        data-cy={`orders-edit-btn-${index}`}
+                        onClick={() => handleEditOrder(order)}
+                        className="text-green-600 hover:text-green-800 text-sm"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex space-x-2 mt-1">
+                    {order.status === 'pending' && !order.kotPrinted && (
+                      <button
+                        onClick={() => {
+                          setSelectedKOTOrder(order);
+                          setShowKOTModal(true);
+                        }}
+                        className="text-orange-600 hover:text-orange-800 text-sm font-semibold"
+                      >
+                        🧾 Send KOT
+                      </button>
+                    )}
+                    {order.kotPrinted && (
+                      <button
+                        onClick={() => handleReprintKOT(order._id)}
+                        className="text-purple-600 hover:text-purple-800 text-sm"
+                        title="Reprint KOT"
+                      >
+                        🔄 Reprint
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-          
-          {orders.length === 0 && !loading && (
-            <div className="text-center py-12">
-              <div className="text-gray-500">
-                {hasActiveFilters() 
-                  ? "No orders found matching your filters." 
-                  : "No orders found."}
-              </div>
-              {hasActiveFilters() && (
-                <button 
-                  onClick={clearFilters}
-                  className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
-                >
-                  Clear all filters
-                </button>
-              )}
-            </div>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </div>
+  
+  {/* Pagination Controls */}
+  <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+    <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
+      <div className="text-sm text-gray-700">
+        Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{" "}
+        <span className="font-medium">{Math.min(page * limit, totalCount)}</span> of{" "}
+        <span className="font-medium">{totalCount}</span> results
+      </div>
+      
+      <div className="flex items-center space-x-2">
+        <select
+          value={limit}
+          onChange={(e) => {
+            setLimit(Number(e.target.value));
+            setPage(1);
+          }}
+          className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+        >
+          <option value="10">10 per page</option>
+          <option value="20">20 per page</option>
+          <option value="50">50 per page</option>
+          <option value="100">100 per page</option>
+        </select>
+        
+        <div className="flex space-x-1">
+          <button
+            className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
+            onClick={() => setPage(1)}
+            disabled={page === 1}
+          >«</button>
+          <button
+            className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
+            onClick={() => setPage(page - 1)}
+            disabled={page === 1}
+          >‹</button>
+          <span className="px-3 py-1">Page {page} of {totalPages}</span>
+          <button
+            className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
+            onClick={() => setPage(page + 1)}
+            disabled={page === totalPages}
+          >›</button>
+          <button
+            className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
+            onClick={() => setPage(totalPages)}
+            disabled={page === totalPages}
+          >»</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  {/* Status Update Modal */}
+  {selectedOrder && (
+    <div data-cy="orders-status-modal" className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4">Update Order Status</h2>
+        <div className="mb-4">
+          <div className="mb-2"><b>KOT #:</b> {selectedOrder.kotNumber || 'Not generated'}</div>
+          <div className="mb-2"><b>Guest:</b> {selectedOrder.guestId ? `${selectedOrder.guestId.firstName} ${selectedOrder.guestId.lastName}` : "-"}</div>
+          <div className="mb-2"><b>Current Status:</b> {selectedOrder.status}</div>
+          {selectedOrder.kotStatus && (
+            <div className="mb-2"><b>KOT Status:</b> {selectedOrder.kotStatus}</div>
           )}
         </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">New Status</label>
+          <select
+            data-cy="orders-status-select"
+            value={updateStatus}
+            onChange={e => setUpdateStatus(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+          >
+            <option value="pending" data-cy="orders-status-pending">Pending</option>
+            <option value="completed" data-cy="orders-status-completed">Completed</option>
+            <option value="cancelled" data-cy="orders-status-cancelled">Cancelled</option>
+          </select>
+        </div>
+        {updateError && <div className="text-red-600 mb-2">{updateError}</div>}
+        <div className="flex justify-end space-x-2">
+          <button
+            data-cy="orders-status-modal-cancel"
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            onClick={() => setSelectedOrder(null)}
+            disabled={updating}
+          >Cancel</button>
+          <button
+            data-cy="orders-status-modal-update"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            onClick={handleUpdateOrderStatus}
+            disabled={updating}
+          >{updating ? 'Updating...' : 'Update'}</button>
+        </div>
+      </div>
+    </div>
+  )}
+  
+  {/* KOT Modal */}
+  {showKOTModal && selectedKOTOrder && (
+    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <h2 className="text-xl font-bold mb-4">Send Order to Kitchen</h2>
+        <div className="mb-4">
+          <div className="mb-2"><b>Room:</b> {selectedKOTOrder.roomNumber}</div>
+          <div className="mb-2"><b>Items:</b></div>
+          <ul className="list-disc pl-5 mb-2 max-h-40 overflow-y-auto">
+            {selectedKOTOrder.items.map((item: any, idx: number) => (
+              <li key={idx} className="text-sm">
+                {item.name} x{item.quantity} - रु{item.total}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1">Special Instructions</label>
+          <textarea
+            value={specialInstructions}
+            onChange={(e) => setSpecialInstructions(e.target.value)}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+            rows={3}
+            placeholder="e.g., extra spicy, no onions, etc."
+          />
+        </div>
+        {printerStatus && (
+          <div className="mb-4 p-2 bg-gray-50 rounded text-sm">
+            <span className="font-medium">Printer: </span>
+            {getPrinterStatusIndicator()}
+            {printerStatus.type && <span className="ml-2 text-gray-600">({printerStatus.type})</span>}
+          </div>
+        )}
+        {kotError && <div className="text-red-600 mb-2">{kotError}</div>}
+        <div className="flex justify-end space-x-2">
+          <button
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            onClick={() => {
+              setShowKOTModal(false);
+              setSelectedKOTOrder(null);
+              setSpecialInstructions("");
+            }}
+            disabled={kotLoading}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
+            onClick={() => handleSendKOT(selectedKOTOrder._id)}
+            disabled={kotLoading}
+          >
+            {kotLoading ? 'Sending...' : 'Send to Kitchen'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
+  
+  {orders.length === 0 && !loading && (
+    <div className="text-center py-12">
+      <div className="text-gray-500">
+        {hasActiveFilters() 
+          ? "No orders found matching your filters." 
+          : "No orders found."}
+      </div>
+      {hasActiveFilters() && (
+        <button 
+          onClick={clearFilters}
+          className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+        >
+          Clear all filters
+        </button>
+      )}
+    </div>
+  )}
+</div>
 
         {/* Summary Stats */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
