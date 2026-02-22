@@ -35,17 +35,37 @@ import {
   Download as DownloadIcon
 } from '@mui/icons-material';
 
-// const navLinks = [
-//   { label: "Dashboard", href: "/dashboard" },
-//   { label: "Checkouts", href: "/checkouts" },
-//   { label: "Guests", href: "/guests" },
-//   { label: "Hotels", href: "/hotels", superAdminOnly: true },
-//   { label: "Items", href: "/items" },
-//   { label: "Orders", href: "/orders" },
-//   { label: "Rooms", href: "/rooms" },
-//   { label: "Stats", href: "/stats" },
-//   { label: "Users", href: "/users" },
-// ];
+// Add this helper function to convert local Nepal date to UTC
+const convertToUTCForNepal = (localDateStr) => {
+  if (!localDateStr) return '';
+  
+  // Parse the local date (YYYY-MM-DD)
+  const [year, month, day] = localDateStr.split('-').map(Number);
+  
+  // Nepal is UTC+5:45 (5 hours 45 minutes ahead)
+  const nepalOffsetMinutes = 5 * 60 + 45; // 345 minutes
+  
+  // Create UTC date representing midnight in Nepal
+  const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  utcDate.setMinutes(utcDate.getMinutes() - nepalOffsetMinutes);
+  
+  // Return as YYYY-MM-DD
+  return utcDate.toISOString().split('T')[0];
+};
+
+// Optional: Convert UTC date from API back to local Nepal date for display
+const convertUTCToLocalNepal = (utcDateStr) => {
+  if (!utcDateStr) return '';
+  
+  const date = new Date(utcDateStr);
+  
+  // Add Nepal offset to get local time
+  const nepalOffsetMinutes = 5 * 60 + 45;
+  const localDate = new Date(date.getTime() + (nepalOffsetMinutes * 60 * 1000));
+  
+  // Format as YYYY-MM-DD
+  return localDate.toISOString().split('T')[0];
+};
 
 function getToken() {
   if (typeof window === "undefined") return null;
@@ -83,7 +103,8 @@ const RecordBook = () => {
         fetchHotel(token).then(setHotel);
       }
     }, []);
-      const [user, setUser] = useState(() => {
+    
+    const [user, setUser] = useState(() => {
         if (typeof window !== 'undefined') {
           const stored = localStorage.getItem('user');
           return stored ? JSON.parse(stored) : null;
@@ -97,53 +118,45 @@ const RecordBook = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // For the daily details endpoint (single date)
   const fetchDailyDetails = async (date) => {
+    setLoading(true);
+    setError('');
+    
     try {
-      setLoading(true);
-      setError('');
       const token = getToken();
-      
       if (!token) {
-        setError("No authentication token");
+        setError('No authentication token');
+        setLoading(false);
         return;
       }
       
-      // Fetch user info first
-      const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-      });
+      // Convert the selected date to UTC for Nepal
+      const utcDate = convertToUTCForNepal(date);
+      console.log('Selected date (local):', date);
+      console.log('Converted UTC date for API:', utcDate);
       
-      if (!meRes.ok) throw new Error("Not authenticated");
-      const meData = await meRes.json();
-      localStorage.setItem("user", JSON.stringify(meData.data || null));
-      
-      // Fetch daily details
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/daily-details?date=${date}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/stats/daily-details?date=${utcDate}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
-      });
+      );
       
-      if (response.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-        return;
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setData(result.data);
+      if (response.ok) {
+        const result = await response.json();
+        setData(result.data || result);
+        console.log('API Response:', result);
       } else {
-        setError(result.message || 'Failed to fetch data');
+        const errorText = await response.text();
+        setError(`Failed to fetch data: ${response.status} - ${errorText}`);
       }
-    } catch (err) {
-      setError('Error fetching daily details. Please try again.');
-      console.error('Error:', err);
+    } catch (error) {
+      console.error('Error fetching daily details:', error);
+      setError(error.message || 'Error fetching daily details');
     } finally {
       setLoading(false);
     }
@@ -173,18 +186,18 @@ const RecordBook = () => {
     
     // Summary
     csvContent += 'SUMMARY\n';
-    csvContent += 'Total Revenue,' + data.summary.totalRevenue + '\n';
-    csvContent += 'Total Expenditures,' + data.summary.totalExpenditures + '\n';
-    csvContent += 'Net Profit,' + data.summary.netProfit + '\n';
-    csvContent += 'Total Orders,' + data.summary.totalOrders + '\n';
-    csvContent += 'Total Checkouts,' + data.summary.totalCheckouts + '\n';
-    csvContent += 'Total Rooms Allocated,' + data.summary.totalRoomsAllocated + '\n\n';
+    csvContent += 'Total Revenue,' + data.totals?.totalRevenue + '\n';
+    csvContent += 'Total Expenditures,' + data.totals?.totalExpenditures + '\n';
+    csvContent += 'Net Profit,' + data.totals?.netProfit + '\n';
+    csvContent += 'Total Orders,' + data.summary?.totalOrders + '\n';
+    csvContent += 'Total Checkouts,' + data.summary?.totalCheckouts + '\n';
+    csvContent += 'Total Rooms Allocated,' + data.summary?.totalRoomsAllocated + '\n\n';
     
     // Items Sold
     csvContent += 'ITEMS SOLD\n';
-    csvContent += 'Name,Category,Price,Quantity,Sales\n';
-    data.itemsSold.forEach(item => {
-      csvContent += `"${item.name}",${item.category},${item.price},${item.quantity},${item.sales}\n`;
+    csvContent += 'Name,Category,Price,Quantity\n';
+    data.itemSalesBreakdown?.forEach(item => {
+      csvContent += `"${item.name}",${item.category},${item.price},${item.quantity}\n`;
     });
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -233,7 +246,7 @@ const RecordBook = () => {
               📊 Record Book
             </Typography>
             <Typography variant="h6" color="textSecondary">
-              {data ? `${data.hotel.name} - ${format(new Date(data.date), 'MMMM dd, yyyy')}` : 'Daily Operations Report'}
+              {data ? `${data.hotel?.name || 'Hotel'} - ${format(new Date(selectedDate), 'MMMM dd, yyyy')}` : 'Daily Operations Report'}
             </Typography>
           </Box>
           
@@ -291,7 +304,7 @@ const RecordBook = () => {
                       Total Revenue
                     </Typography>
                     <Typography variant="h5" component="div" color="primary.main">
-                      Rs. {data.totals.totalRevenue.toLocaleString()}
+                      Rs. {data.totals?.totalRevenue?.toLocaleString() || 0}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -306,9 +319,9 @@ const RecordBook = () => {
                     <Typography 
                       variant="h5" 
                       component="div"
-                      color={data.totals.netProfit >= 0 ? 'success.main' : 'error.main'}
+                      color={data.totals?.netProfit >= 0 ? 'success.main' : 'error.main'}
                     >
-                      Rs. {data.totals.netProfit.toLocaleString()}
+                      Rs. {data.totals?.netProfit?.toLocaleString() || 0}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -321,7 +334,7 @@ const RecordBook = () => {
                       Total Orders
                     </Typography>
                     <Typography variant="h5" component="div">
-                      {data.summary.totalOrders}
+                      {data.summary?.totalOrders || 0}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -334,7 +347,7 @@ const RecordBook = () => {
                       Total Checkouts
                     </Typography>
                     <Typography variant="h5" component="div">
-                      {data.summary.totalCheckouts}
+                      {data.summary?.totalCheckouts || 0}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -347,10 +360,10 @@ const RecordBook = () => {
               <Grid item xs={12} md={6}>
                 <Accordion defaultExpanded elevation={2}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">🏨 Allocated Rooms ({data.roomAllocations.length})</Typography>
+                    <Typography variant="h6">🏨 Allocated Rooms ({data.roomAllocations?.length || 0})</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    {data.roomAllocations.length === 0 ? (
+                    {!data.roomAllocations || data.roomAllocations.length === 0 ? (
                       <Typography color="textSecondary" align="center" sx={{ py: 2 }}>
                         No rooms allocated on this date
                       </Typography>
@@ -366,8 +379,8 @@ const RecordBook = () => {
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {data.roomAllocations.map((room) => (
-                              <TableRow key={room.roomNumber} hover>
+                            {data.roomAllocations.map((room, index) => (
+                              <TableRow key={room.roomNumber || index} hover>
                                 <TableCell>
                                   <Typography variant="body1" fontWeight="medium">
                                     {room.roomNumber}
@@ -437,21 +450,29 @@ const RecordBook = () => {
                           </Table>
                         </TableContainer>
                         {/* Pagination for items */}
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                          <Button
-                            size="small"
-                            disabled={itemPage === 0}
-                            onClick={() => setItemPage(itemPage - 1)}
-                          >Prev</Button>
-                          <Typography variant="body2" sx={{ mx: 2, alignSelf: 'center' }}>
-                            Page {itemPage + 1} of {Math.ceil(data.itemSalesBreakdown.length / itemRowsPerPage)}
-                          </Typography>
-                          <Button
-                            size="small"
-                            disabled={(itemPage + 1) * itemRowsPerPage >= data.itemSalesBreakdown.length}
-                            onClick={() => setItemPage(itemPage + 1)}
-                          >Next</Button>
-                        </Box>
+                        {data.itemSalesBreakdown.length > itemRowsPerPage && (
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, alignItems: 'center' }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              disabled={itemPage === 0}
+                              onClick={() => setItemPage(itemPage - 1)}
+                            >
+                              Previous
+                            </Button>
+                            <Typography variant="body2" sx={{ mx: 2 }}>
+                              Page {itemPage + 1} of {Math.ceil(data.itemSalesBreakdown.length / itemRowsPerPage)}
+                            </Typography>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              disabled={(itemPage + 1) * itemRowsPerPage >= data.itemSalesBreakdown.length}
+                              onClick={() => setItemPage(itemPage + 1)}
+                            >
+                              Next
+                            </Button>
+                          </Box>
+                        )}
                       </>
                     )}
                   </AccordionDetails>
@@ -462,10 +483,10 @@ const RecordBook = () => {
               <Grid item xs={12}>
                 <Accordion defaultExpanded elevation={2}>
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Typography variant="h6">📋 Daily Checkouts ({data.dailyCheckouts.length})</Typography>
+                    <Typography variant="h6">📋 Daily Checkouts ({data.dailyCheckouts?.length || 0})</Typography>
                   </AccordionSummary>
                   <AccordionDetails>
-                    {data.dailyCheckouts.length === 0 ? (
+                    {!data.dailyCheckouts || data.dailyCheckouts.length === 0 ? (
                       <Typography color="textSecondary" align="center" sx={{ py: 3 }}>
                         No checkouts on this date
                       </Typography>
@@ -494,13 +515,20 @@ const RecordBook = () => {
                                     <TableCell>{checkout.guest?.name || 'Walk-in'}</TableCell>
                                     <TableCell>
                                       {checkout.rooms?.map((room, idx) => (
-                                        <Chip key={idx} label={room.roomNumber} size="small" sx={{ mr: 0.5 }} />
+                                        <Chip key={idx} label={room.roomNumber} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
                                       ))}
                                     </TableCell>
-                                    <TableCell>Rs. {checkout.financials?.totalBill.toLocaleString()}</TableCell>
-                                    <TableCell>Rs. {checkout.financials?.roomCharges.toLocaleString()}</TableCell>
-                                    <TableCell>Rs. {checkout.financials?.orderCharges.toLocaleString()}</TableCell>
-                                    <TableCell>{checkout.paymentMethod}</TableCell>
+                                    <TableCell>Rs. {checkout.financials?.totalBill?.toLocaleString()}</TableCell>
+                                    <TableCell>Rs. {checkout.financials?.roomCharges?.toLocaleString()}</TableCell>
+                                    <TableCell>Rs. {checkout.financials?.orderCharges?.toLocaleString()}</TableCell>
+                                    <TableCell>
+                                      <Chip 
+                                        label={checkout.paymentMethod} 
+                                        size="small" 
+                                        color={checkout.paymentMethod === 'cash' ? 'success' : 'info'} 
+                                        variant="outlined"
+                                      />
+                                    </TableCell>
                                     <TableCell>{format(new Date(checkout.checkOutDate), 'MMM dd, yyyy')}</TableCell>
                                   </TableRow>
                                 ))}
@@ -508,21 +536,29 @@ const RecordBook = () => {
                           </Table>
                         </TableContainer>
                         {/* Pagination for checkouts */}
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                          <Button
-                            size="small"
-                            disabled={checkoutPage === 0}
-                            onClick={() => setCheckoutPage(checkoutPage - 1)}
-                          >Prev</Button>
-                          <Typography variant="body2" sx={{ mx: 2, alignSelf: 'center' }}>
-                            Page {checkoutPage + 1} of {Math.ceil(data.dailyCheckouts.length / checkoutRowsPerPage)}
-                          </Typography>
-                          <Button
-                            size="small"
-                            disabled={(checkoutPage + 1) * checkoutRowsPerPage >= data.dailyCheckouts.length}
-                            onClick={() => setCheckoutPage(checkoutPage + 1)}
-                          >Next</Button>
-                        </Box>
+                        {data.dailyCheckouts.length > checkoutRowsPerPage && (
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, alignItems: 'center' }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              disabled={checkoutPage === 0}
+                              onClick={() => setCheckoutPage(checkoutPage - 1)}
+                            >
+                              Previous
+                            </Button>
+                            <Typography variant="body2" sx={{ mx: 2 }}>
+                              Page {checkoutPage + 1} of {Math.ceil(data.dailyCheckouts.length / checkoutRowsPerPage)}
+                            </Typography>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              disabled={(checkoutPage + 1) * checkoutRowsPerPage >= data.dailyCheckouts.length}
+                              onClick={() => setCheckoutPage(checkoutPage + 1)}
+                            >
+                              Next
+                            </Button>
+                          </Box>
+                        )}
                       </>
                     )}
                   </AccordionDetails>

@@ -29,6 +29,48 @@ const DATE_FILTERS = [
   { value: 'custom', label: 'Custom Range' }
 ];
 
+// Add these helper functions at the top of your component, after your state declarations
+
+// Convert local Nepal date to UTC for API queries
+const convertLocalToUTCForNepal = (localDateStr) => {
+  if (!localDateStr) return '';
+  
+  // Parse the local date (YYYY-MM-DD)
+  const [year, month, day] = localDateStr.split('-').map(Number);
+  
+  // Nepal is UTC+5:45 (5 hours 45 minutes ahead)
+  const nepalOffsetMinutes = 5 * 60 + 45; // 345 minutes
+  
+  // Create UTC date representing midnight in Nepal
+  const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  utcDate.setMinutes(utcDate.getMinutes() - nepalOffsetMinutes);
+  
+  // Return as YYYY-MM-DD
+  return utcDate.toISOString().split('T')[0];
+};
+
+// Convert UTC date from API back to local Nepal date for display
+const convertUTCToLocalNepal = (utcDateStr) => {
+  if (!utcDateStr) return '';
+  
+  const date = new Date(utcDateStr);
+  
+  // Add Nepal offset to get local time
+  const nepalOffsetMinutes = 5 * 60 + 45;
+  const localDate = new Date(date.getTime() + (nepalOffsetMinutes * 60 * 1000));
+  
+  // Format as YYYY-MM-DD
+  return localDate.toISOString().split('T')[0];
+};
+
+// For date ranges, convert both start and end
+const convertDateRangeForNepal = (startDate, endDate) => {
+  return {
+    startDate: convertLocalToUTCForNepal(startDate),
+    endDate: convertLocalToUTCForNepal(endDate)
+  };
+};
+
 export default function StatsPage() {
   // Load hotel from localStorage
   const [hotel, setHotel] = useState(() => {
@@ -69,6 +111,9 @@ export default function StatsPage() {
   const { logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
+
+  // Add this state with your other states
+const [currentDateParams, setCurrentDateParams] = useState({ filter: 'month' });
   
   // Date Filter States
   const [dateFilter, setDateFilter] = useState('month');
@@ -150,6 +195,8 @@ export default function StatsPage() {
     return queryParams.toString();
   };
 
+  
+
   // Fetch categories
   const fetchCategories = async () => {
     try {
@@ -185,16 +232,23 @@ export default function StatsPage() {
     fetchCategories();
   }, []);
 
-  // Get base date parameters
-  const getBaseParams = useCallback(() => {
+// Get base date parameters
+const getBaseParams = useCallback(() => {
+  if (dateFilter === 'custom' && customStartDate && customEndDate) {
+    // Convert dates to UTC for Nepal
+    const { startDate: utcStart, endDate: utcEnd } = convertDateRangeForNepal(
+      customStartDate, 
+      customEndDate
+    );
     return {
-      filter: dateFilter,
-      ...(dateFilter === 'custom' && customStartDate && customEndDate ? {
-        startDate: customStartDate,
-        endDate: customEndDate
-      } : {})
+      filter: 'custom',
+      startDate: utcStart,
+      endDate: utcEnd
     };
-  }, [dateFilter, customStartDate, customEndDate]);
+  }
+  
+  return { filter: dateFilter };
+}, [dateFilter, customStartDate, customEndDate]);
 
   // Fetch Summary Tab Data
   const fetchSummaryData = useCallback(async () => {
@@ -250,6 +304,32 @@ export default function StatsPage() {
     }
   }, [getBaseParams, selectedCategory]);
 
+
+  // Add this helper function to convert local Nepal date to UTC
+const convertToUTCForNepal = (localDateStr) => {
+  // Parse the local date (YYYY-MM-DD)
+  const [year, month, day] = localDateStr.split('-').map(Number);
+  
+  // Create a date object representing midnight in Nepal time (UTC+5:45)
+  // Nepal is 5 hours 45 minutes ahead of UTC
+  const nepalOffset = 5 * 60 + 45; // 345 minutes
+  
+  // Create date in UTC that corresponds to Nepal midnight
+  // We subtract the offset to get the UTC time that represents Nepal midnight
+  const utcDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+  utcDate.setMinutes(utcDate.getMinutes() - nepalOffset);
+  
+  // Return as ISO string (YYYY-MM-DD)
+  return utcDate.toISOString().split('T')[0];
+};
+
+// For date ranges, convert both start and end
+const convertDateRangeForNepal = (startDate, endDate) => {
+  return {
+    startDate: convertToUTCForNepal(startDate),
+    endDate: convertToUTCForNepal(endDate)
+  };
+};
   // Fetch Room Sales Tab Data
   const fetchRoomSalesData = useCallback(async () => {
     setLoadingStates(prev => ({ ...prev, room: true }));
@@ -398,30 +478,54 @@ export default function StatsPage() {
     }
   }, [activeTab, fetchSummaryData, fetchItemSalesData, fetchRoomSalesData, fetchExpenditureData, fetchFinancialData, fetchDailyData]);
 
-  // Handle global date filter apply
-  const handleApplyDateFilter = () => {
-    // Refresh current tab with new date filter
-    switch(activeTab) {
-      case 'summary':
-        fetchSummaryData();
-        break;
-      case 'item':
-        fetchItemSalesData();
-        break;
-      case 'room':
-        fetchRoomSalesData();
-        break;
-      case 'expenditure':
-        fetchExpenditureData();
-        break;
-      case 'financial':
-        fetchFinancialData();
-        break;
-      case 'daily':
-        fetchDailyData();
-        break;
-    }
-  };
+// Handle global date filter apply
+const handleApplyDateFilter = () => {
+  let params = {};
+  
+  if (dateFilter === 'custom') {
+    // Convert both dates to UTC for Nepal
+    const { startDate: utcStart, endDate: utcEnd } = convertDateRangeForNepal(
+      customStartDate, 
+      customEndDate
+    );
+    params = {
+      filter: 'custom',
+      startDate: utcStart,
+      endDate: utcEnd
+    };
+  } else {
+    params = { filter: dateFilter };
+    
+    // For preset filters (today, yesterday, etc.), we don't need to convert
+    // because the backend will use current server time
+    // But we can still handle if needed
+  }
+  
+  // Store these params to use in all fetch functions
+  setCurrentDateParams(params);
+  
+  // Refresh current tab with new date filter
+  switch(activeTab) {
+    case 'summary':
+      fetchSummaryData();
+      break;
+    case 'item':
+      fetchItemSalesData();
+      break;
+    case 'room':
+      fetchRoomSalesData();
+      break;
+    case 'expenditure':
+      fetchExpenditureData();
+      break;
+    case 'financial':
+      fetchFinancialData();
+      break;
+    case 'daily':
+      fetchDailyData();
+      break;
+  }
+};
 
   // Handle expenditure form submission
   const handleExpenditureSubmit = async (e) => {
