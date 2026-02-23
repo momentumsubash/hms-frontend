@@ -17,6 +17,7 @@ export default function CheckoutsPage() {
     }
     return null;
   });
+  
   // Listen for localStorage changes to hotel (for nepaliFlag)
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -27,18 +28,20 @@ export default function CheckoutsPage() {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
+  
   const [page, setPage] = useState(1);
   const limit = 10;
-    const [user, setUser] = useState<any>(() => {
+  const [user, setUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('user');
       return stored ? JSON.parse(stored) : null;
     }
     return null;
   });
-  const {  loading: userLoading, logout } = useAuth();
-  console.log("CheckoutsPage - User:", user);
+  
+  const { loading: userLoading, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  
   const navLinks = [
     { label: "Dashboardss", href: "/dashboard" },
     { label: "Checkouts", href: "/checkouts" },
@@ -89,6 +92,32 @@ export default function CheckoutsPage() {
   const [checkInDate, setCheckInDate] = useState<string>("");
   const [checkOutDate, setCheckOutDate] = useState<string>("");
 
+  // Discount states
+  const [roomDiscount, setRoomDiscount] = useState<string>("0");
+  const [orderDiscount, setOrderDiscount] = useState<string>("0");
+  const [extraDiscount, setExtraDiscount] = useState<string>("0");
+  const [discountNote, setDiscountNote] = useState<string>("");
+
+  // Calculated bill summary state - UPDATED with new fields
+  const [billSummary, setBillSummary] = useState({
+    roomCharges: 0,
+    orderCharges: 0,
+    extraCharges: 0,
+    roomDiscount: 0,
+    orderDiscount: 0,
+    extraDiscount: 0,
+    roomNet: 0,
+    orderNet: 0,
+    subtotalBeforeExtraDiscount: 0,
+    subtotalAfterExtraDiscount: 0,
+    vatPercent: 0,
+    vatAmount: 0,
+    advancePaid: 0,
+    totalBeforeAdvance: 0,
+    finalBill: 0,
+    discountNote: ""
+  });
+
   // Hotel name state
   const [hotelName, setHotelName] = useState("Hotel");
   const [paymentMethod, setPaymentMethod] = useState<string>("cash");
@@ -118,9 +147,65 @@ export default function CheckoutsPage() {
       errors.advanceAmount = 'Advance amount cannot be negative';
     }
 
+    if (roomDiscount && Number(roomDiscount) < 0) {
+      errors.roomDiscount = 'Room discount cannot be negative';
+    }
+
+    if (orderDiscount && Number(orderDiscount) < 0) {
+      errors.orderDiscount = 'Order discount cannot be negative';
+    }
+
+    if (extraDiscount && Number(extraDiscount) < 0) {
+      errors.extraDiscount = 'Extra discount cannot be negative';
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
+
+  // Calculate bill summary whenever relevant fields change
+  useEffect(() => {
+    if (editCheckout) {
+      const roomCharges = editCheckout.breakdown?.roomCharges || editCheckout.totalRoomCharge || 0;
+      const orderCharges = editCheckout.breakdown?.orderCharges || editCheckout.totalOrderCharge || 0;
+      const extraCharges = editCheckout.totalExtraCharge || 0;
+      
+      const roomDisc = Number(roomDiscount) || 0;
+      const orderDisc = Number(orderDiscount) || 0;
+      const extraDisc = Number(extraDiscount) || 0;
+      
+      const roomNet = roomCharges - roomDisc;
+      const orderNet = orderCharges - orderDisc;
+      const subtotalBeforeExtraDiscount = roomNet + orderNet + extraCharges;
+      const subtotalAfterExtraDiscount = subtotalBeforeExtraDiscount - extraDisc;
+      
+      const vatPercent = Number(editVatPercent) || editCheckout.vatPercent || 0;
+      const vatAmount = Number(editVatAmount) || (subtotalAfterExtraDiscount * vatPercent / 100) || 0;
+      
+      const advancePaid = Number(advanceAmount) || editCheckout.advancePaid || 0;
+      const totalBeforeAdvance = subtotalAfterExtraDiscount + vatAmount;
+      const finalBill = totalBeforeAdvance - advancePaid;
+
+      setBillSummary({
+        roomCharges,
+        orderCharges,
+        extraCharges,
+        roomDiscount: roomDisc,
+        orderDiscount: orderDisc,
+        extraDiscount: extraDisc,
+        roomNet,
+        orderNet,
+        subtotalBeforeExtraDiscount,
+        subtotalAfterExtraDiscount,
+        vatPercent,
+        vatAmount,
+        advancePaid,
+        totalBeforeAdvance,
+        finalBill: finalBill < 0 ? 0 : finalBill,
+        discountNote: discountNote || ""
+      });
+    }
+  }, [editCheckout, roomDiscount, orderDiscount, extraDiscount, editVatPercent, editVatAmount, advanceAmount, discountNote]);
 
   // Paper type selection for printing
   const [paperType, setPaperType] = useState<"a4" | "a5" | "thermal">("a4");
@@ -210,413 +295,413 @@ export default function CheckoutsPage() {
   };
 
   // Print bill function with paper type selection
-const printBill = () => {
-  const printContent = document.getElementById('bill-content');
-  if (printContent) {
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      let printStyles = '';
+  const printBill = () => {
+    const printContent = document.getElementById('bill-content');
+    if (printContent) {
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        let printStyles = '';
 
-      // Apply different styles based on paper type
-      if (paperType === 'thermal') {
-        printStyles = `
-          @media print {
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-              font-family: 'Courier New', monospace;
-            }
-            body {
-              width: 57mm;
-              max-width: 57mm;
-              padding: 1mm;
-              font-size: 7px;
-              line-height: 1;
-            }
-            .bill-header {
-              text-align: center;
-              border-bottom: 1px solid #000;
-              padding-bottom: 0.5mm;
-              margin-bottom: 0.5mm;
-            }
-            .bill-header h1 {
-              font-size: 8px;
-              font-weight: bold;
-              margin-bottom: 0.3mm;
-            }
-            .bill-header h2 {
-              font-size: 7px;
-              margin-bottom: 0.3mm;
-            }
-            .bill-header p {
-              font-size: 6px;
-              margin: 0.2mm 0;
-            }
-            .bill-section {
-              margin: 0.5mm 0;
-            }
-            .bill-section h3 {
-              font-size: 7px;
-              font-weight: bold;
-              border-bottom: 1px dashed #ccc;
-              padding-bottom: 0.3mm;
-              margin-bottom: 0.3mm;
-            }
-            p {
-              margin: 0.3mm 0;
-              font-size: 6px;
-            }
-            .bill-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 0.3mm 0;
-              font-size: 6px;
-            }
-            .bill-table th, .bill-table td {
-              padding: 0.2mm;
-              text-align: left;
-            }
-            .bill-table th {
-              font-weight: bold;
-            }
-            .text-right {
-              text-align: right;
-            }
-            .text-center {
-              text-align: center;
-            }
-            .total-row {
-              font-weight: bold;
-              border-top: 1px dashed #000;
-            }
-            .bill-footer {
-              margin-top: 1mm;
-              text-align: center;
-              border-top: 1px dashed #ccc;
-              padding-top: 0.5mm;
-              font-size: 6px;
-            }
-            .order-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 0.3mm 0;
-              font-size: 5px;
-            }
-            .order-table th, .order-table td {
-              padding: 0.1mm;
-            }
-            .vat-info, .payment-info {
-              margin-top: 0.3mm;
-              padding: 0.3mm;
-              border: 1px dashed #ccc;
-              font-size: 5px;
-            }
-            .payment-method {
-              display: inline-block;
-              padding: 0.2mm 0.3mm;
-              background: #f0f0f0;
-              border-radius: 1px;
-              margin-right: 0.3mm;
-              font-size: 5px;
-            }
-            /* Prevent page breaks */
-            html, body {
-              height: auto !important;
-              overflow: hidden !important;
-            }
-            /* Single page enforcement */
-            .bill-content {
-              height: auto !important;
-              page-break-inside: avoid !important;
-            }
-            /* Compact everything */
-            br {
-              display: none;
-            }
-            /* Force single column layout */
-            .two-columns {
-              display: block !important;
-            }
-            .two-columns > div {
-              width: 100% !important;
-              margin-bottom: 0.5mm;
-            }
-          }
-        `;
-      } else if (paperType === 'a5') {
-        printStyles = `
-          @media print {
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-              font-family: Arial, sans-serif;
-            }
-            html, body {
-              height: auto !important;
-              overflow: hidden !important;
-            }
-            body {
-              width: 148mm;
-              padding: 4mm;
-              font-size: 9px;
-              line-height: 1.1;
-            }
-            .bill-header {
-              text-align: center;
-              border-bottom: 1px solid #000;
-              padding-bottom: 1mm;
-              margin-bottom: 1mm;
-            }
-            .bill-header h1 {
-              font-size: 12px;
-              font-weight: bold;
-              margin-bottom: 0.5mm;
-            }
-            .bill-header h2 {
-              font-size: 11px;
-              margin-bottom: 0.5mm;
-            }
-            .bill-header p {
-              font-size: 8px;
-              margin: 0.3mm 0;
-            }
-            .bill-section {
-              margin: 1mm 0;
-            }
-            .bill-section h3 {
-              font-size: 10px;
-              font-weight: bold;
-              border-bottom: 1px dashed #ccc;
-              padding-bottom: 0.5mm;
-              margin-bottom: 0.5mm;
-            }
-            p {
-              margin: 0.5mm 0;
-              font-size: 8px;
-            }
-            .bill-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 0.5mm 0;
-              font-size: 8px;
-            }
-            .bill-table th, .bill-table td {
-              padding: 0.5mm;
-              text-align: left;
-            }
-            .bill-table th {
-              font-weight: bold;
-            }
-            .text-right {
-              text-align: right;
-            }
-            .text-center {
-              text-align: center;
-            }
-            .total-row {
-              font-weight: bold;
-              border-top: 1px dashed #000;
-            }
-            .bill-footer {
-              margin-top: 2mm;
-              text-align: center;
-              border-top: 1px dashed #ccc;
-              padding-top: 1mm;
-              font-size: 8px;
-            }
-            .order-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 0.5mm 0;
-              font-size: 7px;
-            }
-            .order-table th, .order-table td {
-              padding: 0.3mm;
-            }
-            .vat-info, .payment-info {
-              margin-top: 0.5mm;
-              padding: 0.5mm;
-              border: 1px dashed #ccc;
-              font-size: 8px;
-            }
-            .payment-method {
-              display: inline-block;
-              padding: 0.3mm 0.5mm;
-              background: #f0f0f0;
-              border-radius: 1px;
-              margin-right: 0.5mm;
-              font-size: 7px;
-            }
-            /* Single page enforcement */
-            .bill-content {
-              height: auto !important;
-              page-break-inside: avoid !important;
-            }
-            /* Prevent any page breaks */
-            h1, h2, h3, p, table, div {
-              page-break-inside: avoid !important;
-              page-break-after: avoid !important;
-            }
-            /* Compact layout */
-            br {
-              display: none;
-            }
-            /* Two columns for guest and stay info */
-            .two-columns {
-              display: flex;
-              justify-content: space-between;
-              margin: 0.5mm 0;
-            }
-            .two-columns > div {
-              width: 48%;
-            }
-          }
-        `;
-      } else { // A4 paper
-        printStyles = `
-          @media print {
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-              font-family: Arial, sans-serif;
-            }
-            html, body {
-              height: auto !important;
-              overflow: hidden !important;
-            }
-            body {
-              width: 210mm;
-              padding: 8mm;
-              font-size: 11px;
-              line-height: 1.2;
-            }
-            .bill-header {
-              text-align: center;
-              border-bottom: 2px solid #000;
-              padding-bottom: 2mm;
-              margin-bottom: 2mm;
-            }
-            .bill-header h1 {
-              font-size: 16px;
-              font-weight: bold;
-              margin-bottom: 1mm;
-            }
-            .bill-header h2 {
-              font-size: 14px;
-              margin-bottom: 1mm;
-            }
-            .bill-header p {
-              font-size: 10px;
-              margin: 0.5mm 0;
-            }
-            .bill-section {
-              margin: 1.5mm 0;
-            }
-            .bill-section h3 {
-              font-size: 13px;
-              font-weight: bold;
-              border-bottom: 1px dashed #ccc;
-              padding-bottom: 1mm;
-              margin-bottom: 1mm;
-            }
-            p {
-              margin: 0.8mm 0;
-              font-size: 10px;
-            }
-            .bill-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 1mm 0;
-              font-size: 10px;
-            }
-            .bill-table th, .bill-table td {
-              padding: 0.8mm;
-              text-align: left;
-            }
-            .bill-table th {
-              font-weight: bold;
-            }
-            .text-right {
-              text-align: right;
-            }
-            .text-center {
-              text-align: center;
-            }
-            .total-row {
-              font-weight: bold;
-              border-top: 2px dashed #000;
-            }
-            .bill-footer {
-              margin-top: 3mm;
-              text-align: center;
-              border-top: 1px dashed #ccc;
-              padding-top: 2mm;
-              font-size: 10px;
-            }
-            .order-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 1mm 0;
-              font-size: 9px;
-            }
-            .order-table th, .order-table td {
-              padding: 0.5mm;
-            }
-            .vat-info, .payment-info {
-              margin-top: 1mm;
-              padding: 1mm;
-              border: 1px dashed #ccc;
-              font-size: 10px;
-            }
-            .payment-method {
-              display: inline-block;
-              padding: 0.5mm 1mm;
-              background: #f0f0f0;
-              border-radius: 2px;
-              margin-right: 1mm;
-              font-size: 9px;
-            }
-            /* Single page enforcement */
-            .bill-content {
-              height: auto !important;
-              page-break-inside: avoid !important;
-            }
-            /* Prevent any page breaks */
-            h1, h2, h3, p, table, div {
-              page-break-inside: avoid !important;
-              page-break-after: avoid !important;
-            }
-            /* Two columns for better space usage */
-            .two-columns {
-              display: flex;
-              justify-content: space-between;
-              margin: 1mm 0;
-            }
-            .two-columns > div {
-              width: 48%;
-            }
-          }
-        `;
+        // Apply different styles based on paper type
+        if (paperType === 'thermal') {
+          printStyles = `
+            @media print {
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: 'Courier New', monospace;
+              }
+              body {
+                width: 57mm;
+                max-width: 57mm;
+                padding: 1mm;
+                font-size: 7px;
+                line-height: 1;
+              }
+              .bill-header {
+                text-align: center;
+                border-bottom: 1px solid #000;
+                padding-bottom: 0.5mm;
+                margin-bottom: 0.5mm;
+              }
+              .bill-header h1 {
+                font-size: 8px;
+                font-weight: bold;
+                margin-bottom: 0.3mm;
+              }
+              .bill-header h2 {
+                font-size: 7px;
+                margin-bottom: 0.3mm;
+              }
+              .bill-header p {
+                font-size: 6px;
+                margin: 0.2mm 0;
+              }
+              .bill-section {
+                margin: 0.5mm 0;
+              }
+              .bill-section h3 {
+                font-size: 7px;
+                font-weight: bold;
+                border-bottom: 1px dashed #ccc;
+                padding-bottom: 0.3mm;
+                margin-bottom: 0.3mm;
+              }
+              p {
+                margin: 0.3mm 0;
+                font-size: 6px;
+              }
+              .bill-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 0.3mm 0;
+                font-size: 6px;
+              }
+              .bill-table th, .bill-table td {
+                padding: 0.2mm;
+                text-align: left;
+              }
+              .bill-table th {
+                font-weight: bold;
+              }
+              .text-right {
+                text-align: right;
+              }
+              .text-center {
+                text-align: center;
+              }
+              .total-row {
+                font-weight: bold;
+                border-top: 1px dashed #000;
+              }
+              .bill-footer {
+                margin-top: 1mm;
+                text-align: center;
+                border-top: 1px dashed #ccc;
+                padding-top: 0.5mm;
+                font-size: 6px;
+              }
+              .order-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 0.3mm 0;
+                font-size: 5px;
+              }
+              .order-table th, .order-table td {
+                padding: 0.1mm;
+              }
+              .vat-info, .payment-info {
+                margin-top: 0.3mm;
+                padding: 0.3mm;
+                border: 1px dashed #ccc;
+                font-size: 5px;
+              }
+              .payment-method {
+                display: inline-block;
+                padding: 0.2mm 0.3mm;
+                background: #f0f0f0;
+                border-radius: 1px;
+                margin-right: 0.3mm;
+                font-size: 5px;
+              }
+              /* Prevent page breaks */
+              html, body {
+                height: auto !important;
+                overflow: hidden !important;
+              }
+              /* Single page enforcement */
+              .bill-content {
+                height: auto !important;
+                page-break-inside: avoid !important;
+              }
+              /* Compact everything */
+              br {
+                display: none;
+              }
+              /* Force single column layout */
+              .two-columns {
+                display: block !important;
+              }
+              .two-columns > div {
+                width: 100% !important;
+                margin-bottom: 0.5mm;
+              }
+            }
+          `;
+        } else if (paperType === 'a5') {
+          printStyles = `
+            @media print {
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: Arial, sans-serif;
+              }
+              html, body {
+                height: auto !important;
+                overflow: hidden !important;
+              }
+              body {
+                width: 148mm;
+                padding: 4mm;
+                font-size: 9px;
+                line-height: 1.1;
+              }
+              .bill-header {
+                text-align: center;
+                border-bottom: 1px solid #000;
+                padding-bottom: 1mm;
+                margin-bottom: 1mm;
+              }
+              .bill-header h1 {
+                font-size: 12px;
+                font-weight: bold;
+                margin-bottom: 0.5mm;
+              }
+              .bill-header h2 {
+                font-size: 11px;
+                margin-bottom: 0.5mm;
+              }
+              .bill-header p {
+                font-size: 8px;
+                margin: 0.3mm 0;
+              }
+              .bill-section {
+                margin: 1mm 0;
+              }
+              .bill-section h3 {
+                font-size: 10px;
+                font-weight: bold;
+                border-bottom: 1px dashed #ccc;
+                padding-bottom: 0.5mm;
+                margin-bottom: 0.5mm;
+              }
+              p {
+                margin: 0.5mm 0;
+                font-size: 8px;
+              }
+              .bill-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 0.5mm 0;
+                font-size: 8px;
+              }
+              .bill-table th, .bill-table td {
+                padding: 0.5mm;
+                text-align: left;
+              }
+              .bill-table th {
+                font-weight: bold;
+              }
+              .text-right {
+                text-align: right;
+              }
+              .text-center {
+                text-align: center;
+              }
+              .total-row {
+                font-weight: bold;
+                border-top: 1px dashed #000;
+              }
+              .bill-footer {
+                margin-top: 2mm;
+                text-align: center;
+                border-top: 1px dashed #ccc;
+                padding-top: 1mm;
+                font-size: 8px;
+              }
+              .order-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 0.5mm 0;
+                font-size: 7px;
+              }
+              .order-table th, .order-table td {
+                padding: 0.3mm;
+              }
+              .vat-info, .payment-info {
+                margin-top: 0.5mm;
+                padding: 0.5mm;
+                border: 1px dashed #ccc;
+                font-size: 8px;
+              }
+              .payment-method {
+                display: inline-block;
+                padding: 0.3mm 0.5mm;
+                background: #f0f0f0;
+                border-radius: 1px;
+                margin-right: 0.5mm;
+                font-size: 7px;
+              }
+              /* Single page enforcement */
+              .bill-content {
+                height: auto !important;
+                page-break-inside: avoid !important;
+              }
+              /* Prevent any page breaks */
+              h1, h2, h3, p, table, div {
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+              }
+              /* Compact layout */
+              br {
+                display: none;
+              }
+              /* Two columns for guest and stay info */
+              .two-columns {
+                display: flex;
+                justify-content: space-between;
+                margin: 0.5mm 0;
+              }
+              .two-columns > div {
+                width: 48%;
+              }
+            }
+          `;
+        } else { // A4 paper
+          printStyles = `
+            @media print {
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: Arial, sans-serif;
+              }
+              html, body {
+                height: auto !important;
+                overflow: hidden !important;
+              }
+              body {
+                width: 210mm;
+                padding: 8mm;
+                font-size: 11px;
+                line-height: 1.2;
+              }
+              .bill-header {
+                text-align: center;
+                border-bottom: 2px solid #000;
+                padding-bottom: 2mm;
+                margin-bottom: 2mm;
+              }
+              .bill-header h1 {
+                font-size: 16px;
+                font-weight: bold;
+                margin-bottom: 1mm;
+              }
+              .bill-header h2 {
+                font-size: 14px;
+                margin-bottom: 1mm;
+              }
+              .bill-header p {
+                font-size: 10px;
+                margin: 0.5mm 0;
+              }
+              .bill-section {
+                margin: 1.5mm 0;
+              }
+              .bill-section h3 {
+                font-size: 13px;
+                font-weight: bold;
+                border-bottom: 1px dashed #ccc;
+                padding-bottom: 1mm;
+                margin-bottom: 1mm;
+              }
+              p {
+                margin: 0.8mm 0;
+                font-size: 10px;
+              }
+              .bill-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 1mm 0;
+                font-size: 10px;
+              }
+              .bill-table th, .bill-table td {
+                padding: 0.8mm;
+                text-align: left;
+              }
+              .bill-table th {
+                font-weight: bold;
+              }
+              .text-right {
+                text-align: right;
+              }
+              .text-center {
+                text-align: center;
+              }
+              .total-row {
+                font-weight: bold;
+                border-top: 2px dashed #000;
+              }
+              .bill-footer {
+                margin-top: 3mm;
+                text-align: center;
+                border-top: 1px dashed #ccc;
+                padding-top: 2mm;
+                font-size: 10px;
+              }
+              .order-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 1mm 0;
+                font-size: 9px;
+              }
+              .order-table th, .order-table td {
+                padding: 0.5mm;
+              }
+              .vat-info, .payment-info {
+                margin-top: 1mm;
+                padding: 1mm;
+                border: 1px dashed #ccc;
+                font-size: 10px;
+              }
+              .payment-method {
+                display: inline-block;
+                padding: 0.5mm 1mm;
+                background: #f0f0f0;
+                border-radius: 2px;
+                margin-right: 1mm;
+                font-size: 9px;
+              }
+              /* Single page enforcement */
+              .bill-content {
+                height: auto !important;
+                page-break-inside: avoid !important;
+              }
+              /* Prevent any page breaks */
+              h1, h2, h3, p, table, div {
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+              }
+              /* Two columns for better space usage */
+              .two-columns {
+                display: flex;
+                justify-content: space-between;
+                margin: 1mm 0;
+              }
+              .two-columns > div {
+                width: 48%;
+              }
+            }
+          `;
+        }
+
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Hotel Bill - ${detailsCheckout?.guest?.firstName} ${detailsCheckout?.guest?.lastName}</title>
+              <style>${printStyles}</style>
+            </head>
+            <body onload="window.print(); setTimeout(() => { window.close(); }, 100);">
+              ${printContent.innerHTML}
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
       }
-
-      printWindow.document.write(`
-        <html>
-          <head>
-            <title>Hotel Bill - ${detailsCheckout?.guest?.firstName} ${detailsCheckout?.guest?.lastName}</title>
-            <style>${printStyles}</style>
-          </head>
-          <body onload="window.print(); setTimeout(() => { window.close(); }, 100);">
-            ${printContent.innerHTML}
-          </body>
-        </html>
-      `);
-      printWindow.document.close();
     }
-  }
-};
+  };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -631,7 +716,7 @@ const printBill = () => {
     setEditError("");
 
     try {
-      // Prepare the payload for the main checkout update including VAT
+      // Prepare the payload for the main checkout update including VAT and discounts
       const payload: any = {
         status: editStatus,
         advancePaid: parseFloat(advanceAmount) || 0,
@@ -639,7 +724,13 @@ const printBill = () => {
         checkOutDate,
         paymentMethod,
         advancePaymentMethod,
+        // Discount fields
+        roomDiscount: parseFloat(roomDiscount) || 0,
+        orderDiscount: parseFloat(orderDiscount) || 0,
+        extraDiscount: parseFloat(extraDiscount) || 0,
+        discountNote: discountNote || undefined
       };
+      
       // Add payment details if provided
       if (paymentMethod === "online" && paymentDetails.transactionId) {
         payload.paymentDetails = paymentDetails;
@@ -653,14 +744,14 @@ const printBill = () => {
       // Add VAT information if provided
       if (editVatPercent !== "") {
         payload.vatPercent = parseFloat(editVatPercent);
-      } else if (editVatPercent === "") {
+      } else {
         // Clear VAT percent if field is empty
         payload.vatPercent = null;
       }
 
       if (editVatAmount !== "") {
         payload.vatAmount = parseFloat(editVatAmount);
-      } else if (editVatAmount === "") {
+      } else {
         // Clear VAT amount if field is empty
         payload.vatAmount = null;
       }
@@ -728,7 +819,6 @@ const printBill = () => {
       }
 
       // Execute API call for VAT update using the correct endpoint
-      // This should call the PATCH /api/checkouts/:id/vat endpoint
       await updateCheckoutPayment(editCheckout._id, vatUpdatePayload);
 
       // Reload data and close modal
@@ -942,6 +1032,11 @@ const printBill = () => {
                                 paymentGateway: "",
                                 paymentDate: ""
                               });
+                              // Set discount values
+                              setRoomDiscount(checkout.roomDiscount?.toString() || "0");
+                              setOrderDiscount(checkout.orderDiscount?.toString() || "0");
+                              setExtraDiscount(checkout.extraDiscount?.toString() || "0");
+                              setDiscountNote(checkout.discountNote || "");
                               setShowEdit(true);
                               setEditError("");
                             }}
@@ -995,7 +1090,7 @@ const printBill = () => {
       {/* Edit Modal */}
       {showEdit && editCheckout && (
         <div data-cy="checkouts-edit-modal" className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-start justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl my-8 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl my-8 max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b px-4 sm:px-6 py-4 flex justify-between items-center">
               <h3 className="text-lg sm:text-xl font-semibold">Edit Checkout</h3>
               <button
@@ -1008,6 +1103,70 @@ const printBill = () => {
             </div>
             <div className="p-4 sm:p-6">
               {editError && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{editError}</div>}
+              
+              {/* Bill Summary Section */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 className="text-lg font-semibold text-blue-800 mb-3">Bill Summary</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Room Charges</p>
+                    <p className="text-lg font-semibold">रु{billSummary.roomCharges.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Room Discount</p>
+                    <p className="text-lg font-semibold text-red-600">-रु{billSummary.roomDiscount.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Net Room</p>
+                    <p className="text-lg font-semibold">रु{(billSummary.roomCharges - billSummary.roomDiscount).toLocaleString()}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-600">Order Charges</p>
+                    <p className="text-lg font-semibold">रु{billSummary.orderCharges.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Order Discount</p>
+                    <p className="text-lg font-semibold text-red-600">-रु{billSummary.orderDiscount.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Net Order</p>
+                    <p className="text-lg font-semibold">रु{(billSummary.orderCharges - billSummary.orderDiscount).toLocaleString()}</p>
+                  </div>
+                  
+                  <div>
+                    <p className="text-sm text-gray-600">Subtotal (Before Extra)</p>
+                    <p className="text-lg font-semibold">रु{(billSummary.roomCharges - billSummary.roomDiscount + billSummary.orderCharges - billSummary.orderDiscount).toLocaleString()}</p>
+                  </div>
+                  
+                  {/* Extra Discount Line */}
+                  {/* <div>
+                    <p className="text-sm text-gray-600">Extra Discount</p>
+                    <p className="text-lg font-semibold text-red-600">-रु{billSummary.extraDiscount.toLocaleString()}</p>
+                  </div> */}
+                  
+                  {/* <div>
+                    <p className="text-sm text-gray-600">Subtotal After All Discounts</p>
+                    <p className="text-lg font-semibold">रु{billSummary.subtotalAfterExtraDiscount.toLocaleString()}</p>
+                  </div> */}
+                  
+                  <div>
+                    <p className="text-sm text-gray-600">VAT Amount</p>
+                    <p className="text-lg font-semibold">रु{billSummary.vatAmount.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Advance Paid</p>
+                    <p className="text-lg font-semibold">-रु{billSummary.advancePaid.toLocaleString()}</p>
+                  </div>
+                  <div className="col-span-1 md:col-span-2 lg:col-span-3 border-t pt-2 mt-2">
+                    <p className="text-base font-bold text-blue-800">Final Bill Amount: रु{billSummary.finalBill.toLocaleString()}</p>
+                    {billSummary.discountNote && (
+                      <p className="text-sm text-gray-600 mt-1">Note: {billSummary.discountNote}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <form onSubmit={handleEditSubmit}>
                 <div className="space-y-4">
                   {/* Status */}
@@ -1023,6 +1182,65 @@ const printBill = () => {
                       <option value="pending">Pending</option>
                       <option value="completed">Completed</option>
                     </select>
+                  </div>
+
+                  {/* Discounts Section */}
+                  <div className="border-t pt-4">
+                    <h4 className="text-lg font-semibold mb-3">Discounts</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label htmlFor="roomDiscount" className="block text-sm font-medium text-gray-700 mb-1">Room Discount (रु)</label>
+                        <input
+                          type="number"
+                          id="roomDiscount"
+                          value={roomDiscount}
+                          onChange={(e) => setRoomDiscount(e.target.value)}
+                          className={`w-full border rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.roomDiscount ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                          min="0"
+                          step="0.01"
+                        />
+                        {formErrors.roomDiscount && <p className="text-red-600 text-sm mt-1">{formErrors.roomDiscount}</p>}
+                      </div>
+                      <div>
+                        <label htmlFor="orderDiscount" className="block text-sm font-medium text-gray-700 mb-1">Order Discount (रु)</label>
+                        <input
+                          type="number"
+                          id="orderDiscount"
+                          value={orderDiscount}
+                          onChange={(e) => setOrderDiscount(e.target.value)}
+                          className={`w-full border rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.orderDiscount ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                          min="0"
+                          step="0.01"
+                        />
+                        {formErrors.orderDiscount && <p className="text-red-600 text-sm mt-1">{formErrors.orderDiscount}</p>}
+                      </div>
+                      {/* <div>
+                        <label htmlFor="extraDiscount" className="block text-sm font-medium text-gray-700 mb-1">Extra Discount (रु)</label>
+                        <input
+                          type="number"
+                          id="extraDiscount"
+                          value={extraDiscount}
+                          onChange={(e) => setExtraDiscount(e.target.value)}
+                          className={`w-full border rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.extraDiscount ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                          min="0"
+                          step="0.01"
+                        />
+                        {formErrors.extraDiscount && <p className="text-red-600 text-sm mt-1">{formErrors.extraDiscount}</p>}
+                      </div> */}
+                    </div>
+                    
+                    {/* Discount Note */}
+                    <div className="mt-3">
+                      <label htmlFor="discountNote" className="block text-sm font-medium text-gray-700 mb-1">Discount Note (Optional)</label>
+                      <textarea
+                        id="discountNote"
+                        value={discountNote}
+                        onChange={(e) => setDiscountNote(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                        rows={2}
+                        placeholder="Reason for discount, approval details, etc."
+                      />
+                    </div>
                   </div>
 
                   {/* Advance Amount */}
@@ -1589,9 +1807,9 @@ const printBill = () => {
                           return (
                             <tr key={index}>
                               <td>#{room.roomNumber}</td>
-                              <td style={{ textAlign: 'right' }}>₹{room.rate?.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right' }}>रु{room.rate?.toLocaleString()}</td>
                               <td style={{ textAlign: 'center' }}>{nights}</td>
-                              <td style={{ textAlign: 'right' }}>₹{roomTotal.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right' }}>रु{roomTotal.toLocaleString()}</td>
                             </tr>
                           );
                         })}
@@ -1633,8 +1851,8 @@ const printBill = () => {
                                 <tr key={itemIndex}>
                                   <td>{item.name.length > 20 ? item.name.substring(0, 17) + '...' : item.name}</td>
                                   <td style={{ textAlign: 'center' }}>{item.quantity}</td>
-                                  <td style={{ textAlign: 'right' }}>₹{item.price?.toLocaleString()}</td>
-                                  <td style={{ textAlign: 'right' }}>₹{item.total?.toLocaleString()}</td>
+                                  <td style={{ textAlign: 'right' }}>रु{item.price?.toLocaleString()}</td>
+                                  <td style={{ textAlign: 'right' }}>रु{item.total?.toLocaleString()}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -1644,7 +1862,7 @@ const printBill = () => {
                                 borderTop: paperType === 'thermal' ? '1px dashed #000' : paperType === 'a5' ? '1px dashed #000' : '2px dashed #000'
                               }}>
                                 <td colSpan={3} style={{ textAlign: 'right' }}>Order Total:</td>
-                                <td style={{ textAlign: 'right' }}>₹{order.totalAmount?.toLocaleString()}</td>
+                                <td style={{ textAlign: 'right' }}>रु{order.totalAmount?.toLocaleString()}</td>
                               </tr>
                             </tfoot>
                           </table>
@@ -1673,62 +1891,126 @@ const printBill = () => {
                       <tbody>
                         <tr>
                           <td>Room Charges</td>
-                          <td style={{ textAlign: 'right' }}>₹{detailsCheckout?.breakdown?.roomCharges?.toLocaleString()}</td>
+                          <td style={{ textAlign: 'right' }}>रु{detailsCheckout?.breakdown?.roomCharges?.toLocaleString()}</td>
                         </tr>
                         {detailsCheckout?.breakdown?.roomDiscount > 0 && (
                           <tr>
-                            <td style={{ textAlign: 'right' }}>Room Discount</td>
-                            <td style={{ textAlign: 'right' }}>-₹{detailsCheckout.breakdown.roomDiscount?.toLocaleString()}</td>
+                            <td style={{ color: '#dc2626' }}>Room Discount</td>
+                            <td style={{ textAlign: 'right', color: '#dc2626' }}>-रु{detailsCheckout.breakdown.roomDiscount?.toLocaleString()}</td>
                           </tr>
                         )}
                         <tr>
-                          <td>Net Room Charges</td>
-                          <td style={{ textAlign: 'right' }}>₹{detailsCheckout?.breakdown?.roomNet?.toLocaleString()}</td>
+                          <td><strong>Net Room Charges</strong></td>
+                          <td style={{ textAlign: 'right' }}><strong>रु{(detailsCheckout?.breakdown?.roomCharges - (detailsCheckout?.breakdown?.roomDiscount || 0))?.toLocaleString()}</strong></td>
                         </tr>
+                        
                         {detailsCheckout?.breakdown?.orderCharges > 0 && (
-                          <tr>
-                            <td>Food & Beverage</td>
-                            <td style={{ textAlign: 'right' }}>₹{detailsCheckout.breakdown.orderCharges?.toLocaleString()}</td>
-                          </tr>
+                          <>
+                            <tr>
+                              <td>Food & Beverage</td>
+                              <td style={{ textAlign: 'right' }}>रु{detailsCheckout.breakdown.orderCharges?.toLocaleString()}</td>
+                            </tr>
+                            {detailsCheckout?.breakdown?.orderDiscount > 0 && (
+                              <tr>
+                                <td style={{ color: '#dc2626' }}>Order Discount</td>
+                                <td style={{ textAlign: 'right', color: '#dc2626' }}>-रु{detailsCheckout.breakdown.orderDiscount?.toLocaleString()}</td>
+                              </tr>
+                            )}
+                            <tr>
+                              <td><strong>Net Food & Beverage</strong></td>
+                              <td style={{ textAlign: 'right' }}><strong>रु{(detailsCheckout?.breakdown?.orderCharges - (detailsCheckout?.breakdown?.orderDiscount || 0))?.toLocaleString()}</strong></td>
+                            </tr>
+                          </>
                         )}
+                        
                         {detailsCheckout?.breakdown?.extraCharges > 0 && (
-                          <tr>
-                            <td>Other Charges</td>
-                            <td style={{ textAlign: 'right' }}>₹{detailsCheckout.breakdown.extraCharges?.toLocaleString()}</td>
-                          </tr>
+                          <>
+                            <tr>
+                              <td>Other Charges</td>
+                              <td style={{ textAlign: 'right' }}>रु{detailsCheckout.breakdown.extraCharges?.toLocaleString()}</td>
+                            </tr>
+                            {/* {detailsCheckout?.breakdown?.extraDiscount > 0 && (
+                              <tr>
+                                <td style={{ color: '#dc2626' }}>Other Discount</td>
+                                <td style={{ textAlign: 'right', color: '#dc2626' }}>-रु{detailsCheckout.breakdown.extraDiscount?.toLocaleString()}</td>
+                              </tr>
+                            )} */}
+                            <tr>
+                              <td><strong>Net Other Charges</strong></td>
+                              <td style={{ textAlign: 'right' }}><strong>रु{(detailsCheckout?.breakdown?.extraCharges - (detailsCheckout?.breakdown?.extraDiscount || 0))?.toLocaleString()}</strong></td>
+                            </tr>
+                          </>
                         )}
+                        
+                        {/* Subtotal Before Extra Discount */}
                         <tr style={{
-                          fontWeight: 'bold',
-                          borderTop: paperType === 'thermal' ? '1px dashed #000' : paperType === 'a5' ? '1px dashed #000' : '2px dashed #000'
+                          borderTop: '1px dashed #ccc',
+                          fontWeight: 'bold'
                         }}>
-                          <td>Subtotal</td>
-                          <td style={{ textAlign: 'right' }}>₹{detailsCheckout?.breakdown?.subtotal?.toLocaleString()}</td>
+                          <td>Subtotal (After Room & Order Discounts)</td>
+                          <td style={{ textAlign: 'right' }}>रु{(detailsCheckout?.breakdown?.subtotalBeforeExtraDiscount || 0).toLocaleString()}</td>
                         </tr>
+
+                        {/* Extra Discount - THIS SHOWS THE EXTRA DISCOUNT */}
+                        {/* {detailsCheckout?.breakdown?.extraDiscount > 0 && (
+                          <tr>
+                            <td style={{ color: '#dc2626', fontWeight: 'bold' }}>Extra Discount</td>
+                            <td style={{ textAlign: 'right', color: '#dc2626', fontWeight: 'bold' }}>-रु{detailsCheckout.breakdown.extraDiscount.toLocaleString()}</td>
+                          </tr>
+                        )} */}
+
+                        {/* Subtotal After Extra Discount */}
+                        {/* <tr style={{
+                          fontWeight: 'bold',
+                          borderTop: '1px dashed #000'
+                        }}>
+                          <td>Subtotal After All Discounts</td>
+                          <td style={{ textAlign: 'right' }}>रु{(detailsCheckout?.breakdown?.subtotalAfterExtraDiscount || 0).toLocaleString()}</td>
+                        </tr> */}
+                        
                         {detailsCheckout?.breakdown?.vatAmount > 0 && (
                           <tr>
                             <td>VAT ({detailsCheckout.breakdown.vatPercent || 0}%)</td>
-                            <td style={{ textAlign: 'right' }}>₹{detailsCheckout.breakdown.vatAmount?.toLocaleString()}</td>
+                            <td style={{ textAlign: 'right' }}>रु{detailsCheckout.breakdown.vatAmount?.toLocaleString()}</td>
                           </tr>
                         )}
+                        
                         <tr style={{
                           fontWeight: 'bold',
-                          borderTop: paperType === 'thermal' ? '1px dashed #000' : paperType === 'a5' ? '1px dashed #000' : '2px dashed #000'
+                          borderTop: '1px dashed #000'
                         }}>
                           <td>Total Before Advance</td>
-                          <td style={{ textAlign: 'right' }}>₹{detailsCheckout?.breakdown?.totalBeforeAdvance?.toLocaleString()}</td>
+                          <td style={{ textAlign: 'right' }}>रु{(detailsCheckout?.breakdown?.totalBeforeAdvance || 0).toLocaleString()}</td>
                         </tr>
+                        
                         {detailsCheckout?.breakdown?.advancePaid > 0 && (
                           <tr>
                             <td>Advance Paid</td>
-                            <td style={{ textAlign: 'right' }}>-₹{detailsCheckout.breakdown.advancePaid?.toLocaleString()}</td>
+                            <td style={{ textAlign: 'right' }}>-रु{detailsCheckout.breakdown.advancePaid?.toLocaleString()}</td>
                           </tr>
                         )}
+                        
+                        {/* Discount Note */}
+                        {detailsCheckout?.breakdown?.discountNote && (
+                          <tr>
+                            <td colSpan={2} style={{ 
+                              fontSize: paperType === 'thermal' ? '6px' : paperType === 'a5' ? '8px' : '10px',
+                              color: '#4b5563',
+                              fontStyle: 'italic',
+                              paddingTop: '2mm'
+                            }}>
+                              Note: {detailsCheckout.breakdown.discountNote}
+                            </td>
+                          </tr>
+                        )}
+                        
                         <tr style={{
                           fontWeight: 'bold',
-                          borderTop: paperType === 'thermal' ? '1px dashed #000' : paperType === 'a5' ? '1px dashed #000' : '2px dashed #000'
+                          borderTop: paperType === 'thermal' ? '1px dashed #000' : paperType === 'a5' ? '1px dashed #000' : '2px dashed #000',
+                          fontSize: paperType === 'thermal' ? '8px' : paperType === 'a5' ? '11px' : '14px'
                         }}>
                           <td><strong>GRAND TOTAL</strong></td>
-                          <td style={{ textAlign: 'right' }}><strong>₹{detailsCheckout?.breakdown?.finalBill?.toLocaleString()}</strong></td>
+                          <td style={{ textAlign: 'right' }}><strong>रु{(detailsCheckout?.breakdown?.finalBill || 0).toLocaleString()}</strong></td>
                         </tr>
                       </tbody>
                     </table>

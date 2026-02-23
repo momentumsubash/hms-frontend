@@ -359,39 +359,54 @@ const convertDateRangeForNepal = (startDate, endDate) => {
   }, [getBaseParams, roomType]);
 
   // Fetch Expenditure Tab Data
-  const fetchExpenditureData = useCallback(async () => {
-    setLoadingStates(prev => ({ ...prev, expenditure: true }));
-    setErrorStates(prev => ({ ...prev, expenditure: "" }));
+// Fetch Expenditure Tab Data
+const fetchExpenditureData = useCallback(async () => {
+  setLoadingStates(prev => ({ ...prev, expenditure: true }));
+  setErrorStates(prev => ({ ...prev, expenditure: "" }));
+  
+  try {
+    const token = getToken();
+    if (!token) throw new Error("No authentication token");
+
+    const baseParams = getBaseParams();
+    const expenditureParams = {
+      ...baseParams,
+      ...(expenditureStatus && { status: expenditureStatus }),
+      ...(expenditureCategory && { category: expenditureCategory }),
+      ...(searchQuery && { search: searchQuery }),
+      page: 1,
+      limit: 50,
+      sortBy: 'date',
+      sortOrder: 'desc'
+    };
+
+    console.log('Fetching expenditures with params:', expenditureParams);
     
-    try {
-      const token = getToken();
-      if (!token) throw new Error("No authentication token");
-
-      const baseParams = getBaseParams();
-      const expenditureParams = {
-        ...baseParams,
-        ...(expenditureStatus && { status: expenditureStatus }),
-        ...(expenditureCategory && { category: expenditureCategory }),
-        ...(searchQuery && { search: searchQuery }),
-        page: 1,
-        limit: 50,
-        sortBy: 'date',
-        sortOrder: 'desc'
-      };
-
-      console.log('Fetching expenditures with params:', expenditureParams);
-      
-      const expendituresRes = await getExpenditures(expenditureParams);
-      
-      setExpenditures(expendituresRes?.data || []);
-      setExpenditureStats(expendituresRes?.summary || null);
-      
-    } catch (err) {
-      setErrorStates(prev => ({ ...prev, expenditure: err.message || "Error fetching expenditures" }));
-    } finally {
-      setLoadingStates(prev => ({ ...prev, expenditure: false }));
-    }
-  }, [getBaseParams, expenditureStatus, expenditureCategory, searchQuery]);
+    const expendituresRes = await getExpenditures(expenditureParams);
+    
+    // Update this part to match your API response structure
+    setExpenditures(expendituresRes?.data || []);
+    
+    // The summary/totals are in the response root, not in a summary property
+    setExpenditureStats({
+      totals: {
+        totalAmount: expendituresRes?.totals?.totalAmount || 0,
+        totalCount: expendituresRes?.totals?.totalCount || 0,
+        averageAmount: expendituresRes?.totals?.averageAmount || 0,
+        minAmount: expendituresRes?.totals?.minAmount || 0,
+        maxAmount: expendituresRes?.totals?.maxAmount || 0
+      },
+      filteredTotal: expendituresRes?.filteredTotal || 0,
+      filteredCount: expendituresRes?.filteredCount || 0,
+      pagination: expendituresRes?.pagination
+    });
+    
+  } catch (err) {
+    setErrorStates(prev => ({ ...prev, expenditure: err.message || "Error fetching expenditures" }));
+  } finally {
+    setLoadingStates(prev => ({ ...prev, expenditure: false }));
+  }
+}, [getBaseParams, expenditureStatus, expenditureCategory, searchQuery]);
 
   // Fetch Financial Tab Data
   const fetchFinancialData = useCallback(async () => {
@@ -1064,30 +1079,38 @@ const handleApplyDateFilter = () => {
                   </Button>
                 </div>
 
-                {/* Expenditure Summary Cards */}
-                {expenditureStats && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <Card>
-                      <CardContent className="p-4">
-                        <div className="text-sm text-gray-600">Total Expenditures</div>
-                        <div className="text-2xl font-bold text-red-600">रु{expenditureStats?.totals?.totalAmount?.toLocaleString() ?? 0}</div>
-                        <div className="text-xs text-gray-500">Count: {expenditureStats?.totals?.totalCount ?? 0}</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4">
-                        <div className="text-sm text-gray-600">Average Amount</div>
-                        <div className="text-2xl font-bold text-blue-600">रु{expenditureStats?.totals?.averageAmount?.toLocaleString() ?? 0}</div>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="p-4">
-                        <div className="text-sm text-gray-600">Filtered Total</div>
-                        <div className="text-2xl font-bold text-purple-600">रु{expenditureStats?.filteredTotal?.toLocaleString() ?? 0}</div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                )}
+{/* Expenditure Summary Cards */}
+{expenditureStats && (
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-sm text-gray-600">Total Expenditures</div>
+        <div className="text-2xl font-bold text-red-600">रु{(expenditureStats?.totals?.totalAmount || 0).toLocaleString()}</div>
+        <div className="text-xs text-gray-500">Count: {expenditureStats?.totals?.totalCount || 0}</div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-sm text-gray-600">Average Amount</div>
+        <div className="text-2xl font-bold text-blue-600">रु{(expenditureStats?.totals?.averageAmount || 0).toLocaleString()}</div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-sm text-gray-600">Filtered Total</div>
+        <div className="text-2xl font-bold text-purple-600">रु{(expenditureStats?.filteredTotal || 0).toLocaleString()}</div>
+        <div className="text-xs text-gray-500">Count: {expenditureStats?.filteredCount || 0}</div>
+      </CardContent>
+    </Card>
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-sm text-gray-600">Range</div>
+        <div className="text-sm font-medium">Min: रु{(expenditureStats?.totals?.minAmount || 0).toLocaleString()}</div>
+        <div className="text-sm font-medium">Max: रु{(expenditureStats?.totals?.maxAmount || 0).toLocaleString()}</div>
+      </CardContent>
+    </Card>
+  </div>
+)}
 
                 {/* Expenditure Filters with Search */}
                 <div className="flex flex-wrap gap-4 p-4 bg-gray-50 rounded-lg">
