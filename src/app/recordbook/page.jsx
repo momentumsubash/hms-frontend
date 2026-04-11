@@ -96,21 +96,8 @@ const RecordBook = () => {
     // Hotel state for nepaliFlag
     const [hotel, setHotel] = useState(null);
 
-    // Fetch hotel info on mount
-    useEffect(() => {
-      const token = getToken();
-      if (token) {
-        fetchHotel(token).then(setHotel);
-      }
-    }, []);
-    
-    const [user, setUser] = useState(() => {
-        if (typeof window !== 'undefined') {
-          const stored = localStorage.getItem('user');
-          return stored ? JSON.parse(stored) : null;
-        }
-        return null;
-      });
+    // User state - initialize as null to avoid hydration mismatch
+    const [user, setUser] = useState(null);
   const { logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -118,7 +105,21 @@ const RecordBook = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // For the daily details endpoint (single date)
+  // Fetch hotel info and user on mount
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      fetchHotel(token).then(setHotel);
+    }
+    
+    // Load user from localStorage after hydration
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        setUser(JSON.parse(stored));
+      }
+    }
+  }, []);
   const fetchDailyDetails = async (date) => {
     setLoading(true);
     setError('');
@@ -182,23 +183,25 @@ const RecordBook = () => {
     if (!data) return;
     
     // Simple CSV export functionality
-    let csvContent = 'Record Book - ' + data.date + '\n\n';
+    let csvContent = 'Record Book - ' + (data.date || data.hotel?.name || 'Daily Report') + '\n\n';
     
     // Summary
     csvContent += 'SUMMARY\n';
-    csvContent += 'Total Revenue,' + data.totals?.totalRevenue + '\n';
-    csvContent += 'Total Expenditures,' + data.totals?.totalExpenditures + '\n';
-    csvContent += 'Net Profit,' + data.totals?.netProfit + '\n';
-    csvContent += 'Total Orders,' + data.summary?.totalOrders + '\n';
-    csvContent += 'Total Checkouts,' + data.summary?.totalCheckouts + '\n';
-    csvContent += 'Total Rooms Allocated,' + data.summary?.totalRoomsAllocated + '\n\n';
+    csvContent += 'Total Revenue,' + (data.totals?.totalRevenue || 0) + '\n';
+    csvContent += 'Total Expenditures,' + (data.totals?.totalExpenditure || 0) + '\n';
+    csvContent += 'Net Profit,' + (data.totals?.netProfit || 0) + '\n';
+    csvContent += 'Total Orders,' + (data.summary?.totalOrders || 0) + '\n';
+    csvContent += 'Total Checkouts,' + (data.summary?.totalCheckouts || 0) + '\n';
+    csvContent += 'Total Rooms Allocated,' + (data.summary?.totalRoomsAllocated || 0) + '\n\n';
     
     // Items Sold
     csvContent += 'ITEMS SOLD\n';
-    csvContent += 'Name,Category,Price,Quantity\n';
-    data.itemSalesBreakdown?.forEach(item => {
-      csvContent += `"${item.name}",${item.category},${item.price},${item.quantity}\n`;
-    });
+    csvContent += 'Name,Category,Price,Quantity,Sales\n';
+    if (data.itemSalesBreakdown && Array.isArray(data.itemSalesBreakdown)) {
+      data.itemSalesBreakdown.forEach(item => {
+        csvContent += `"${item.name || 'Unknown'}",${item.category || 'Unknown'},${item.price || 0},${item.quantity || 0},${item.totalRevenue || 0}\n`;
+      });
+    }
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -304,7 +307,7 @@ const RecordBook = () => {
                       Total Revenue
                     </Typography>
                     <Typography variant="h5" component="div" color="primary.main">
-                      Rs. {data.totals?.totalRevenue?.toLocaleString() || 0}
+                      Rs. {(data.totals?.totalRevenue || 0).toLocaleString()}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -321,7 +324,7 @@ const RecordBook = () => {
                       component="div"
                       color={data.totals?.netProfit >= 0 ? 'success.main' : 'error.main'}
                     >
-                      Rs. {data.totals?.netProfit?.toLocaleString() || 0}
+                      Rs. {(data.totals?.netProfit || 0).toLocaleString()}
                     </Typography>
                   </CardContent>
                 </Card>
@@ -394,7 +397,7 @@ const RecordBook = () => {
                                     variant="outlined" 
                                   />
                                 </TableCell>
-                                <TableCell>Rs. {room.rate?.toLocaleString()}</TableCell>
+                                <TableCell>Rs. {(room.rate || 0).toLocaleString()}</TableCell>
                                 <TableCell>
                                   <Chip 
                                     label={room.isCurrentlyOccupied ? 'Occupied' : 'Vacant'} 
@@ -442,7 +445,7 @@ const RecordBook = () => {
                                   <TableRow key={item.itemId || idx}>
                                     <TableCell>{item.name}</TableCell>
                                     <TableCell>{item.category}</TableCell>
-                                    <TableCell>Rs. {item.price?.toLocaleString()}</TableCell>
+                                    <TableCell>Rs. {(item.price || 0).toLocaleString()}</TableCell>
                                     <TableCell>{item.quantity}</TableCell>
                                   </TableRow>
                                 ))}
@@ -518,9 +521,9 @@ const RecordBook = () => {
                                         <Chip key={idx} label={room.roomNumber} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
                                       ))}
                                     </TableCell>
-                                    <TableCell>Rs. {checkout.financials?.totalBill?.toLocaleString()}</TableCell>
-                                    <TableCell>Rs. {checkout.financials?.roomCharges?.toLocaleString()}</TableCell>
-                                    <TableCell>Rs. {checkout.financials?.orderCharges?.toLocaleString()}</TableCell>
+                                    <TableCell>Rs. {(checkout.financials?.totalBill || 0).toLocaleString()}</TableCell>
+                                    <TableCell>Rs. {(checkout.financials?.roomCharges || 0).toLocaleString()}</TableCell>
+                                    <TableCell>Rs. {(checkout.financials?.orderCharges || 0).toLocaleString()}</TableCell>
                                     <TableCell>
                                       <Chip 
                                         label={checkout.paymentMethod} 

@@ -14,6 +14,11 @@ export interface Expenditure {
   };
   receipt?: string;
   notes?: string;
+  isInventoryAddition?: boolean;
+  inventoryItems?: Array<{
+    item: string;
+    quantity: number;
+  }>;
   status: "pending" | "approved" | "rejected";
   approvedBy?: {
     _id: string;

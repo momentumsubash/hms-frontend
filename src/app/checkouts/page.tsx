@@ -1,6 +1,6 @@
 "use client";
 
-import { getCheckouts, getCheckoutById } from "@/lib/api";
+import { getCheckouts, getCheckoutById, processCheckoutPaymentWithDues } from "@/lib/api";
 import { updateCheckoutPayment, updateCheckout } from "@/lib/checkoutApi";
 import { useEffect, useState, useCallback } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -133,6 +133,21 @@ export default function CheckoutsPage() {
     paymentDate: ""
   });
 
+  // Payment amount for Edit modal payment processing
+  const [paymentAmountEdit, setPaymentAmountEdit] = useState<string>("");
+
+  // Payment modal states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentFormData, setPaymentFormData] = useState({
+    checkout: null as any,
+    amountToPay: 0,
+    paymentAmount: "" as string,
+    paymentMethod: "cash" as string,
+    description: ""
+  });
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+
   // Form errors state
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
 
@@ -261,6 +276,155 @@ export default function CheckoutsPage() {
       setError("Failed to load checkout details: " + e.message);
     } finally {
       setDetailsLoading(false);
+    }
+  };
+
+  // Function to open payment modal
+  const openPaymentModal = (checkout: any) => {
+    const totalBill = checkout.totalBill || 0;
+    setPaymentFormData({
+      checkout,
+      amountToPay: totalBill,
+      paymentAmount: "",
+      paymentMethod: "cash",
+      description: ""
+    });
+    setPaymentError("");
+    setShowPaymentModal(true);
+  };
+
+  // Calculate guest due information
+  const calculateGuestDues = (guest: any) => {
+    const currentDue = guest?.dueAmount || 0;
+    const pastDues = guest?.dueTransactions || [];
+    const pastDueTotal = pastDues.reduce((sum: number, tx: any) => sum + tx.amount, 0);
+    return {
+      currentDue,
+      pastDues,
+      pastDueTotal,
+      totalDue: currentDue + pastDueTotal
+    };
+  };
+
+  const parseNumber = (value: any) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  // Calculate original bill from checkout components
+  const calculateOriginalBill = (checkout: any) => {
+    const totalRoomCharge = parseNumber(checkout.totalRoomCharge);
+    const totalOrderCharge = parseNumber(checkout.totalOrderCharge);
+    const totalExtraCharge = parseNumber(checkout.totalExtraCharge);
+    const roomDisc = parseNumber(checkout.roomDiscount);
+    const orderDisc = parseNumber(checkout.orderDiscount);
+    const extraDisc = parseNumber(checkout.extraDiscount);
+    const vatAmount = parseNumber(checkout.vatAmount);
+
+    const roomNet = Math.max(0, totalRoomCharge - roomDisc);
+    const orderNet = Math.max(0, totalOrderCharge - orderDisc);
+    const extraNet = Math.max(0, totalExtraCharge - extraDisc);
+    const subtotal = roomNet + orderNet + extraNet;
+    const totalBeforeAdvance = subtotal + vatAmount;
+    const advancePaid = parseNumber(checkout.advancePaid);
+    const originalBill = Math.max(0, totalBeforeAdvance - advancePaid);
+
+    return originalBill;
+  };
+
+  const calculateCheckoutSummary = () => {
+    if (!editCheckout) return null;
+
+    const totalRoomCharge = parseNumber(editCheckout.totalRoomCharge);
+    const totalOrderCharge = parseNumber(editCheckout.totalOrderCharge);
+    const totalExtraCharge = parseNumber(editCheckout.totalExtraCharge);
+    const roomDisc = roomDiscount !== '' ? parseNumber(roomDiscount) : parseNumber(editCheckout.roomDiscount);
+    const orderDisc = orderDiscount !== '' ? parseNumber(orderDiscount) : parseNumber(editCheckout.orderDiscount);
+    const extraDisc = extraDiscount !== '' ? parseNumber(extraDiscount) : parseNumber(editCheckout.extraDiscount);
+    const advancePaid = parseNumber(advanceAmount !== '' ? advanceAmount : editCheckout.advancePaid);
+
+    const roomNet = Math.max(0, totalRoomCharge - roomDisc);
+    const orderNet = Math.max(0, totalOrderCharge - orderDisc);
+    const extraNet = Math.max(0, totalExtraCharge - extraDisc);
+    const subtotal = roomNet + orderNet + extraNet;
+
+    const vatPercentValue = editVatPercent !== '' ? parseNumber(editVatPercent) : parseNumber(editCheckout.vatPercent);
+    const vatAmountValue = editVatAmount !== '' ? parseNumber(editVatAmount) : parseNumber(editCheckout.vatAmount);
+    const vatAmount = vatAmountValue > 0 ? vatAmountValue : Math.round((subtotal * vatPercentValue) / 100);
+
+    const totalBeforeAdvance = subtotal + vatAmount;
+    const finalBill = Math.max(0, totalBeforeAdvance - advancePaid);
+
+    const paymentAmount = parseNumber(paymentAmountEdit);
+    const currentGuestDue = parseNumber(editCheckout.guest?.dueAmount || 0);
+    const amountDueAfterPayment = Math.max(0, finalBill - paymentAmount);
+    const excessPayment = Math.max(0, paymentAmount - finalBill);
+    let remainingGuestDue = currentGuestDue;
+    let dueNote = '';
+
+    if (paymentAmount > 0) {
+      if (paymentAmount >= finalBill) {
+        const appliedToExistingDue = Math.min(excessPayment, currentGuestDue);
+        remainingGuestDue = Math.max(0, currentGuestDue - appliedToExistingDue);
+        dueNote = appliedToExistingDue > 0
+          ? `₹${appliedToExistingDue.toLocaleString()} will be applied to existing dues.`
+          : 'This payment covers the current checkout balance in full.';
+      } else {
+        remainingGuestDue = currentGuestDue + amountDueAfterPayment;
+        dueNote = `₹${amountDueAfterPayment.toLocaleString()} will be added to the guest due balance.`;
+      }
+    }
+
+    return {
+      totalRoomCharge,
+      totalOrderCharge,
+      totalExtraCharge,
+      roomDisc,
+      orderDisc,
+      extraDisc,
+      roomNet,
+      orderNet,
+      extraNet,
+      subtotal,
+      vatAmount,
+      totalBeforeAdvance,
+      advancePaid,
+      finalBill,
+      paymentAmount,
+      amountDueAfterPayment,
+      currentGuestDue,
+      remainingGuestDue,
+      dueNote
+    };
+  };
+
+  // Handle payment submission
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setPaymentLoading(true);
+      setPaymentError("");
+
+      const paymentAmount = parseFloat(paymentFormData.paymentAmount);
+      if (!paymentFormData.paymentAmount || isNaN(paymentAmount) || paymentAmount <= 0) {
+        setPaymentError("Please enter a valid payment amount");
+        setPaymentLoading(false);
+        return;
+      }
+
+      await processCheckoutPaymentWithDues(paymentFormData.checkout._id, {
+        paymentAmount,
+        paymentMethod: paymentFormData.paymentMethod,
+        checkOutDate: paymentFormData.checkout.checkOutDate
+      });
+
+      // Reload data
+      loadData();
+      setShowPaymentModal(false);
+    } catch (e: any) {
+      setPaymentError(e.message || "Failed to process payment");
+    } finally {
+      setPaymentLoading(false);
     }
   };
 
@@ -730,7 +894,17 @@ export default function CheckoutsPage() {
         extraDiscount: parseFloat(extraDiscount) || 0,
         discountNote: discountNote || undefined
       };
-      
+
+      // Add discount fields if provided
+      if (roomDiscount !== "") {
+        payload.roomDiscount = parseFloat(roomDiscount) || 0;
+      }
+      if (orderDiscount !== "") {
+        payload.orderDiscount = parseFloat(orderDiscount) || 0;
+      }
+      if (extraDiscount !== "") {
+        payload.extraDiscount = parseFloat(extraDiscount) || 0;
+      }
       // Add payment details if provided
       if (paymentMethod === "online" && paymentDetails.transactionId) {
         payload.paymentDetails = paymentDetails;
@@ -770,6 +944,37 @@ export default function CheckoutsPage() {
 
       // Execute API call using the main PUT endpoint
       await updateCheckout(editCheckout._id, payload);
+
+      // Process payment if payment amount is provided
+      if (paymentAmountEdit && parseFloat(paymentAmountEdit) > 0) {
+        try {
+          await processCheckoutPaymentWithDues(editCheckout._id, {
+            paymentAmount: parseFloat(paymentAmountEdit),
+            paymentMethod: paymentMethod || "cash",
+            paymentDetails: paymentMethod === "online" ? paymentDetails : undefined,
+            advancePaymentMethod,
+            advancePaymentDetails,
+            checkOutDate,
+            roomDiscount: roomDiscount !== "" ? parseFloat(roomDiscount) : undefined,
+            orderDiscount: orderDiscount !== "" ? parseFloat(orderDiscount) : undefined,
+            extraDiscount: extraDiscount !== "" ? parseFloat(extraDiscount) : undefined,
+            vatPercent: editVatPercent !== "" ? parseFloat(editVatPercent) : undefined,
+            vatAmount: editVatAmount !== "" ? parseFloat(editVatAmount) : undefined,
+            clientVatInfo: clientVatNumber || clientVatCompany || clientVatAddress ? {
+              vatNumber: clientVatNumber,
+              companyName: clientVatCompany,
+              address: clientVatAddress,
+            } : undefined
+          });
+        } catch (paymentError: any) {
+          console.error("Payment processing error:", paymentError);
+          // Checkout was updated, but payment processing failed - show error but continue
+          setEditError("Checkout updated, but payment processing failed: " + paymentError.message);
+          setEditLoading(false);
+          // Don't close modal yet so user can see the error
+          return;
+        }
+      }
 
       // Reload data and close modal
       loadData();
@@ -1008,7 +1213,7 @@ export default function CheckoutsPage() {
                           </button>
                           <button
                             data-cy={`checkouts-edit-btn-${index}`}
-                            className="text-green-600 hover:underline text-sm"
+                            className="text-green-600 hover:underline text-sm mr-3"
                             onClick={() => {
                               setEditCheckout(checkout);
                               setEditStatus(checkout.status);
@@ -1020,6 +1225,9 @@ export default function CheckoutsPage() {
                               setAdvanceAmount(checkout.advancePaid?.toString() || "0");
                               setCheckInDate(checkout.checkInDate ? checkout.checkInDate.slice(0, 10) : "");
                               setCheckOutDate(checkout.checkOutDate ? checkout.checkOutDate.slice(0, 10) : "");
+                              setRoomDiscount(checkout.roomDiscount?.toString() || "");
+                              setOrderDiscount(checkout.orderDiscount?.toString() || "");
+                              setExtraDiscount(checkout.extraDiscount?.toString() || "");
                               setPaymentMethod(checkout.paymentMethod || "cash");
                               setAdvancePaymentMethod(checkout.advancePaymentMethod || "cash");
                               setPaymentDetails(checkout.paymentDetails || {
@@ -1032,6 +1240,7 @@ export default function CheckoutsPage() {
                                 paymentGateway: "",
                                 paymentDate: ""
                               });
+                              setPaymentAmountEdit("");
                               // Set discount values
                               setRoomDiscount(checkout.roomDiscount?.toString() || "0");
                               setOrderDiscount(checkout.orderDiscount?.toString() || "0");
@@ -1393,6 +1602,55 @@ export default function CheckoutsPage() {
                     </div>
                   </div>
 
+                  {/* Discount Section */}
+                  <div className="border-t pt-4">
+                    <h4 className="text-lg font-semibold mb-3">Discounts</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label htmlFor="roomDiscount" className="block text-sm font-medium text-gray-700 mb-1">Room Discount (रु)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          id="roomDiscount"
+                          value={roomDiscount}
+                          onChange={(e) => setRoomDiscount(e.target.value)}
+                          className={`w-full border rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.roomDiscount ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                          placeholder="Enter room discount amount"
+                        />
+                        {formErrors.roomDiscount && <p className="text-red-600 text-sm mt-1">{formErrors.roomDiscount}</p>}
+                      </div>
+                      <div>
+                        <label htmlFor="orderDiscount" className="block text-sm font-medium text-gray-700 mb-1">Item/Order Discount (रु)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          id="orderDiscount"
+                          value={orderDiscount}
+                          onChange={(e) => setOrderDiscount(e.target.value)}
+                          className={`w-full border rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.orderDiscount ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                          placeholder="Enter item discount amount"
+                        />
+                        {formErrors.orderDiscount && <p className="text-red-600 text-sm mt-1">{formErrors.orderDiscount}</p>}
+                      </div>
+                      <div>
+                        <label htmlFor="extraDiscount" className="block text-sm font-medium text-gray-700 mb-1">Extra Discount (रु)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          id="extraDiscount"
+                          value={extraDiscount}
+                          onChange={(e) => setExtraDiscount(e.target.value)}
+                          className={`w-full border rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.extraDiscount ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                          placeholder="Enter extra discount amount"
+                        />
+                        {formErrors.extraDiscount && <p className="text-red-600 text-sm mt-1">{formErrors.extraDiscount}</p>}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* VAT Information Section */}
                   <div className="border-t pt-4">
                     <h4 className="text-lg font-semibold mb-3">VAT Information</h4>
@@ -1460,6 +1718,123 @@ export default function CheckoutsPage() {
                         />
                       </div>
                     </div>
+                  </div>
+
+                  {/* Payment Processing Section */}
+                  <div className="border-t pt-4 bg-gradient-to-r from-yellow-50 to-orange-50 p-4 rounded-md">
+                    <h4 className="text-lg font-semibold mb-3 text-orange-900">Payment Processing</h4>
+                    {editCheckout.guest && (
+                      <>
+                        {/* Guest Info */}
+                        <div className="bg-white p-3 rounded-md mb-3 border border-yellow-200">
+                          <p><strong>Guest:</strong> {editCheckout.guest?.firstName} {editCheckout.guest?.lastName}</p>
+                          
+                          {editCheckout.status === 'completed' ? (
+                            <>
+                              {/* Show payment details for completed checkouts */}
+                              <div className="mt-2 space-y-1 text-sm">
+                                <p><strong>Original Bill:</strong> रु {calculateOriginalBill(editCheckout).toLocaleString()}</p>
+                                <p><strong>Amount Paid:</strong> रु {(editCheckout.totalBill || 0).toLocaleString()}</p>
+                                {editCheckout.paymentMethod && (
+                                  <p><strong>Payment Method:</strong> {editCheckout.paymentMethod}</p>
+                                )}
+                                {editCheckout.guest?.dueTransactions && editCheckout.guest.dueTransactions.length > 0 && (
+                                  <>
+                                    <p><strong>Payment Date:</strong> {new Date(editCheckout.guest.dueTransactions[0].date).toLocaleDateString()}</p>
+                                    <p><strong className={editCheckout.guest.dueAmount > 0 ? "text-red-600" : ""}>
+                                      Remaining Due: रु {(editCheckout.guest?.dueAmount || 0).toLocaleString()}
+                                    </strong></p>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Show transaction history */}
+                              {editCheckout.guest?.dueTransactions && editCheckout.guest.dueTransactions.length > 0 && (
+                                <div className="mt-3 pt-2 border-t border-yellow-100">
+                                  <p className="font-semibold text-xs text-gray-700 mb-2">Payment Transactions:</p>
+                                  <div className="space-y-1 text-xs">
+                                    {editCheckout.guest.dueTransactions.map((tx: any, idx: number) => (
+                                      <div key={idx} className="flex justify-between p-1 bg-yellow-50 rounded">
+                                        <span>{new Date(tx.date).toLocaleDateString()} - {tx.paymentMethod || 'cash'}</span>
+                                        <span className="font-semibold">रु {(tx.amount || 0).toLocaleString()}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <p><strong>Amount Due:</strong> रु {(editCheckout.totalBill || 0).toLocaleString()}</p>
+                              {calculateGuestDues(editCheckout.guest).currentDue > 0 && (
+                                <p><strong className="text-red-600">Outstanding Due:</strong> रु {(calculateGuestDues(editCheckout.guest).currentDue || 0).toLocaleString()}</p>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Payment Amount */}
+                        <div>
+                          <label htmlFor="paymentAmount" className="block text-sm font-medium text-gray-700 mb-1">Amount Customer Pays (रु)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            id="paymentAmount"
+                            value={paymentAmountEdit}
+                            onChange={(e) => setPaymentAmountEdit(e.target.value)}
+                            placeholder="Leave empty to only update checkout info"
+                            className="w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Leave empty to save changes without processing payment</p>
+                        </div>
+
+                        {/* Payment Balance Summary */}
+                        {paymentAmountEdit && (() => {
+                          const summary = calculateCheckoutSummary();
+                          if (!summary) return null;
+                          return (
+                            <div className="bg-white p-3 rounded-md my-3 border-2 border-orange-300">
+                              <div className="grid grid-cols-1 gap-3 text-sm">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-gray-600">Updated Amount to Pay</label>
+                                    <p className="font-semibold">रु {summary.finalBill.toLocaleString()}</p>
+                                  </div>
+                                  <div>
+                                    <label className="text-gray-600">Amount Received</label>
+                                    <p className="font-semibold">रु {summary.paymentAmount.toLocaleString()}</p>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className="text-gray-600">Remaining Checkout Due</label>
+                                    <p className={`font-semibold ${summary.amountDueAfterPayment > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                      रु {summary.amountDueAfterPayment.toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <label className="text-gray-600">Guest Due After Payment</label>
+                                    <p className="font-semibold">रु {summary.remainingGuestDue.toLocaleString()}</p>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="text-gray-600">Discount Summary</label>
+                                  <p className="text-sm text-gray-700">Room: रु {summary.roomDisc.toLocaleString()}, Item: रु {summary.orderDisc.toLocaleString()}, Extra: रु {summary.extraDisc.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-600">{summary.dueNote || 'Payment and due amounts will be calculated after saving.'}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Original Client VAT Section */}
+                  <div className="border-t pt-4" style={{display: 'none'}}>
                   </div>
                 </div>
 
@@ -1800,8 +2175,7 @@ export default function CheckoutsPage() {
                           <th style={{ textAlign: 'right' }}>Total</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {detailsCheckout?.rooms?.map((room: any, index: number) => {
+                      <tbody>{detailsCheckout?.rooms?.map((room: any, index: number) => {
                           const nights = detailsCheckout.nights || 1;
                           const roomTotal = room.rate * nights;
                           return (
@@ -1846,8 +2220,7 @@ export default function CheckoutsPage() {
                                 <th style={{ textAlign: 'right' }}>Total</th>
                               </tr>
                             </thead>
-                            <tbody>
-                              {order.items.map((item: any, itemIndex: number) => (
+                            <tbody>{order.items.map((item: any, itemIndex: number) => (
                                 <tr key={itemIndex}>
                                   <td>{item.name.length > 20 ? item.name.substring(0, 17) + '...' : item.name}</td>
                                   <td style={{ textAlign: 'center' }}>{item.quantity}</td>
@@ -1888,8 +2261,7 @@ export default function CheckoutsPage() {
                       margin: paperType === 'thermal' ? '1mm 0' : paperType === 'a5' ? '1.5mm 0' : '2mm 0',
                       fontSize: paperType === 'thermal' ? '7px' : paperType === 'a5' ? '9px' : '11px'
                     }}>
-                      <tbody>
-                        <tr>
+                      <tbody><tr>
                           <td>Room Charges</td>
                           <td style={{ textAlign: 'right' }}>रु{detailsCheckout?.breakdown?.roomCharges?.toLocaleString()}</td>
                         </tr>
@@ -1923,6 +2295,18 @@ export default function CheckoutsPage() {
                           </>
                         )}
                         
+                        {detailsCheckout?.breakdown?.orderDiscount > 0 && (
+                          <tr>
+                            <td style={{ textAlign: 'right' }}>Item Discount</td>
+                            <td style={{ textAlign: 'right' }}>-₹{detailsCheckout.breakdown.orderDiscount?.toLocaleString()}</td>
+                          </tr>
+                        )}
+                        {detailsCheckout?.breakdown?.orderCharges > 0 && (
+                          <tr>
+                            <td>Net Food & Beverage</td>
+                            <td style={{ textAlign: 'right' }}>₹{detailsCheckout?.breakdown?.orderNet?.toLocaleString()}</td>
+                          </tr>
+                        )}
                         {detailsCheckout?.breakdown?.extraCharges > 0 && (
                           <>
                             <tr>
@@ -1942,7 +2326,12 @@ export default function CheckoutsPage() {
                           </>
                         )}
                         
-                        {/* Subtotal Before Extra Discount */}
+                        {detailsCheckout?.breakdown?.extraDiscount > 0 && (
+                          <tr>
+                            <td style={{ textAlign: 'right' }}>Extra Discount</td>
+                            <td style={{ textAlign: 'right' }}>-₹{detailsCheckout.breakdown.extraDiscount?.toLocaleString()}</td>
+                          </tr>
+                        )}
                         <tr style={{
                           borderTop: '1px dashed #ccc',
                           fontWeight: 'bold'

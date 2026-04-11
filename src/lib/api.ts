@@ -757,6 +757,49 @@ export async function getGuest(id: string) {
   return res.json();
 }
 
+export async function getDueCustomers(params: Record<string, any> = {}) {
+  const queryParams = new URLSearchParams({
+    existingCustomer: 'true',
+    hasDue: 'true',
+    limit: '100',
+    ...params
+  } as Record<string, string>);
+
+  const res = await fetch(`${API_URL}/guests?${queryParams.toString()}`, {
+    headers: mergeHeaders({}, getAuthHeaders()),
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || 'Failed to fetch due customers');
+  }
+  return res.json();
+}
+
+export async function recordGuestDueTransaction(guestId: string, transaction: any) {
+  const res = await fetch(`${API_URL}/guests/${guestId}/due-transactions`, {
+    method: 'POST',
+    headers: mergeHeaders({ 'Content-Type': 'application/json' }, getAuthHeaders()),
+    body: JSON.stringify(transaction),
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.message || 'Failed to record due transaction');
+  }
+  return res.json();
+}
+
 export async function updateGuest(id: string, guest: any) {
   const payload = {
     ...guest,
@@ -913,10 +956,40 @@ export async function completeCheckoutPayment(id: string, paymentAmount: number)
   return res.json();
 }
 
+// Process checkout payment with full payment details and due handling
+export async function processCheckoutPaymentWithDues(checkoutId: string, paymentData: any) {
+  const res = await fetch(`${API_URL}/checkouts/payment`, {
+    method: "POST",
+    headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
+    body: JSON.stringify({ 
+      id: checkoutId,
+      ...paymentData 
+    }),
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Failed to process payment");
+  }
+  return res.json();
+}
+
 // ITEMS
 export async function getItems(params: Record<string, any> = {}) {
   const query = new URLSearchParams(params).toString();
-  const res = await fetch(`${API_URL}/items${query ? `?${query}` : ""}`);
+  const res = await fetch(`${API_URL}/items${query ? `?${query}` : ""}`, {
+    headers: mergeHeaders({}, getAuthHeaders()),
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    sessionStorage.removeItem('token');
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
   if (!res.ok) throw new Error("Failed to fetch items");
   return res.json();
 }

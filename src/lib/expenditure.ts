@@ -23,7 +23,12 @@ const buildQueryString = (params?: Record<string, any>): string => {
 };
 
 // Create a new expenditure
-export const createExpenditure = async (data: Omit<Expenditure, '_id' | 'createdAt' | 'updatedAt' | 'status' | 'approvedBy' | 'approvedAt' | 'createdBy' | 'hotel' | 'receipt'>) => {
+export type CreateExpenditurePayload = Omit<Expenditure, '_id' | 'createdAt' | 'updatedAt' | 'status' | 'approvedBy' | 'approvedAt' | 'createdBy' | 'hotel' | 'receipt'> & {
+  isInventoryAddition?: boolean;
+  inventoryItems?: Array<{ item: string; quantity: number }>;
+};
+
+export const createExpenditure = async (data: CreateExpenditurePayload) => {
   try {
     const response = await fetch(`${API_URL}/expenditures`, {
       method: 'POST',
@@ -33,7 +38,9 @@ export const createExpenditure = async (data: Omit<Expenditure, '_id' | 'created
         description: data.description,
         category: data.category,
         date: data.date,
-        notes: data.notes
+        notes: data.notes,
+        isInventoryAddition: data.isInventoryAddition,
+        inventoryItems: data.inventoryItems
       }),
     });
 

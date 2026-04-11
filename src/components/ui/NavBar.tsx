@@ -32,6 +32,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   const { user: authUser, logout: authLogout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
 type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
   const displayUser = user || authUser;
@@ -42,6 +43,7 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
     { label: "Dashboard", href: "/dashboard", np: "ड्यासबोर्ड", roles: ["staff", "manager", "super_admin"] },
     { label: "Checkouts", href: "/checkouts", np: "चेकआउट", roles: ["staff", "manager", "super_admin"] },
     { label: "Guests", href: "/guests", np: "अतिथि", roles: ["staff", "manager", "super_admin"] },
+    { label: "Dues", href: "/dues", np: "बक्यौता", roles: ["staff", "manager", "super_admin"] },
     { label: "Hotels", href: "/hotels", np: "होटलहरू", roles: ["manager", "super_admin"] },
     { label: "Items", href: "/items", np: "वस्तुहरू", roles: ["manager", "super_admin"] },
     { label: "Orders", href: "/orders", np: "अर्डरहरू", roles: ["staff", "manager", "super_admin"] },
@@ -83,17 +85,24 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
     }
   }, [userRole, links]);
 
-  // Handle scroll effect for navbar
+  // Handle scroll effect for navbar (only after hydration)
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, [mounted]); // Only run when mounted
+
+  // Set mounted after hydration
+  useEffect(() => {
+    setMounted(true);
   }, []);
 
-  // Close mobile menu when window resizes to desktop
+  // Close mobile menu when window resizes to desktop (only after hydration)
   useEffect(() => {
+    if (!mounted) return;
+    
     const handleResize = () => {
       if (window.innerWidth >= 1024) {
         setMobileMenuOpen(false);
@@ -101,13 +110,13 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [mounted]);
 
   // Don't render navbar if no user
   if (!displayUser) return null;
 
   return (
-    <nav className={`sticky top-0 z-50 bg-white transition-shadow ${scrolled ? 'shadow-lg' : 'shadow'}`}>
+    <nav className={`sticky top-0 z-50 bg-white transition-shadow ${mounted && scrolled ? 'shadow-lg' : 'shadow'}`}>
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo/Brand */}

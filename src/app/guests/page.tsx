@@ -86,6 +86,8 @@ interface Guest {
   purposeOfStay?: string;
   referrer?: string;
   referralStatus?: string;
+  existingCustomer?: boolean;
+  dueAmount?: number;
   rooms: string[];
   checkInDate: string;
   checkOutDate?: string;
@@ -134,6 +136,7 @@ interface GuestForm {
   additionalGuests: AdditionalGuest[];
   purposeOfStay: string;
   referrer: string;
+  existingCustomer: boolean;
   rooms: string[];
   roomDiscount: string;
   advancePaid: string;
@@ -437,6 +440,7 @@ export default function GuestsPage() {
     additionalGuests: [],
     purposeOfStay: "",
     referrer: "",
+    existingCustomer: false,
     rooms: [],
     roomDiscount: "0",
     advancePaid: "0",
@@ -463,7 +467,9 @@ export default function GuestsPage() {
   const [filters, setFilters] = useState({
     isCheckedOut: "",
     roomNumber: "",
-    search: ""
+    search: "",
+    existingCustomer: "",
+    hasDue: ""
   });
   const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
 
@@ -528,6 +534,8 @@ export default function GuestsPage() {
       if (currentFilters.search) queryParams.append('search', currentFilters.search);
       if (currentFilters.roomNumber) queryParams.append('roomNumber', currentFilters.roomNumber);
       if (currentFilters.isCheckedOut !== "") queryParams.append('isCheckedOut', currentFilters.isCheckedOut);
+      if (currentFilters.existingCustomer !== "") queryParams.append('existingCustomer', currentFilters.existingCustomer);
+      if (currentFilters.hasDue !== "") queryParams.append('hasDue', currentFilters.hasDue);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/guests?${queryParams.toString()}`, {
         headers: getRequestHeaders(token),
@@ -602,7 +610,9 @@ export default function GuestsPage() {
     const clearedFilters = {
       isCheckedOut: "",
       roomNumber: "",
-      search: ""
+      search: "",
+      existingCustomer: "",
+      hasDue: ""
     };
     setFilters(clearedFilters);
     loadData(true, clearedFilters);
@@ -665,6 +675,7 @@ export default function GuestsPage() {
       additionalGuests: [],
       purposeOfStay: "",
       referrer: "",
+      existingCustomer: false,
       rooms: [],
       roomDiscount: "0",
       advancePaid: "0",
@@ -720,6 +731,7 @@ export default function GuestsPage() {
             vehicleNo: foundGuest.vehicleNo || "",
             purposeOfStay: foundGuest.purposeOfStay || "",
             referrer: foundGuest.referrer || "",
+            existingCustomer: foundGuest.existingCustomer || false,
             // Don't auto-populate room selection as it might be different
           }));
         } else {
@@ -764,6 +776,7 @@ export default function GuestsPage() {
             vehicleNo: foundGuest.vehicleNo || "",
             purposeOfStay: foundGuest.purposeOfStay || "",
             referrer: foundGuest.referrer || "",
+            existingCustomer: foundGuest.existingCustomer || false,
           }));
         } else {
           setGuestSearchMessage("New guest - please fill in details");
@@ -933,6 +946,7 @@ export default function GuestsPage() {
           additionalGuests: validAdditionalGuests,
           purposeOfStay: formData.purposeOfStay || undefined,
           referrer: formData.referrer || undefined,
+          existingCustomer: formData.existingCustomer,
           rooms: roomNumbers,
           hotel: hotelId,
           checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
@@ -980,6 +994,7 @@ export default function GuestsPage() {
           additionalGuests: validAdditionalGuests,
           purposeOfStay: formData.purposeOfStay || undefined,
           referrer: formData.referrer || undefined,
+          existingCustomer: formData.existingCustomer,
           rooms: roomNumbers,
           hotel: hotelId,
           checkInDate: new Date(formData.checkInDate).toISOString(),
@@ -1100,6 +1115,7 @@ export default function GuestsPage() {
       additionalGuests: [],
       purposeOfStay: "",
       referrer: "",
+      existingCustomer: false,
       rooms: [],
       roomDiscount: "0",
       advancePaid: "0",
@@ -1408,7 +1424,7 @@ export default function GuestsPage() {
               Clear All Filters
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Search (Name, Email, Phone)</label>
               <input
@@ -1430,15 +1446,27 @@ export default function GuestsPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Check-out Status</label>
+              <label className="block text-sm font-medium mb-1">Customer Type</label>
               <select
-                value={filters.isCheckedOut}
-                onChange={(e) => handleFilterChange('isCheckedOut', e.target.value)}
+                value={filters.existingCustomer}
+                onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
               >
-                <option value="">All Guests</option>
-                <option value="false">Currently Staying</option>
-                <option value="true">Checked Out</option>
+                <option value="">All Customers</option>
+                <option value="true">Existing Customers</option>
+                <option value="false">New Customers</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Outstanding Dues</label>
+              <select
+                value={filters.hasDue}
+                onChange={(e) => handleFilterChange('hasDue', e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              >
+                <option value="">Any Dues</option>
+                <option value="true">Only Due Amounts</option>
+                <option value="false">No Due</option>
               </select>
             </div>
           </div>
@@ -1653,6 +1681,20 @@ export default function GuestsPage() {
                       {referrers.length === 0 && !loadingReferrers && (
                         <p className="text-sm text-gray-500 mt-1">No referrers available. Add referrers first.</p>
                       )}
+                    </div>
+
+                    {/* Existing Customer Flag */}
+                    <div>
+                      <label className="flex items-center text-sm font-medium">
+                        <input
+                          type="checkbox"
+                          checked={formData.existingCustomer}
+                          onChange={(e) => setFormData({ ...formData, existingCustomer: e.target.checked })}
+                          className="mr-2 h-4 w-4 border-gray-300 rounded"
+                          data-cy="guests-existing-customer"
+                        />
+                        Existing Customer (Enable Due Management)
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -1901,6 +1943,12 @@ export default function GuestsPage() {
                     Referrer
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Due Amount
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1990,6 +2038,21 @@ export default function GuestsPage() {
                         }`}>
                         {guest.isCheckedOut ? "Checked Out" : "Currently Staying"}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${guest.existingCustomer
+                          ? "bg-indigo-100 text-indigo-800"
+                          : "bg-gray-100 text-gray-600"
+                        }`}>
+                        {guest.existingCustomer ? "Existing" : "New"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {guest.dueAmount && guest.dueAmount > 0 ? (
+                        <span className="text-red-600 font-semibold">रु{guest.dueAmount.toLocaleString()}</span>
+                      ) : (
+                        <span className="text-gray-500">None</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       रु{guest.totalBill.toLocaleString()}

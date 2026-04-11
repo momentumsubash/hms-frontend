@@ -16,6 +16,7 @@ import {
   getItemSales,
   getRoomSales
 } from "@/lib/expenditure";
+import { getItems } from "@/lib/api";
 
 // Date filter options
 const DATE_FILTERS = [
@@ -72,22 +73,28 @@ const convertDateRangeForNepal = (startDate, endDate) => {
 };
 
 export default function StatsPage() {
-  // Load hotel from localStorage
-  const [hotel, setHotel] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('hotel');
-      return stored ? JSON.parse(stored) : null;
-    }
-    return null;
-  });
+  const [hotel, setHotel] = useState(null);
+  const [user, setUser] = useState(null);
   
-  // Listen for localStorage changes
+  // Load hotel and user from localStorage on client only
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const storedHotel = localStorage.getItem('hotel');
+    setHotel(storedHotel ? JSON.parse(storedHotel) : null);
+
+    const storedUser = localStorage.getItem('user');
+    setUser(storedUser ? JSON.parse(storedUser) : null);
+
     const handleStorage = (event) => {
       if (event.key === 'hotel') {
         setHotel(event.newValue ? JSON.parse(event.newValue) : null);
       }
+      if (event.key === 'user') {
+        setUser(event.newValue ? JSON.parse(event.newValue) : null);
+      }
     };
+
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
@@ -99,14 +106,6 @@ export default function StatsPage() {
     if (typeof window === "undefined") return null;
     return localStorage.getItem("token") || sessionStorage.getItem("token");
   }
-  
-  const [user, setUser] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('user');
-      return stored ? JSON.parse(stored) : null;
-    }
-    return null;
-  });
   
   const { logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -168,6 +167,8 @@ const [currentDateParams, setCurrentDateParams] = useState({ filter: 'month' });
   
   // Expenditure form states
   const [showExpenditureForm, setShowExpenditureForm] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [selectedInventoryItems, setSelectedInventoryItems] = useState([]);
   const [expenditureForm, setExpenditureForm] = useState({
     amount: "",
     description: "",
@@ -232,23 +233,46 @@ const [currentDateParams, setCurrentDateParams] = useState({ filter: 'month' });
     fetchCategories();
   }, []);
 
-// Get base date parameters
-const getBaseParams = useCallback(() => {
-  if (dateFilter === 'custom' && customStartDate && customEndDate) {
-    // Convert dates to UTC for Nepal
-    const { startDate: utcStart, endDate: utcEnd } = convertDateRangeForNepal(
-      customStartDate, 
-      customEndDate
-    );
-    return {
-      filter: 'custom',
-      startDate: utcStart,
-      endDate: utcEnd
+  useEffect(() => {
+    const loadInventoryItems = async () => {
+      try {
+        if (!hotel || !hotel._id) {
+          setInventoryItems([]);
+          return;
+        }
+
+        const response = await getItems({ inventory: true, hotel: hotel._id, limit: 100, page: 1 });
+        if (response?.data) {
+          setInventoryItems(response.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to load inventory items:', err);
+        setInventoryItems([]);
+      }
     };
-  }
-  
-  return { filter: dateFilter };
-}, [dateFilter, customStartDate, customEndDate]);
+
+    if (showExpenditureForm) {
+      loadInventoryItems();
+    }
+  }, [showExpenditureForm, hotel]);
+
+  // Get base date parameters
+  const getBaseParams = useCallback(() => {
+    if (dateFilter === 'custom' && customStartDate && customEndDate) {
+      // Convert dates to UTC for Nepal
+      const { startDate: utcStart, endDate: utcEnd } = convertDateRangeForNepal(
+        customStartDate, 
+        customEndDate
+      );
+      return {
+        filter: 'custom',
+        startDate: utcStart,
+        endDate: utcEnd
+      };
+    }
+    
+    return { filter: dateFilter };
+  }, [dateFilter, customStartDate, customEndDate]);
 
   // Fetch Summary Tab Data
   const fetchSummaryData = useCallback(async () => {
@@ -553,11 +577,14 @@ const handleApplyDateFilter = () => {
         description: expenditureForm.description,
         category: expenditureForm.category,
         date: expenditureForm.date,
-        notes: expenditureForm.notes
+        notes: expenditureForm.notes,
+        isInventoryAddition: selectedInventoryItems.length > 0,
+        inventoryItems: selectedInventoryItems.map(item => ({ item: item.itemId, quantity: item.quantity }))
       });
       
       setNotification({ type: 'success', message: 'Expenditure created successfully' });
       setShowExpenditureForm(false);
+      setSelectedInventoryItems([]);
       setExpenditureForm({
         amount: "",
         description: "",
@@ -1520,10 +1547,76 @@ const handleApplyDateFilter = () => {
                   />
                 </div>
 
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-medium mb-1">Inventory Items</label>
+                    <button
+                      type="button"
+                      className="text-sm text-blue-600 hover:underline"
+                      onClick={() => setSelectedInventoryItems(prev => ([
+                        ...prev,
+                        { itemId: inventoryItems.length > 0 ? inventoryItems[0]._id : '', quantity: 1 }
+                      ]))}
+                    >
+                      Add Item
+                    </button>
+                  </div>
+
+                  {selectedInventoryItems.length === 0 && (
+                    <p className="text-sm text-gray-500">Select inventory-enabled items to update stock when this expenditure is created.</p>
+                  )}
+
+                  {selectedInventoryItems.map((selected, index) => (
+                    <div key={`${selected.itemId}-${index}`} className="grid gap-3 md:grid-cols-[1.5fr_1fr_auto] items-end">
+                      <div>
+                        <label className="block text-sm font-medium mb-1" htmlFor={`inventory-item-${index}`}>Item</label>
+                        <select
+                          id={`inventory-item-${index}`}
+                          value={selected.itemId}
+                          onChange={e => setSelectedInventoryItems(prev => prev.map((item, idx) => idx === index ? { ...item, itemId: e.target.value } : item))}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                        >
+                          <option value="">Select item</option>
+                          {inventoryItems.map(item => (
+                            <option key={item._id} value={item._id}>
+                              {item.name} (Stock: {item.stock ?? 0})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium mb-1" htmlFor={`inventory-quantity-${index}`}>Quantity</label>
+                        <input
+                          id={`inventory-quantity-${index}`}
+                          type="number"
+                          min="1"
+                          value={selected.quantity}
+                          onChange={e => setSelectedInventoryItems(prev => prev.map((item, idx) => idx === index ? { ...item, quantity: Math.max(1, parseInt(e.target.value) || 1) } : item))}
+                          className="w-full border border-gray-300 rounded px-3 py-2"
+                        />
+                      </div>
+
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                          onClick={() => setSelectedInventoryItems(prev => prev.filter((_, idx) => idx !== index))}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="flex justify-end space-x-3 pt-4">
                   <Button
                     type="button"
-                    onClick={() => setShowExpenditureForm(false)}
+                    onClick={() => {
+                      setShowExpenditureForm(false);
+                      setSelectedInventoryItems([]);
+                    }}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                   >
                     Cancel

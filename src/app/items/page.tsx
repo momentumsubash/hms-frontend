@@ -26,6 +26,8 @@ interface Item {
   updatedAt: string;
   profitMarginBand?: string;
   comment?: string;
+  inventory?: boolean;
+  stock?: number;
 }
 
 interface PaginationInfo {
@@ -124,6 +126,8 @@ export default function ItemsPage() {
     price: "",
     category: "",
     isAvailable: true,
+    inventory: false,
+    stock: "0",
     profitMarginBand: "",
     comment: ""
   });
@@ -307,7 +311,9 @@ export default function ItemsPage() {
         price: parseFloat(formData.price),
         category: formData.category,
         isAvailable: formData.isAvailable,
-        hotel: hotelId
+        hotel: hotelId,
+        inventory: formData.inventory,
+        stock: formData.inventory ? formData.stock : 0
       };
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
@@ -372,7 +378,9 @@ export default function ItemsPage() {
         price: parseFloat(formData.price),
         category: formData.category,
         isAvailable: formData.isAvailable,
-        hotel: hotelId
+        hotel: hotelId,
+        inventory: formData.inventory,
+        stock: formData.inventory ? formData.stock : 0
       };
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
@@ -466,7 +474,9 @@ export default function ItemsPage() {
       category: "",
       isAvailable: true,
       profitMarginBand: "",
-      comment: ""
+      comment: "",
+      inventory: false,
+      stock: "0"
     });
     setFormErrors({});
   };
@@ -513,7 +523,9 @@ export default function ItemsPage() {
         category: typeof details.category === 'object' && details.category !== null ? details.category._id : details.category || "",
         isAvailable: details.isAvailable ?? true,
         profitMarginBand: details.profitMarginBand || "",
-        comment: details.comment || ""
+        comment: details.comment || "",
+        inventory: details.inventory ?? false,
+        stock: (details.stock ?? 0).toString()
       });
       setShowEditModal(true);
     } catch (e: any) {
@@ -523,7 +535,9 @@ export default function ItemsPage() {
         category: typeof item.category === 'object' && item.category !== null ? item.category._id : item.category,
         isAvailable: item.isAvailable,
         profitMarginBand: item.profitMarginBand || "",
-        comment: item.comment || ""
+        comment: item.comment || "",
+        inventory: item.inventory ?? false,
+        stock: (item.stock ?? 0).toString()
       });
       setShowEditModal(true);
     }
@@ -771,6 +785,7 @@ export default function ItemsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -787,6 +802,19 @@ export default function ItemsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">रु{item.price}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {item.inventory ? (
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            (item.stock ?? 0) <= 5 ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {item.stock ?? 0} in stock
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+                            N/A
+                          </span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           item.isAvailable 
@@ -817,7 +845,7 @@ export default function ItemsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-gray-500">
+                    <td colSpan={7} className="text-center py-8 text-gray-500">
                       {loading ? 'Loading items...' : 'No items found matching your criteria.'}
                     </td>
                   </tr>
@@ -945,6 +973,30 @@ export default function ItemsPage() {
                   <label className="flex items-center">
                     <input
                       type="checkbox"
+                      checked={formData.inventory}
+                      onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    Enable Inventory Tracking
+                  </label>
+                </div>
+                {formData.inventory && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Initial Stock</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.stock}
+                      onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Enter initial stock quantity"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
                       checked={formData.isAvailable}
                       onChange={(e) => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
                       className="mr-2"
@@ -1039,6 +1091,30 @@ export default function ItemsPage() {
                     placeholder="Optional comment"
                   />
                 </div>
+                <div>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData.inventory}
+                      onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    Enable Inventory Tracking
+                  </label>
+                </div>
+                {formData.inventory && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Current Stock</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.stock}
+                      onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Update stock quantity"
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="flex items-center">
                     <input

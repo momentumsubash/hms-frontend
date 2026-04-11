@@ -11,7 +11,8 @@ import {
   addNotificationRecipient, removeNotificationRecipient,
   toggleNotificationRecipient, testNotification,
   getEmailServiceStatus, updateHotelWebsite, 
-  addHotelDomain, removeHotelDomain
+  addHotelDomain, removeHotelDomain,
+  getItems
 } from "@/lib/api";
 import { getHotel } from "@/lib/api";
 import { createExpenditure, getExpenditures, approveExpenditure, rejectExpenditure } from "@/lib/expenditure";
@@ -846,6 +847,8 @@ export default function HotelsPage() {
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [selectedHotel, setSelectedHotel] = useState<Hotel | null>(null);
   const [showExpenditureModal, setShowExpenditureModal] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState<Array<{ _id: string; name: string; stock: number }>>([]);
+  const [selectedInventoryItems, setSelectedInventoryItems] = useState<Array<{ itemId: string; quantity: number }>>([]);
   const [balanceAmount, setBalanceAmount] = useState(0);
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [showPrinterModal, setShowPrinterModal] = useState(false);
@@ -871,6 +874,34 @@ export default function HotelsPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    const loadInventoryItems = async () => {
+      try {
+        if (!selectedHotel) {
+          setInventoryItems([]);
+          return;
+        }
+
+        const params: Record<string, any> = { inventory: true };
+        if (selectedHotel?._id) {
+          params.hotel = selectedHotel._id;
+        }
+
+        const response = await getItems(params);
+        if (response?.data) {
+          setInventoryItems(response.data.map((item: any) => ({ _id: item._id, name: item.name, stock: item.stock || 0 })));
+        }
+      } catch (error) {
+        console.error('Error loading inventory items:', error);
+        setInventoryItems([]);
+      }
+    };
+
+    if (showExpenditureModal) {
+      loadInventoryItems();
+    }
+  }, [showExpenditureModal, selectedHotel]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [notificationSettings, setNotificationSettings] = useState({
     dailyReport: { enabled: true, time: "18:00", recipients: [] },
@@ -1052,10 +1083,16 @@ export default function HotelsPage() {
   const handleCreateExpenditure = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createExpenditure({ ...newExpenditure, hotel: selectedHotel?._id || "" } as any);
+      await createExpenditure({
+        ...newExpenditure,
+        hotel: selectedHotel?._id || "",
+        isInventoryAddition: selectedInventoryItems.length > 0,
+        inventoryItems: selectedInventoryItems.map(item => ({ item: item.itemId, quantity: item.quantity }))
+      } as any);
       setShowExpenditureModal(false);
       loadExpenditures();
       setNewExpenditure({ amount: 0, category: "supplies", description: "", date: new Date().toISOString(), notes: "" });
+      setSelectedInventoryItems([]);
     } catch (e: any) {
       setError(e.message);
     }
@@ -2319,6 +2356,70 @@ export default function HotelsPage() {
           rows={2}
           placeholder="Additional notes"
         />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label>Inventory Items</Label>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setSelectedInventoryItems(prev => ([
+              ...prev,
+              { itemId: inventoryItems.length > 0 ? inventoryItems[0]._id : '', quantity: 1 }
+            ]))}
+          >
+            Add Item
+          </Button>
+        </div>
+
+        {selectedInventoryItems.length === 0 && (
+          <p className="text-sm text-gray-500">Select inventory-enabled items to add quantities to stock when this expenditure is created.</p>
+        )}
+
+        {selectedInventoryItems.map((selected, index) => (
+          <div key={`${selected.itemId}-${index}`} className="grid gap-3 md:grid-cols-[1.5fr_1fr_auto]">
+            <div>
+              <Label htmlFor={`inventory-item-${index}`}>Item</Label>
+              <Select
+                value={selected.itemId}
+                onValueChange={(value) => setSelectedInventoryItems(prev => prev.map((item, idx) => idx === index ? { ...item, itemId: value } : item))}
+              >
+                <SelectTrigger id={`inventory-item-${index}`}>
+                  <SelectValue placeholder="Choose item" />
+                </SelectTrigger>
+                <SelectContent>
+                  {inventoryItems.map((item) => (
+                    <SelectItem key={item._id} value={item._id}>
+                      {item.name} (Stock: {item.stock})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor={`inventory-quantity-${index}`}>Quantity</Label>
+              <Input
+                id={`inventory-quantity-${index}`}
+                type="number"
+                min={1}
+                value={selected.quantity}
+                onChange={(e) => setSelectedInventoryItems(prev => prev.map((item, idx) => idx === index ? { ...item, quantity: Math.max(1, parseInt(e.target.value) || 1) } : item))}
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setSelectedInventoryItems(prev => prev.filter((_, idx) => idx !== index))}
+              >
+                Remove
+              </Button>
+            </div>
+          </div>
+        ))}
       </div>
 
       <DialogFooter>
