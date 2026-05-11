@@ -915,23 +915,50 @@ export default function GuestsPage() {
 
       if (editingGuest) {
         const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
-        const storedUser = localStorage.getItem('user');
         let hotelId = '';
 
-        if (storedUser) {
-          try {
-            const userData = JSON.parse(storedUser);
-            hotelId = userData.hotel._id || user?.hotel._id || '';
-          } catch (e) {
-            console.error('Error parsing user data from localStorage:', e);
-            hotelId = user?.hotel._id || '';
+        // Try to get hotel ID from multiple sources with proper structure handling
+        try {
+          // First try the useAuth context user object
+          if (user?.hotel) {
+            // Handle both string ID and object with _id
+            hotelId = typeof user.hotel === 'string' ? user.hotel : user.hotel._id || user.hotel.id || '';
           }
-        } else {
-          hotelId = user?.hotel._id || '';
+
+          // If not found, try localStorage
+          if (!hotelId) {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+              try {
+                const userData = JSON.parse(storedUser);
+                if (userData.hotel) {
+                  hotelId = typeof userData.hotel === 'string' ? userData.hotel : userData.hotel._id || userData.hotel.id || '';
+                }
+              } catch (parseError) {
+                console.error('Error parsing user data from localStorage:', parseError);
+              }
+            }
+          }
+
+          // If still not found, try to fetch current user data
+          if (!hotelId) {
+            console.warn('Hotel ID not found in context or localStorage, fetching fresh user data...');
+            try {
+              const freshUserData = await getMe();
+              if (freshUserData?.data?.hotel) {
+                const hotelField = freshUserData.data.hotel;
+                hotelId = typeof hotelField === 'string' ? hotelField : hotelField._id || hotelField.id || '';
+              }
+            } catch (fetchError) {
+              console.error('Error fetching user data:', fetchError);
+            }
+          }
+        } catch (e) {
+          console.error('Error retrieving hotel ID:', e);
         }
 
         if (!hotelId) {
-          throw new Error("Hotel ID is required. Please contact your administrator.");
+          throw new Error("Hotel ID is required. Please contact your administrator. Make sure you are logged in properly.");
         }
 
         const updatePayload: any = {
@@ -963,23 +990,50 @@ export default function GuestsPage() {
         resp = await updateGuest(editingGuest._id, updatePayload);
       } else {
         const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
-        const storedUser = localStorage.getItem('user');
         let hotelId = '';
 
-        if (storedUser) {
-          try {
-            const userData = JSON.parse(storedUser);
-            hotelId = userData.hotel || user?.hotel || '';
-          } catch (e) {
-            console.error('Error parsing user data from localStorage:', e);
-            hotelId = user?.hotel || '';
+        // Try to get hotel ID from multiple sources with proper structure handling
+        try {
+          // First try the useAuth context user object
+          if (user?.hotel) {
+            // Handle both string ID and object with _id
+            hotelId = typeof user.hotel === 'string' ? user.hotel : user.hotel._id || user.hotel.id || '';
           }
-        } else {
-          hotelId = user?.hotel || '';
+
+          // If not found, try localStorage
+          if (!hotelId) {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+              try {
+                const userData = JSON.parse(storedUser);
+                if (userData.hotel) {
+                  hotelId = typeof userData.hotel === 'string' ? userData.hotel : userData.hotel._id || userData.hotel.id || '';
+                }
+              } catch (parseError) {
+                console.error('Error parsing user data from localStorage:', parseError);
+              }
+            }
+          }
+
+          // If still not found, try to fetch current user data
+          if (!hotelId) {
+            console.warn('Hotel ID not found in context or localStorage, fetching fresh user data...');
+            try {
+              const freshUserData = await getMe();
+              if (freshUserData?.data?.hotel) {
+                const hotelField = freshUserData.data.hotel;
+                hotelId = typeof hotelField === 'string' ? hotelField : hotelField._id || hotelField.id || '';
+              }
+            } catch (fetchError) {
+              console.error('Error fetching user data:', fetchError);
+            }
+          }
+        } catch (e) {
+          console.error('Error retrieving hotel ID:', e);
         }
 
         if (!hotelId) {
-          throw new Error("Hotel ID is required. Please contact your administrator.");
+          throw new Error("Hotel ID is required. Please contact your administrator. Make sure you are logged in properly.");
         }
 
         const createPayload: any = {
@@ -1129,15 +1183,21 @@ export default function GuestsPage() {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
       
-      // Fetch available rooms
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100&isoccupied=false`, {
-        headers: getRequestHeaders(token),
+      // Fetch available rooms - use /available endpoint with cache-busting headers
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/available`, {
+        headers: {
+          ...getRequestHeaders(token),
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        },
       });
       if (!res.ok) throw new Error("Failed to fetch available rooms");
       const response = await res.json();
 
       let availableRoomsData: Room[] = [];
-      if (response && isAPIResponse<Room[]>(response)) {
+      if (response && response.data && response.data.rooms) {
+        availableRoomsData = Array.isArray(response.data.rooms) ? response.data.rooms : [];
+      } else if (response && isAPIResponse<Room[]>(response)) {
         availableRoomsData = Array.isArray(response.data) ? response.data : [];
       } else if (Array.isArray(response)) {
         availableRoomsData = response;

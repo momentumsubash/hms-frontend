@@ -265,8 +265,13 @@ export async function getRooms(params: Record<string, any> = {}) {
 }
 
 export async function getAvailableRooms() {
+  // Cache control headers ensure fresh data from server
   const res = await fetch(`${API_URL}/rooms/available`, {
-    headers: mergeHeaders({}, getAuthHeaders())
+    headers: {
+      ...mergeHeaders({}, getAuthHeaders()),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache'
+    }
   });
   if (res.status === 401) {
     localStorage.removeItem('token');

@@ -95,7 +95,6 @@ export default function CheckoutsPage() {
   // Discount states
   const [roomDiscount, setRoomDiscount] = useState<string>("0");
   const [orderDiscount, setOrderDiscount] = useState<string>("0");
-  const [extraDiscount, setExtraDiscount] = useState<string>("0");
   const [discountNote, setDiscountNote] = useState<string>("");
 
   // Calculated bill summary state - UPDATED with new fields
@@ -105,7 +104,6 @@ export default function CheckoutsPage() {
     extraCharges: 0,
     roomDiscount: 0,
     orderDiscount: 0,
-    extraDiscount: 0,
     roomNet: 0,
     orderNet: 0,
     subtotalBeforeExtraDiscount: 0,
@@ -170,10 +168,6 @@ export default function CheckoutsPage() {
       errors.orderDiscount = 'Order discount cannot be negative';
     }
 
-    if (extraDiscount && Number(extraDiscount) < 0) {
-      errors.extraDiscount = 'Extra discount cannot be negative';
-    }
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -187,12 +181,11 @@ export default function CheckoutsPage() {
       
       const roomDisc = Number(roomDiscount) || 0;
       const orderDisc = Number(orderDiscount) || 0;
-      const extraDisc = Number(extraDiscount) || 0;
       
       const roomNet = roomCharges - roomDisc;
       const orderNet = orderCharges - orderDisc;
       const subtotalBeforeExtraDiscount = roomNet + orderNet + extraCharges;
-      const subtotalAfterExtraDiscount = subtotalBeforeExtraDiscount - extraDisc;
+      const subtotalAfterExtraDiscount = subtotalBeforeExtraDiscount;
       
       const vatPercent = Number(editVatPercent) || editCheckout.vatPercent || 0;
       const vatAmount = Number(editVatAmount) || (subtotalAfterExtraDiscount * vatPercent / 100) || 0;
@@ -207,7 +200,6 @@ export default function CheckoutsPage() {
         extraCharges,
         roomDiscount: roomDisc,
         orderDiscount: orderDisc,
-        extraDiscount: extraDisc,
         roomNet,
         orderNet,
         subtotalBeforeExtraDiscount,
@@ -220,7 +212,7 @@ export default function CheckoutsPage() {
         discountNote: discountNote || ""
       });
     }
-  }, [editCheckout, roomDiscount, orderDiscount, extraDiscount, editVatPercent, editVatAmount, advanceAmount, discountNote]);
+  }, [editCheckout, roomDiscount, orderDiscount, editVatPercent, editVatAmount, advanceAmount, discountNote]);
 
   // Paper type selection for printing
   const [paperType, setPaperType] = useState<"a4" | "a5" | "thermal">("a4");
@@ -318,12 +310,11 @@ export default function CheckoutsPage() {
     const totalExtraCharge = parseNumber(checkout.totalExtraCharge);
     const roomDisc = parseNumber(checkout.roomDiscount);
     const orderDisc = parseNumber(checkout.orderDiscount);
-    const extraDisc = parseNumber(checkout.extraDiscount);
     const vatAmount = parseNumber(checkout.vatAmount);
 
     const roomNet = Math.max(0, totalRoomCharge - roomDisc);
     const orderNet = Math.max(0, totalOrderCharge - orderDisc);
-    const extraNet = Math.max(0, totalExtraCharge - extraDisc);
+    const extraNet = totalExtraCharge;
     const subtotal = roomNet + orderNet + extraNet;
     const totalBeforeAdvance = subtotal + vatAmount;
     const advancePaid = parseNumber(checkout.advancePaid);
@@ -340,7 +331,7 @@ export default function CheckoutsPage() {
     const totalExtraCharge = parseNumber(editCheckout.totalExtraCharge);
     const roomDisc = roomDiscount !== '' ? parseNumber(roomDiscount) : parseNumber(editCheckout.roomDiscount);
     const orderDisc = orderDiscount !== '' ? parseNumber(orderDiscount) : parseNumber(editCheckout.orderDiscount);
-    const extraDisc = extraDiscount !== '' ? parseNumber(extraDiscount) : parseNumber(editCheckout.extraDiscount);
+    const extraDisc = 0; // Extra discount is not currently implemented
     const advancePaid = parseNumber(advanceAmount !== '' ? advanceAmount : editCheckout.advancePaid);
 
     const roomNet = Math.max(0, totalRoomCharge - roomDisc);
@@ -888,10 +879,6 @@ export default function CheckoutsPage() {
         checkOutDate,
         paymentMethod,
         advancePaymentMethod,
-        // Discount fields
-        roomDiscount: parseFloat(roomDiscount) || 0,
-        orderDiscount: parseFloat(orderDiscount) || 0,
-        extraDiscount: parseFloat(extraDiscount) || 0,
         discountNote: discountNote || undefined
       };
 
@@ -901,9 +888,6 @@ export default function CheckoutsPage() {
       }
       if (orderDiscount !== "") {
         payload.orderDiscount = parseFloat(orderDiscount) || 0;
-      }
-      if (extraDiscount !== "") {
-        payload.extraDiscount = parseFloat(extraDiscount) || 0;
       }
       // Add payment details if provided
       if (paymentMethod === "online" && paymentDetails.transactionId) {
@@ -957,7 +941,6 @@ export default function CheckoutsPage() {
             checkOutDate,
             roomDiscount: roomDiscount !== "" ? parseFloat(roomDiscount) : undefined,
             orderDiscount: orderDiscount !== "" ? parseFloat(orderDiscount) : undefined,
-            extraDiscount: extraDiscount !== "" ? parseFloat(extraDiscount) : undefined,
             vatPercent: editVatPercent !== "" ? parseFloat(editVatPercent) : undefined,
             vatAmount: editVatAmount !== "" ? parseFloat(editVatAmount) : undefined,
             clientVatInfo: clientVatNumber || clientVatCompany || clientVatAddress ? {
@@ -1227,7 +1210,6 @@ export default function CheckoutsPage() {
                               setCheckOutDate(checkout.checkOutDate ? checkout.checkOutDate.slice(0, 10) : "");
                               setRoomDiscount(checkout.roomDiscount?.toString() || "");
                               setOrderDiscount(checkout.orderDiscount?.toString() || "");
-                              setExtraDiscount(checkout.extraDiscount?.toString() || "");
                               setPaymentMethod(checkout.paymentMethod || "cash");
                               setAdvancePaymentMethod(checkout.advancePaymentMethod || "cash");
                               setPaymentDetails(checkout.paymentDetails || {
@@ -1244,7 +1226,6 @@ export default function CheckoutsPage() {
                               // Set discount values
                               setRoomDiscount(checkout.roomDiscount?.toString() || "0");
                               setOrderDiscount(checkout.orderDiscount?.toString() || "0");
-                              setExtraDiscount(checkout.extraDiscount?.toString() || "0");
                               setDiscountNote(checkout.discountNote || "");
                               setShowEdit(true);
                               setEditError("");
@@ -1605,7 +1586,7 @@ export default function CheckoutsPage() {
                   {/* Discount Section */}
                   <div className="border-t pt-4">
                     <h4 className="text-lg font-semibold mb-3">Discounts</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label htmlFor="roomDiscount" className="block text-sm font-medium text-gray-700 mb-1">Room Discount (रु)</label>
                         <input
@@ -1621,7 +1602,7 @@ export default function CheckoutsPage() {
                         {formErrors.roomDiscount && <p className="text-red-600 text-sm mt-1">{formErrors.roomDiscount}</p>}
                       </div>
                       <div>
-                        <label htmlFor="orderDiscount" className="block text-sm font-medium text-gray-700 mb-1">Item/Order Discount (रु)</label>
+                        <label htmlFor="orderDiscount" className="block text-sm font-medium text-gray-700 mb-1">Order Discount (रु)</label>
                         <input
                           type="number"
                           step="0.01"
@@ -1630,11 +1611,11 @@ export default function CheckoutsPage() {
                           value={orderDiscount}
                           onChange={(e) => setOrderDiscount(e.target.value)}
                           className={`w-full border rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500 ${formErrors.orderDiscount ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                          placeholder="Enter item discount amount"
+                          placeholder="Enter order discount amount"
                         />
                         {formErrors.orderDiscount && <p className="text-red-600 text-sm mt-1">{formErrors.orderDiscount}</p>}
                       </div>
-                      <div>
+                      {/* <div>
                         <label htmlFor="extraDiscount" className="block text-sm font-medium text-gray-700 mb-1">Extra Discount (रु)</label>
                         <input
                           type="number"
@@ -1647,7 +1628,7 @@ export default function CheckoutsPage() {
                           placeholder="Enter extra discount amount"
                         />
                         {formErrors.extraDiscount && <p className="text-red-600 text-sm mt-1">{formErrors.extraDiscount}</p>}
-                      </div>
+                      </div> */}
                     </div>
                   </div>
 
@@ -2297,7 +2278,7 @@ export default function CheckoutsPage() {
                         
                         {detailsCheckout?.breakdown?.orderDiscount > 0 && (
                           <tr>
-                            <td style={{ textAlign: 'right' }}>Item Discount</td>
+                            <td style={{ textAlign: 'right' }}>Order Discount</td>
                             <td style={{ textAlign: 'right' }}>-₹{detailsCheckout.breakdown.orderDiscount?.toLocaleString()}</td>
                           </tr>
                         )}
