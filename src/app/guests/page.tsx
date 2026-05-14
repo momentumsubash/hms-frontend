@@ -1155,62 +1155,75 @@ export default function GuestsPage() {
     }
   };
 
-  const handleAddNewGuest = async () => {
-    setFormData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      address: "",
-      idNo: "",
-      occupation: "",
-      vehicleNo: "",
-      noOfAdditionalGuests: "0",
-      additionalGuests: [],
-      purposeOfStay: "",
-      referrer: "",
-      existingCustomer: false,
-      rooms: [],
-      roomDiscount: "0",
-      advancePaid: "0",
-      checkInDate: getCurrentDateTimeLocal(),
-      checkOutDate: ""
+const handleAddNewGuest = async () => {
+  setFormData({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    idNo: "",
+    occupation: "",
+    vehicleNo: "",
+    noOfAdditionalGuests: "0",
+    additionalGuests: [],
+    purposeOfStay: "",
+    referrer: "",
+    existingCustomer: false,
+    rooms: [],
+    roomDiscount: "0",
+    advancePaid: "0",
+    checkInDate: getCurrentDateTimeLocal(),
+    checkOutDate: ""
+  });
+  setFormErrors({});
+  setExistingGuest(null);
+  setGuestSearchMessage("");
+  try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) throw new Error("No authentication token");
+    
+    // Fetch available rooms - FIXED with proper CORS headers
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/available`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Origin': window.location.origin  // Add the Origin header
+      },
+      credentials: 'include'  // Add credentials if needed
     });
-    setFormErrors({});
-    setExistingGuest(null);
-    setGuestSearchMessage("");
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) throw new Error("No authentication token");
-      
-      // Fetch available rooms - use /available endpoint with cache-busting headers
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/available`, {
-        headers: {
-          ...getRequestHeaders(token),
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        },
-      });
-      if (!res.ok) throw new Error("Failed to fetch available rooms");
-      const response = await res.json();
-
-      let availableRoomsData: Room[] = [];
-      if (response && response.data && response.data.rooms) {
-        availableRoomsData = Array.isArray(response.data.rooms) ? response.data.rooms : [];
-      } else if (response && isAPIResponse<Room[]>(response)) {
-        availableRoomsData = Array.isArray(response.data) ? response.data : [];
-      } else if (Array.isArray(response)) {
-        availableRoomsData = response;
-      }
-      setAvailableRooms(availableRoomsData);
-
-      // Fetch referrers
-      await fetchReferrers();
-    } catch (e) {
-      setAvailableRooms([]);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('Response error:', res.status, errorText);
+      throw new Error(`Failed to fetch available rooms: ${res.status}`);
     }
-    setShowForm(true);
-  };
+    
+    const response = await res.json();
+    console.log('Available rooms response:', response); // Debug log
+
+    let availableRoomsData: Room[] = [];
+    if (response && response.data && response.data.rooms) {
+      availableRoomsData = Array.isArray(response.data.rooms) ? response.data.rooms : [];
+    } else if (response && isAPIResponse<Room[]>(response)) {
+      availableRoomsData = Array.isArray(response.data) ? response.data : [];
+    } else if (Array.isArray(response)) {
+      availableRoomsData = response;
+    }
+    setAvailableRooms(availableRoomsData);
+
+    // Fetch referrers
+    await fetchReferrers();
+  } catch (e) {
+    console.error('Error fetching available rooms:', e);
+    setAvailableRooms([]);
+    setNotification({ type: 'error', message: 'Failed to load available rooms' });
+  }
+  setShowForm(true);
+};
 
   const handleCheckInDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newCheckInDate = e.target.value;
