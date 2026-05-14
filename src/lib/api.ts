@@ -764,7 +764,6 @@ export async function getGuest(id: string) {
 
 export async function getDueCustomers(params: Record<string, any> = {}) {
   const queryParams = new URLSearchParams({
-    existingCustomer: 'true',
     hasDue: 'true',
     limit: '100',
     ...params
@@ -774,7 +773,7 @@ export async function getDueCustomers(params: Record<string, any> = {}) {
     headers: mergeHeaders({}, getAuthHeaders()),
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 || res.status === 403) {
     localStorage.removeItem('token');
     window.location.href = '/login';
     return;

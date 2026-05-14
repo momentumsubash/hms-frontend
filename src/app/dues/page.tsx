@@ -31,7 +31,6 @@ interface Guest {
 
 const getCurrentDateTimeLocal = () => {
   const now = new Date();
-  now.setMinutes(now.getMinutes() + 5);
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
@@ -73,13 +72,23 @@ export default function DuesManagementPage() {
         setDueGuests(response.data || []);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load due customers.");
+      const message = err?.message || "Failed to load due customers.";
+      if (typeof window !== 'undefined' && /(not authenticated|unauthorized|401|403)/i.test(message)) {
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+        return;
+      }
+      setError(message);
     } finally {
       setLoadingData(false);
     }
   };
 
   useEffect(() => {
+    if (!loading && !user) {
+      window.location.href = '/login';
+      return;
+    }
     if (!loading && user) {
       loadDueCustomers();
     }
@@ -112,10 +121,24 @@ export default function DuesManagementPage() {
         throw new Error("Enter a valid payment amount.");
       }
 
+      const description = transactionPayload.description?.trim();
+      if (!description) {
+        throw new Error("Description is required.");
+      }
+
+      const selectedDate = new Date(transactionPayload.date);
+      const now = new Date();
+      if (isNaN(selectedDate.getTime())) {
+        throw new Error("Enter a valid payment date.");
+      }
+      if (selectedDate > now) {
+        throw new Error("Payment date cannot be in the future.");
+      }
+
       const transaction = {
         amount,
         paymentMethod: transactionPayload.paymentMethod,
-        description: transactionPayload.description,
+        description,
         date: transactionPayload.date
       };
 
@@ -306,13 +329,16 @@ export default function DuesManagementPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    value={transactionPayload.description}
-                    onChange={(e) => setTransactionPayload({ ...transactionPayload, description: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    rows={3}
-                    placeholder="Add a description or note"
+                <label className="block text-sm font-medium mb-1">
+                  Description <span className="text-red-600">*</span>
+                </label>
+                <textarea
+                  value={transactionPayload.description}
+                  onChange={(e) => setTransactionPayload({ ...transactionPayload, description: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  rows={3}
+                  placeholder="Add a description or note"
+                  required
                   />
                 </div>
                 <div className="flex justify-end gap-3">
