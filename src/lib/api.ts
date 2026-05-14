@@ -265,8 +265,13 @@ export async function getRooms(params: Record<string, any> = {}) {
 }
 
 export async function getAvailableRooms() {
+  // Cache control headers ensure fresh data from server
   const res = await fetch(`${API_URL}/rooms/available`, {
-    headers: mergeHeaders({}, getAuthHeaders())
+    headers: {
+      ...mergeHeaders({}, getAuthHeaders()),
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache'
+    }
   });
   if (res.status === 401) {
     localStorage.removeItem('token');
@@ -759,7 +764,6 @@ export async function getGuest(id: string) {
 
 export async function getDueCustomers(params: Record<string, any> = {}) {
   const queryParams = new URLSearchParams({
-    existingCustomer: 'true',
     hasDue: 'true',
     limit: '100',
     ...params
@@ -769,7 +773,7 @@ export async function getDueCustomers(params: Record<string, any> = {}) {
     headers: mergeHeaders({}, getAuthHeaders()),
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 || res.status === 403) {
     localStorage.removeItem('token');
     window.location.href = '/login';
     return;
