@@ -116,12 +116,12 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
   if (!displayUser) return null;
 
   return (
-    <nav className={`sticky top-0 z-50 bg-white transition-shadow ${mounted && scrolled ? 'shadow-lg' : 'shadow'}`}>
+    <nav data-cy="navbar" className={`sticky top-0 z-50 bg-white transition-shadow ${mounted && scrolled ? 'shadow-lg' : 'shadow'}`}>
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo/Brand */}
           <div className="flex-shrink-0">
-            <Link href="/dashboard" className="font-bold text-lg sm:text-xl text-primary hover:text-primary-dark transition-colors">
+            <Link data-cy="nav-brand" href="/dashboard" className="font-bold text-lg sm:text-xl text-primary hover:text-primary-dark transition-colors">
               Hotel HMS
             </Link>
           </div>
@@ -132,6 +132,7 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
               <Link
                 key={link.href}
                 href={link.href}
+                data-cy={`nav-link-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
                 className="text-gray-700 hover:text-primary hover:bg-gray-50 font-medium px-2 xl:px-3 py-2 rounded-md text-sm xl:text-base transition-all whitespace-nowrap"
               >
                 {nepaliFlag && link.np ? (
@@ -152,6 +153,7 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
             {/* User button */}
             <div className="relative">
               <button
+                data-cy="nav-user-menu-btn"
                 className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg hover:bg-gray-100 border border-gray-200 transition-colors"
                 onClick={() => setShowUserMenu(!showUserMenu)}
               >
@@ -173,7 +175,7 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
               
               {/* User dropdown menu */}
               {showUserMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                <div data-cy="nav-user-dropdown" className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
                   <div className="px-4 py-2 border-b border-gray-100">
                     <p className="text-sm font-medium text-gray-900">
                       {displayUser?.firstName || displayUser?.lastName
@@ -184,6 +186,7 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
                     <p className="text-xs text-gray-500 truncate">{displayUser?.email}</p>
                   </div>
                   <button
+                    data-cy="nav-logout-btn"
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                     onClick={async () => {
                       setShowUserMenu(false);
@@ -199,6 +202,7 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
 
             {/* Mobile menu button - Only visible on mobile/tablet */}
             <button
+              data-cy="nav-mobile-menu-btn"
               className="lg:hidden inline-flex items-center justify-center p-2 rounded-lg text-gray-700 hover:text-primary hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-expanded={mobileMenuOpen}
@@ -260,7 +264,7 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
       </div>
 
       {/* Mobile/Tablet Navigation Menu */}
-      <div className={`lg:hidden transition-all duration-300 ease-in-out overflow-hidden ${
+      <div data-cy="nav-mobile-menu" className={`lg:hidden transition-all duration-300 ease-in-out overflow-hidden ${
         mobileMenuOpen ? 'max-h-[calc(100vh-4rem)] opacity-100' : 'max-h-0 opacity-0'
       }`}>
         <div className="px-4 sm:px-6 py-3 bg-white border-t border-gray-200 shadow-inner">
@@ -269,6 +273,7 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
               <Link
                 key={link.href}
                 href={link.href}
+                data-cy={`nav-mobile-link-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
                 className="text-gray-700 hover:text-primary hover:bg-gray-50 font-medium px-3 py-2.5 rounded-lg text-sm transition-colors text-center border border-gray-100 hover:border-primary"
                 onClick={() => setMobileMenuOpen(false)}
               >

@@ -495,10 +495,11 @@ export default function ReferrersPage() {
         nepaliFlag={hotel?.nepaliFlag}
       />
 
-      <div className="max-w-9xl mx-auto p-6">
+      <div data-cy="referrers-page" className="max-w-9xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Referrers Management</h1>
           <button
+            data-cy="referrers-add-btn"
             onClick={() => setShowForm(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
@@ -517,7 +518,7 @@ export default function ReferrersPage() {
         <div className="bg-white p-4 rounded-lg shadow mb-6">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-lg font-semibold">Filters</h3>
-            <button onClick={clearFilters} className="text-blue-600 hover:text-blue-800 underline text-sm">
+            <button data-cy="referrers-clear-filters" onClick={clearFilters} className="text-blue-600 hover:text-blue-800 underline text-sm">
               Clear Filters
             </button>
           </div>
@@ -525,6 +526,7 @@ export default function ReferrersPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Status</label>
               <select
+                data-cy="referrers-status-filter"
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
@@ -538,6 +540,7 @@ export default function ReferrersPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Search</label>
               <input
+                data-cy="referrers-search"
                 type="text"
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -549,25 +552,25 @@ export default function ReferrersPage() {
         </div>
 
         {/* Stats Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div data-cy="referrers-stats" className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-blue-600">{totalReferrers}</div>
+            <div data-cy="referrers-stat-total" className="text-2xl font-bold text-blue-600">{totalReferrers}</div>
             <div className="text-sm text-gray-600">Total Referrers</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-green-600">
+            <div data-cy="referrers-stat-active" className="text-2xl font-bold text-green-600">
               {referrers.filter(r => r.status === 'active').length}
             </div>
             <div className="text-sm text-gray-600">Active</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-yellow-600">
+            <div data-cy="referrers-stat-amount-to-receive" className="text-2xl font-bold text-yellow-600">
               {referrers.reduce((sum, r) => sum + r.totalAmountToReceive, 0).toLocaleString()}
             </div>
             <div className="text-sm text-gray-600">Amount to Receive</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-purple-600">
+            <div data-cy="referrers-stat-amount-received" className="text-2xl font-bold text-purple-600">
               {referrers.reduce((sum, r) => sum + r.totalAmountReceived, 0).toLocaleString()}
             </div>
             <div className="text-sm text-gray-600">Amount Received</div>
@@ -575,9 +578,9 @@ export default function ReferrersPage() {
         </div>
 
         {/* Referrers Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div data-cy="referrers-table-container" className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table data-cy="referrers-table" className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Referrer</th>
@@ -588,9 +591,9 @@ export default function ReferrersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {referrers.map((referrer) => (
-                  <tr key={referrer._id} className="hover:bg-gray-50">
+              <tbody data-cy="referrers-table-body" className="bg-white divide-y divide-gray-200">
+                {referrers.map((referrer, index) => (
+                  <tr key={referrer._id} data-cy={`referrers-row-${index}`} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{referrer.fullName}</div>
                       <div className="text-sm text-gray-500">रु{referrer.referralPrice}/guest</div>
@@ -611,6 +614,7 @@ export default function ReferrersPage() {
                     </td>
                     <td className="px-6 py-4">
                       <select
+                        data-cy={`referrers-status-select-${index}`}
                         value={referrer.status}
                         onChange={(e) => handleStatusChange(referrer._id, e.target.value as 'active' | 'inactive' | 'paid')}
                         className={`text-xs font-medium px-2 py-1 rounded ${referrer.status === 'active' ? 'bg-green-100 text-green-800' :
@@ -632,6 +636,7 @@ export default function ReferrersPage() {
                     </td>
                     <td className="px-6 py-4 space-x-2">
                       <button
+                        data-cy={`referrers-edit-btn-${index}`}
                         onClick={() => handleEdit(referrer)}
                         className="text-indigo-600 hover:text-indigo-900 text-sm"
                       >
@@ -639,6 +644,7 @@ export default function ReferrersPage() {
                       </button>
                       {referrer.totalAmountToReceive > 0 && (
                         <button
+                          data-cy={`referrers-pay-btn-${index}`}
                           onClick={() => handlePayment(referrer)}
                           className="text-green-600 hover:text-green-900 text-sm"
                         >
@@ -646,6 +652,7 @@ export default function ReferrersPage() {
                         </button>
                       )}
                       <button
+                        data-cy={`referrers-delete-btn-${index}`}
                         onClick={() => handleDelete(referrer._id)}
                         className="text-red-600 hover:text-red-900 text-sm"
                       >
@@ -681,7 +688,7 @@ export default function ReferrersPage() {
 
         {/* Add/Edit Referrer Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div data-cy="referrers-form-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
               <h2 className="text-2xl font-bold mb-4">
                 {editingReferrer ? "Edit Referrer" : "Add New Referrer"}
@@ -690,6 +697,7 @@ export default function ReferrersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Full Name *</label>
                   <input
+                    data-cy="referrers-form-name"
                     type="text"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
@@ -701,6 +709,7 @@ export default function ReferrersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Address</label>
                   <textarea
+                    data-cy="referrers-form-address"
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     className={`w-full border rounded px-3 py-2 ${formErrors.address ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
@@ -711,6 +720,7 @@ export default function ReferrersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">ID Number</label>
                   <input
+                    data-cy="referrers-form-idno"
                     type="text"
                     value={formData.idNo}
                     onChange={(e) => setFormData({ ...formData, idNo: e.target.value })}
@@ -721,6 +731,7 @@ export default function ReferrersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Taxi Number</label>
                   <input
+                    data-cy="referrers-form-taxino"
                     type="text"
                     value={formData.taxiNo}
                     onChange={(e) => setFormData({ ...formData, taxiNo: e.target.value })}
@@ -731,6 +742,7 @@ export default function ReferrersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Referral Price (रु) *</label>
                   <input
+                    data-cy="referrers-form-price"
                     type="number"
                     value={formData.referralPrice}
                     onChange={(e) => setFormData({ ...formData, referralPrice: e.target.value })}
@@ -743,6 +755,7 @@ export default function ReferrersPage() {
                 </div>
                 <div className="flex justify-end space-x-3">
                   <button
+                    data-cy="referrers-form-cancel"
                     type="button"
                     onClick={resetForm}
                     className="px-4 py-2 border border-gray-300 rounded"
@@ -750,6 +763,7 @@ export default function ReferrersPage() {
                     Cancel
                   </button>
                   <button
+                    data-cy="referrers-form-submit"
                     type="submit"
                     disabled={formLoading}
                     className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
@@ -764,7 +778,7 @@ export default function ReferrersPage() {
 
         {/* Payment Modal */}
         {showPaymentForm && payingReferrer && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div data-cy="referrers-payment-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
               <h2 className="text-2xl font-bold mb-4">Process Payment</h2>
               <div className="mb-4">
@@ -776,6 +790,7 @@ export default function ReferrersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Payment Method *</label>
                   <select
+                    data-cy="referrers-payment-method"
                     value={paymentFormData.paymentMethod}
                     onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentMethod: e.target.value as 'cash' | 'online' })}
                     className="w-full border border-gray-300 rounded px-3 py-2"
@@ -788,6 +803,7 @@ export default function ReferrersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Payment Date *</label>
                   <input
+                    data-cy="referrers-payment-date"
                     type="date"
                     value={paymentFormData.paymentDate}
                     onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentDate: e.target.value })}
@@ -798,6 +814,7 @@ export default function ReferrersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Notes</label>
                   <textarea
+                    data-cy="referrers-payment-notes"
                     value={paymentFormData.notes}
                     onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
                     className="w-full border border-gray-300 rounded px-3 py-2"
@@ -806,6 +823,7 @@ export default function ReferrersPage() {
                 </div>
                 <div className="flex justify-end space-x-3">
                   <button
+                    data-cy="referrers-payment-cancel"
                     type="button"
                     onClick={resetPaymentForm}
                     className="px-4 py-2 border border-gray-300 rounded"
@@ -813,6 +831,7 @@ export default function ReferrersPage() {
                     Cancel
                   </button>
                   <button
+                    data-cy="referrers-payment-submit"
                     type="submit"
                     disabled={paymentLoading}
                     className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"

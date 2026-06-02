@@ -27,9 +27,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-full max-w-sm space-y-4">
+      <form data-cy="login-form" onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-full max-w-sm space-y-4">
         <h1 className="text-2xl font-bold mb-2">Login</h1>
         <input
+          data-cy="login-email"
           type="email"
           placeholder="Email"
           value={email}
@@ -38,6 +39,7 @@ export default function LoginPage() {
           required
         />
         <input
+          data-cy="login-password"
           type="password"
           placeholder="Password"
           value={password}
@@ -45,8 +47,8 @@ export default function LoginPage() {
           className="w-full border rounded px-3 py-2"
           required
         />
-        {error && <div className="text-red-500">{error}</div>}
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded" disabled={loading}>
+        {error && <div data-cy="login-error" className="text-red-500">{error}</div>}
+        <button data-cy="login-submit" type="submit" className="w-full bg-blue-600 text-white py-2 rounded" disabled={loading}>
           {loading ? "Logging in..." : "Login"}
         </button>
       </form>

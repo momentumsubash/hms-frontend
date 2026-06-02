@@ -1111,6 +1111,7 @@ export default function GuestsPage() {
         checkInDate: guest.checkInDate ? format(new Date(guest.checkInDate), "yyyy-MM-dd'T'HH:mm") : "",
         checkOutDate: guest.checkOutDate ? format(new Date(guest.checkOutDate), "yyyy-MM-dd'T'HH:mm") : "",
         rooms: normalizedRooms,
+        existingCustomer: guest.existingCustomer || false,
       };
 
       // FIXED: Handle additional guests safely
@@ -1182,7 +1183,7 @@ const handleAddNewGuest = async () => {
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
-    
+
     // Fetch available rooms - FIXED with proper CORS headers
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/available`, {
       method: 'GET',
@@ -1191,9 +1192,9 @@ const handleAddNewGuest = async () => {
         'Authorization': `Bearer ${token}`,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
-        'Origin': window.location.origin  // Add the Origin header
+        'Origin': window.location.origin
       },
-      credentials: 'include'  // Add credentials if needed
+      credentials: 'include'
     });
     
     if (!res.ok) {
@@ -1472,9 +1473,9 @@ const handleAddNewGuest = async () => {
 
         {/* Summary Section */}
         <div className="flex gap-8 mb-6">
-          <div className="bg-blue-100 rounded-lg shadow p-4 flex-1 text-center">
+          <div data-cy="guests-summary-total" className="bg-blue-100 rounded-lg shadow p-4 flex-1 text-center">
             <div className="text-blue-700 text-sm font-semibold">Total Guests</div>
-            <div className="text-2xl font-bold text-blue-900">{totalGuests}</div>
+            <div data-cy="guests-total-count" className="text-2xl font-bold text-blue-900">{totalGuests}</div>
           </div>
           <div className="bg-green-100 rounded-lg shadow p-4 flex-1 text-center">
             <div className="text-green-700 text-sm font-semibold">Current Page</div>
@@ -1491,6 +1492,7 @@ const handleAddNewGuest = async () => {
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-lg font-semibold">Filters</h3>
             <button
+              data-cy="guests-clear-filters"
               onClick={clearFilters}
               className="text-sm text-blue-600 hover:text-blue-800 underline"
             >
@@ -1501,6 +1503,7 @@ const handleAddNewGuest = async () => {
             <div>
               <label className="block text-sm font-medium mb-1">Search (Name, Email, Phone)</label>
               <input
+                data-cy="guests-search"
                 type="text"
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -1511,6 +1514,7 @@ const handleAddNewGuest = async () => {
             <div>
               <label className="block text-sm font-medium mb-1">Room Number</label>
               <input
+                data-cy="guests-room-filter"
                 type="text"
                 value={filters.roomNumber}
                 onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
@@ -1521,6 +1525,7 @@ const handleAddNewGuest = async () => {
             <div>
               <label className="block text-sm font-medium mb-1">Customer Type</label>
               <select
+                data-cy="guests-customer-type-filter"
                 value={filters.existingCustomer}
                 onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
@@ -1730,6 +1735,21 @@ const handleAddNewGuest = async () => {
                         className="w-full border border-gray-300 rounded px-3 py-2"
                         data-cy="guests-purpose"
                       />
+                    </div>
+
+                    {/* Existing Customer Checkbox */}
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="existingCustomer"
+                        checked={formData.existingCustomer}
+                        onChange={(e) => setFormData({ ...formData, existingCustomer: e.target.checked })}
+                        className="mr-2"
+                        data-cy="guests-existing-customer"
+                      />
+                      <label htmlFor="existingCustomer" className="text-sm font-medium">
+                        Existing Customer (Enable Due Management)
+                      </label>
                     </div>
 
                     {/* Referrer Field */}
@@ -1992,9 +2012,9 @@ const handleAddNewGuest = async () => {
         )}
 
         {/* Guests Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div data-cy="guests-table-container" className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table data-cy="guests-table" className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -2032,9 +2052,9 @@ const handleAddNewGuest = async () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {guests.map((guest) => (
-                  <tr key={guest._id} className="hover:bg-gray-50">
+              <tbody data-cy="guests-table-body" className="bg-white divide-y divide-gray-200">
+                {guests.map((guest, index) => (
+                  <tr key={guest._id} data-cy={`guests-row-${index}`} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
@@ -2132,6 +2152,7 @@ const handleAddNewGuest = async () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
+                        data-cy={`guests-edit-btn-${index}`}
                         onClick={() => handleEdit(guest)}
                         className="text-indigo-600 hover:text-indigo-900 mr-4"
                       >
@@ -2139,6 +2160,7 @@ const handleAddNewGuest = async () => {
                       </button>
                       {guest.checkouts && guest.checkouts.length > 0 && (
                         <button
+                          data-cy={`guests-history-btn-${index}`}
                           onClick={() => handleViewPreviousStays(guest)}
                           className="text-purple-600 hover:text-purple-900"
                         >
@@ -2187,25 +2209,25 @@ const handleAddNewGuest = async () => {
         </div>
 
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div data-cy="guests-stats" className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{totalGuests}</div>
+            <div data-cy="guests-stat-total" className="text-2xl font-bold text-blue-600">{totalGuests}</div>
             <div className="text-sm text-gray-600">Total Guests</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">
+            <div data-cy="guests-stat-staying" className="text-2xl font-bold text-green-600">
               {guests.filter(g => !g.isCheckedOut).length}
             </div>
             <div className="text-sm text-gray-600">Currently Staying</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-gray-600">
+            <div data-cy="guests-stat-checked-out" className="text-2xl font-bold text-gray-600">
               {guests.filter(g => g.isCheckedOut).length}
             </div>
             <div className="text-sm text-gray-600">Checked Out</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-indigo-600">
+            <div data-cy="guests-stat-available-rooms" className="text-2xl font-bold text-indigo-600">
               {availableRooms.filter(r => !r.isOccupied).length}
             </div>
             <div className="text-sm text-gray-600">Available Rooms</div>

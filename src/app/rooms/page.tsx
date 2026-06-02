@@ -457,7 +457,7 @@ export default function RoomsPage() {
   }
   
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div data-cy="rooms-page" className="min-h-screen bg-slate-50">
       <NavBar
         user={user}
         showUserMenu={showUserMenu}
@@ -470,6 +470,7 @@ export default function RoomsPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Rooms Management</h1>
           <button
+            data-cy="rooms-add-btn"
             onClick={() => {
               setAddForm({
                 roomNumber: "",
@@ -522,6 +523,7 @@ export default function RoomsPage() {
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-lg font-semibold">Filters</h3>
             <button
+              data-cy="rooms-clear-filters"
               onClick={clearFilters}
               className="text-sm text-blue-600 hover:text-blue-800 underline"
             >
@@ -532,6 +534,7 @@ export default function RoomsPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Room Number</label>
               <input
+                data-cy="rooms-search"
                 type="text"
                 value={filters.roomNumber}
                 onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
@@ -542,6 +545,7 @@ export default function RoomsPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Room Type</label>
               <select
+                data-cy="rooms-type-filter"
                 value={filters.type}
                 onChange={(e) => handleFilterChange('type', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
@@ -556,6 +560,7 @@ export default function RoomsPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Occupancy Status</label>
               <select
+                data-cy="rooms-occupancy-filter"
                 value={filters.isOccupied}
                 onChange={(e) => handleFilterChange('isOccupied', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
@@ -579,7 +584,7 @@ export default function RoomsPage() {
         {/* Rooms Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table data-cy="rooms-table" className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room #</th>
@@ -595,10 +600,10 @@ export default function RoomsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody data-cy="rooms-table-body" className="bg-white divide-y divide-gray-200">
                 {Array.isArray(rooms) && rooms.length > 0 ? (
-                  rooms.map((room: any) => (
-                    <tr key={room._id} className="hover:bg-gray-50">
+                  rooms.map((room: any, index: number) => (
+                    <tr key={room._id} data-cy={`rooms-row-${index}`} className="hover:bg-gray-50">
                       <td className="px-4 py-4 whitespace-nowrap font-medium">{room.roomNumber}</td>
                       <td className="px-4 py-4 whitespace-nowrap capitalize">{room.type}</td>
                       <td className="px-4 py-4 whitespace-nowrap">
@@ -639,6 +644,7 @@ export default function RoomsPage() {
                       <td className="px-4 py-4 whitespace-nowrap">
                         <div className="flex space-x-2">
                           <button
+                            data-cy={`rooms-view-btn-${index}`}
                             className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                             onClick={() => {
                               setRoomDetails(room);
@@ -648,6 +654,7 @@ export default function RoomsPage() {
                             View
                           </button>
                           <button
+                            data-cy={`rooms-edit-btn-${index}`}
                             className="text-blue-600 hover:text-blue-900 text-sm font-medium"
                             onClick={() => {
                               setEditRoom(room);
@@ -665,6 +672,7 @@ export default function RoomsPage() {
                             Edit
                           </button>
                           <button
+                            data-cy={`rooms-delete-btn-${index}`}
                             className="text-red-600 hover:text-red-900 text-sm font-medium"
                             onClick={() => {
                               setRoomToDelete(room);
@@ -720,7 +728,7 @@ export default function RoomsPage() {
 
         {/* Room Details Modal */}
         {showDetails && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div data-cy="rooms-details-modal" className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <h2 className="text-2xl font-bold mb-4">Room Details - {roomDetails?.roomNumber}</h2>
               <div className="space-y-4">
@@ -800,6 +808,7 @@ export default function RoomsPage() {
                 </div>
                 <div className="flex justify-end pt-4">
                   <button
+                    data-cy="rooms-details-close"
                     onClick={() => setShowDetails(false)}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                   >
@@ -813,7 +822,7 @@ export default function RoomsPage() {
 
         {/* Add Room Modal */}
         {showAdd && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div data-cy="rooms-add-modal" className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <h2 className="text-2xl font-bold mb-4">Add New Room</h2>
               <form
@@ -854,6 +863,7 @@ export default function RoomsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Room Number</label>
                   <input
+                    data-cy="rooms-form-number"
                     type="text"
                     value={addForm.roomNumber}
                     onChange={e => setAddForm((f: any) => ({ ...f, roomNumber: e.target.value }))}
@@ -865,6 +875,7 @@ export default function RoomsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Type</label>
                   <select
+                    data-cy="rooms-form-type"
                     value={addForm.type}
                     onChange={e => setAddForm((f: any) => ({ ...f, type: e.target.value }))}
                     className={`w-full border rounded px-3 py-2 ${formErrors.type ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
@@ -881,6 +892,7 @@ export default function RoomsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Rate</label>
                   <input
+                    data-cy="rooms-form-rate"
                     type="number"
                     value={addForm.rate}
                     onChange={e => setAddForm((f: any) => ({ ...f, rate: e.target.value }))}
@@ -921,6 +933,7 @@ export default function RoomsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Capacity</label>
                   <input
+                    data-cy="rooms-form-capacity"
                     type="number"
                     value={addForm.capacity}
                     onChange={e => setAddForm((f: any) => ({ ...f, capacity: e.target.value }))}
@@ -931,12 +944,14 @@ export default function RoomsPage() {
                 </div>
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
+                    data-cy="rooms-add-cancel"
                     type="button"
                     onClick={() => setShowAdd(false)}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                     disabled={addLoading}
                   >Cancel</button>
                   <button
+                    data-cy="rooms-add-submit"
                     type="submit"
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                     disabled={addLoading}
@@ -949,7 +964,7 @@ export default function RoomsPage() {
 
         {/* Edit Room Modal */}
         {showEdit && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div data-cy="rooms-edit-modal" className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <h2 className="text-2xl font-bold mb-4">Edit Room {editRoom?.roomNumber}</h2>
               <form
@@ -991,6 +1006,7 @@ export default function RoomsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Type</label>
                   <select
+                    data-cy="rooms-edit-type"
                     value={editForm.type}
                     onChange={e => setEditForm((f: any) => ({ ...f, type: e.target.value }))}
                     className={`w-full border rounded px-3 py-2 ${editFormErrors.type ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
@@ -1007,6 +1023,7 @@ export default function RoomsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Rate</label>
                   <input
+                    data-cy="rooms-edit-rate"
                     type="number"
                     value={editForm.rate}
                     onChange={e => setEditForm((f: any) => ({ ...f, rate: e.target.value }))}
@@ -1049,6 +1066,7 @@ export default function RoomsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Maintenance Status</label>
                   <select
+                    data-cy="rooms-edit-maintenance"
                     value={editForm.maintanenceStatus}
                     onChange={e => setEditForm((f: any) => ({ ...f, maintanenceStatus: e.target.value }))}
                     className="w-full border border-gray-300 rounded px-3 py-2"
@@ -1060,12 +1078,14 @@ export default function RoomsPage() {
                 </div>
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
+                    data-cy="rooms-edit-cancel"
                     type="button"
                     onClick={() => setShowEdit(false)}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                     disabled={editLoading}
                   >Cancel</button>
                   <button
+                    data-cy="rooms-edit-submit"
                     type="submit"
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                     disabled={editLoading}
@@ -1078,12 +1098,13 @@ export default function RoomsPage() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div data-cy="rooms-delete-modal" className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md">
               <h2 className="text-xl font-bold mb-4">Confirm Delete</h2>
               <p className="mb-6">Are you sure you want to delete room {roomToDelete?.roomNumber}? This action cannot be undone.</p>
               <div className="flex justify-end space-x-3">
                 <button
+                  data-cy="rooms-delete-cancel"
                   type="button"
                   onClick={() => {
                     setShowDeleteConfirm(false);
@@ -1093,6 +1114,7 @@ export default function RoomsPage() {
                   disabled={deleteLoading}
                 >Cancel</button>
                 <button
+                  data-cy="rooms-delete-confirm"
                   onClick={async () => {
                     setDeleteLoading(true);
                     try {

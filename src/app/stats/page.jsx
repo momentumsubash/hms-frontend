@@ -702,7 +702,7 @@ const handleApplyDateFilter = () => {
   const isManager = user?.role === 'manager' || user?.role === 'super_admin';
 
   return (
-    <div>
+    <div data-cy="stats-page">
       <NavBar
         user={user}
         showUserMenu={showUserMenu}
@@ -713,7 +713,7 @@ const handleApplyDateFilter = () => {
 
       <div className="max-w-9xl mx-auto py-10 px-6 space-y-8">
         <h1 className="text-3xl font-bold mb-6 text-center">Statistics & Financial Management</h1>
-        
+
         {/* Date Filter Section - Global */}
         <Card className="mb-6">
           <CardHeader>
@@ -722,6 +722,7 @@ const handleApplyDateFilter = () => {
           <CardContent>
             <div className="flex flex-wrap items-center gap-4">
               <select
+                data-cy="stats-date-filter"
                 value={dateFilter}
                 onChange={(e) => {
                   setDateFilter(e.target.value);
@@ -739,6 +740,7 @@ const handleApplyDateFilter = () => {
               {showCustomDatePicker && (
                 <>
                   <input
+                    data-cy="stats-custom-start"
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
@@ -747,6 +749,7 @@ const handleApplyDateFilter = () => {
                   />
                   <span>to</span>
                   <input
+                    data-cy="stats-custom-end"
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
@@ -755,8 +758,8 @@ const handleApplyDateFilter = () => {
                   />
                 </>
               )}
-              
-              <Button onClick={handleApplyDateFilter} className="bg-blue-600 hover:bg-blue-700">
+
+              <Button data-cy="stats-apply-date-filter" onClick={handleApplyDateFilter} className="bg-blue-600 hover:bg-blue-700">
                 Apply Date Filter
               </Button>
             </div>
@@ -776,11 +779,12 @@ const handleApplyDateFilter = () => {
         {/* Tabs */}
         <Card>
           <CardHeader>
-            <div className="flex flex-wrap gap-2 border-b">
+            <div data-cy="stats-tabs" className="flex flex-wrap gap-2 border-b">
               <button
+                data-cy="stats-tab-summary"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
-                  activeTab === 'summary' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
+                  activeTab === 'summary'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('summary')}
@@ -788,9 +792,10 @@ const handleApplyDateFilter = () => {
                 Summary Overview
               </button>
               <button
+                data-cy="stats-tab-item"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
-                  activeTab === 'item' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
+                  activeTab === 'item'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('item')}
@@ -798,9 +803,10 @@ const handleApplyDateFilter = () => {
                 Item Sales
               </button>
               <button
+                data-cy="stats-tab-room"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
-                  activeTab === 'room' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
+                  activeTab === 'room'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('room')}
@@ -808,9 +814,10 @@ const handleApplyDateFilter = () => {
                 Room Sales
               </button>
               <button
+                data-cy="stats-tab-expenditure"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
-                  activeTab === 'expenditure' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
+                  activeTab === 'expenditure'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('expenditure')}
@@ -818,9 +825,10 @@ const handleApplyDateFilter = () => {
                 Expenditures
               </button>
               <button
+                data-cy="stats-tab-financial"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
-                  activeTab === 'financial' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
+                  activeTab === 'financial'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('financial')}
@@ -828,9 +836,10 @@ const handleApplyDateFilter = () => {
                 Financial Overview
               </button>
               <button
+                data-cy="stats-tab-daily"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
-                  activeTab === 'daily' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
+                  activeTab === 'daily'
+                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50'
                     : 'text-gray-600 hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('daily')}
@@ -842,14 +851,14 @@ const handleApplyDateFilter = () => {
           <CardContent>
 {/* Summary Overview Tab */}
 {activeTab === 'summary' && (
-  <div className="space-y-6">
+  <div data-cy="stats-summary-tab" className="space-y-6">
     {loadingStates.summary ? (
       <div className="text-center py-10">Loading summary data...</div>
     ) : errorStates.summary ? (
       <div className="text-red-600 text-center bg-red-50 p-4 rounded">{errorStates.summary}</div>
     ) : (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+        <Card data-cy="stats-hotel-balance-card">
           <CardHeader>
             <CardTitle className="text-lg">Hotel Balance</CardTitle>
           </CardHeader>
@@ -857,29 +866,29 @@ const handleApplyDateFilter = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Initial Amount:</span>
-                <span className="font-semibold">रु{summaryStats?.hotelBalance?.initialAmount?.toLocaleString() ?? 0}</span>
+                <span data-cy="stats-initial-amount" className="font-semibold">रु{summaryStats?.hotelBalance?.initialAmount?.toLocaleString() ?? 0}</span>
               </div>
               <div className="flex justify-between">
                 <span>Total Gained:</span>
-                <span className="font-semibold text-green-600">रु{summaryStats?.hotelBalance?.currentBalance && summaryStats?.hotelBalance?.initialAmount 
-                  ? (summaryStats.hotelBalance.currentBalance - summaryStats.hotelBalance.initialAmount).toLocaleString() 
+                <span data-cy="stats-total-gained" className="font-semibold text-green-600">रु{summaryStats?.hotelBalance?.currentBalance && summaryStats?.hotelBalance?.initialAmount
+                  ? (summaryStats.hotelBalance.currentBalance - summaryStats.hotelBalance.initialAmount).toLocaleString()
                   : 0}</span>
               </div>
               <div className="flex justify-between">
                 <span>Total Expenditures:</span>
-                <span className="font-semibold text-red-600">रु{summaryStats?.expenditures?.total?.toLocaleString() ?? 0}</span>
+                <span data-cy="stats-total-expenditures" className="font-semibold text-red-600">रु{summaryStats?.expenditures?.total?.toLocaleString() ?? 0}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span>Current Balance:</span>
-                <span className="font-semibold text-blue-600">
+                <span data-cy="stats-current-balance" className="font-semibold text-blue-600">
                   रु{summaryStats?.hotelBalance?.currentBalance?.toLocaleString() ?? 0}
                 </span>
               </div>
             </div>
           </CardContent>
         </Card>
-        
-        <Card>
+
+        <Card data-cy="stats-sales-summary-card">
           <CardHeader>
             <CardTitle className="text-lg">Sales Summary</CardTitle>
           </CardHeader>
@@ -887,27 +896,27 @@ const handleApplyDateFilter = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Room Sales:</span>
-                <span className="font-semibold text-green-600">
+                <span data-cy="stats-room-revenue" className="font-semibold text-green-600">
                   रु{summaryStats?.earnings?.roomRevenue?.toLocaleString() ?? 0}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Item Sales:</span>
-                <span className="font-semibold text-blue-600">
+                <span data-cy="stats-item-sales" className="font-semibold text-blue-600">
                   रु{summaryStats?.earnings?.itemSales?.toLocaleString() ?? 0}
                 </span>
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span>Total Sales (without VAT):</span>
-                <span className="font-semibold">
+                <span data-cy="stats-total-sales" className="font-semibold">
                   रु{summaryStats?.earnings?.total?.toLocaleString() ?? 0}
                 </span>
               </div>
             </div>
           </CardContent>
         </Card>
-        
-        <Card>
+
+        <Card data-cy="stats-profit-loss-card">
           <CardHeader>
             <CardTitle className="text-lg">Profit/Loss</CardTitle>
           </CardHeader>
@@ -915,13 +924,13 @@ const handleApplyDateFilter = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Net Profit/Loss:</span>
-                <span className={`font-semibold ${(summaryStats?.financial?.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <span data-cy="stats-net-profit" className={`font-semibold ${(summaryStats?.financial?.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   रु{summaryStats?.financial?.netProfit?.toLocaleString() ?? 0}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Profit Margin:</span>
-                <span className="font-semibold">
+                <span data-cy="stats-profit-margin" className="font-semibold">
                   {summaryStats?.financial?.profitMargin ?? '0'}%
                 </span>
               </div>

@@ -384,6 +384,8 @@ export default function ItemsPage() {
       };
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
+      if (formData.inventory !== undefined) payload.inventory = formData.inventory;
+      if (formData.stock !== undefined) payload.stock = parseInt(formData.stock) || 0;
 
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items/${selectedItem._id}`, {
         method: "PUT",
@@ -659,7 +661,7 @@ export default function ItemsPage() {
   if (loading && items.length === 0) return <div className="flex justify-center items-center h-64">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div data-cy="items-page" className="min-h-screen bg-slate-50">
       <NavBar
         user={user}
         showUserMenu={showUserMenu}
@@ -671,6 +673,7 @@ export default function ItemsPage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Items Management</h1>
           <button
+            data-cy="items-add-btn"
             onClick={() => {
               resetForm();
               setShowCreateModal(true);
@@ -710,6 +713,7 @@ export default function ItemsPage() {
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-lg font-semibold">Filters</h3>
             <button
+              data-cy="items-clear-filters"
               onClick={clearFilters}
               className="text-sm text-blue-600 hover:text-blue-800 underline"
             >
@@ -720,6 +724,7 @@ export default function ItemsPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Search (Name)</label>
               <input
+                data-cy="items-search"
                 type="text"
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -730,6 +735,7 @@ export default function ItemsPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Category</label>
               <select
+                data-cy="items-category-filter"
                 value={filters.category}
                 onChange={(e) => handleFilterChange('category', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
@@ -747,6 +753,7 @@ export default function ItemsPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Availability</label>
               <select
+                data-cy="items-availability-filter"
                 value={filters.isAvailable}
                 onChange={(e) => handleFilterChange('isAvailable', e.target.value)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
@@ -779,7 +786,7 @@ export default function ItemsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table data-cy="items-table" className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -787,14 +794,16 @@ export default function ItemsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Low Stock</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody data-cy="items-table-body" className="bg-white divide-y divide-gray-200">
                 {Array.isArray(items) && items.length > 0 ? (
-                  items.map((item: Item) => (
-                    <tr key={item._id} className="hover:bg-gray-50">
+                  items.map((item: Item, index: number) => (
+                    <tr key={item._id} data-cy={`items-row-${index}`} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap font-medium">{item.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
@@ -824,16 +833,36 @@ export default function ItemsPage() {
                           {item.isAvailable ? "Available" : "Unavailable"}
                         </span>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {item.inventory ? (
+                          <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                            {item.stock || 0}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {item.inventory && (item.stock || 0) <= 5 ? (
+                          <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">
+                            Low Stock
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">{item.hotel?.name || "-"}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex space-x-2">
                           <button
+                            data-cy={`items-edit-btn-${index}`}
                             onClick={() => openEditModal(item)}
                             className="text-blue-600 hover:text-blue-800 text-sm"
                           >
                             Edit
                           </button>
                           <button
+                            data-cy={`items-delete-btn-${index}`}
                             onClick={() => openDeleteModal(item)}
                             className="text-red-600 hover:text-red-800 text-sm"
                           >
@@ -883,21 +912,21 @@ export default function ItemsPage() {
         </div>
 
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div data-cy="items-stats" className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{pagination.total}</div>
+            <div data-cy="items-stat-total" className="text-2xl font-bold text-blue-600">{pagination.total}</div>
             <div className="text-sm text-gray-600">Total Items</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">{items.filter((i: Item) => i.isAvailable).length}</div>
+            <div data-cy="items-stat-available" className="text-2xl font-bold text-green-600">{items.filter((i: Item) => i.isAvailable).length}</div>
             <div className="text-sm text-gray-600">Available (Current Page)</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-red-600">{items.filter((i: Item) => !i.isAvailable).length}</div>
+            <div data-cy="items-stat-unavailable" className="text-2xl font-bold text-red-600">{items.filter((i: Item) => !i.isAvailable).length}</div>
             <div className="text-sm text-gray-600">Unavailable (Current Page)</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-gray-600">{pagination.pages}</div>
+            <div data-cy="items-stat-pages" className="text-2xl font-bold text-gray-600">{pagination.pages}</div>
             <div className="text-sm text-gray-600">Total Pages</div>
           </div>
         </div>
@@ -905,7 +934,7 @@ export default function ItemsPage() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div data-cy="items-create-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Add New Item</h2>
             <form onSubmit={(e) => { e.preventDefault(); createItem(); }}>
@@ -913,6 +942,7 @@ export default function ItemsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Name</label>
                   <input
+                    data-cy="items-form-name"
                     type="text"
                     required
                     value={formData.name}
@@ -924,6 +954,7 @@ export default function ItemsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Price (रु)</label>
                   <input
+                    data-cy="items-form-price"
                     type="number"
                     required
                     min="0"
@@ -937,6 +968,7 @@ export default function ItemsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Category</label>
                   <select
+                    data-cy="items-form-category"
                     required
                     value={formData.category}
                     onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
@@ -952,6 +984,7 @@ export default function ItemsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Profit Margin Band</label>
                   <input
+                    data-cy="items-form-profit-margin"
                     type="text"
                     value={formData.profitMarginBand}
                     onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
@@ -962,6 +995,7 @@ export default function ItemsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Comment</label>
                   <input
+                    data-cy="items-form-comment"
                     type="text"
                     value={formData.comment}
                     onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
@@ -972,6 +1006,33 @@ export default function ItemsPage() {
                 <div>
                   <label className="flex items-center">
                     <input
+                      data-cy="items-form-inventory-enabled"
+                      type="checkbox"
+                      checked={formData.inventory}
+                      onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
+                      className="mr-2"
+                    />
+                    Enable Inventory Tracking
+                  </label>
+                </div>
+                {formData.inventory && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Stock Quantity</label>
+                    <input
+                      data-cy="items-form-stock-qty"
+                      type="number"
+                      min="0"
+                      value={formData.stock}
+                      onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      placeholder="Current stock quantity"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="flex items-center">
+                    <input
+                      data-cy="items-form-available"
                       type="checkbox"
                       checked={formData.inventory}
                       onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
@@ -1007,6 +1068,7 @@ export default function ItemsPage() {
               </div>
               <div className="flex justify-end space-x-3 mt-6">
                 <button
+                  data-cy="items-create-cancel"
                   type="button"
                   onClick={() => setShowCreateModal(false)}
                   className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
@@ -1014,6 +1076,7 @@ export default function ItemsPage() {
                   Cancel
                 </button>
                 <button
+                  data-cy="items-create-submit"
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
@@ -1027,7 +1090,7 @@ export default function ItemsPage() {
 
       {/* Edit Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div data-cy="items-edit-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Edit Item</h2>
             <form onSubmit={(e) => { e.preventDefault(); updateItem(); }}>
@@ -1094,6 +1157,7 @@ export default function ItemsPage() {
                 <div>
                   <label className="flex items-center">
                     <input
+                      data-cy="items-edit-form-inventory-enabled"
                       type="checkbox"
                       checked={formData.inventory}
                       onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
@@ -1106,6 +1170,7 @@ export default function ItemsPage() {
                   <div>
                     <label className="block text-sm font-medium mb-1">Current Stock</label>
                     <input
+                      data-cy="items-edit-form-stock"
                       type="number"
                       min="0"
                       value={formData.stock}
@@ -1129,6 +1194,7 @@ export default function ItemsPage() {
               </div>
               <div className="flex justify-end space-x-3 mt-6">
                 <button
+                  data-cy="items-edit-cancel"
                   type="button"
                   onClick={() => setShowEditModal(false)}
                   className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
@@ -1136,6 +1202,7 @@ export default function ItemsPage() {
                   Cancel
                 </button>
                 <button
+                  data-cy="items-edit-submit"
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
@@ -1149,7 +1216,7 @@ export default function ItemsPage() {
 
       {/* Delete Modal */}
       {showDeleteModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div data-cy="items-delete-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Delete Item</h2>
             <p className="text-gray-600 mb-6">
@@ -1157,12 +1224,14 @@ export default function ItemsPage() {
             </p>
             <div className="flex justify-end space-x-3">
               <button
+                data-cy="items-delete-cancel"
                 onClick={() => setShowDeleteModal(false)}
                 className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
+                data-cy="items-delete-confirm"
                 onClick={deleteItem}
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               >

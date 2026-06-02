@@ -200,7 +200,7 @@ export function HotelDashboard({ nepaliFlag }) {
 	const hotelAmenities = hotel?.amenities?.length ? hotel.amenities : ["Free WiFi", "Parking", "Restaurant", "Spa", "Pool", "Gym"];
 
 	return (
-		<div className="min-h-screen bg-slate-50">
+		<div data-cy="dashboard-page" className="min-h-screen bg-slate-50">
 			{/* Navigation Bar - No navLinks prop, using internal navigation */}
 			<NavBar
 				user={user}
@@ -224,8 +224,9 @@ export function HotelDashboard({ nepaliFlag }) {
 					<h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
 						<span>Hotel Notes</span>
 					</h2>
-					<form onSubmit={handleCreateNote} className="flex flex-row gap-2 mb-4 w-full">
+					<form data-cy="dashboard-notes-form" onSubmit={handleCreateNote} className="flex flex-row gap-2 mb-4 w-full">
 						<input
+							data-cy="dashboard-note-input"
 							type="text"
 							className="flex-1 border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
 							placeholder="Add a new note..."
@@ -235,6 +236,7 @@ export function HotelDashboard({ nepaliFlag }) {
 						/>
 						<div className="flex flex-col items-end w-36">
 							<Button
+								data-cy="dashboard-note-submit"
 								type="submit"
 								className="w-full min-w-[120px] bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded font-medium shadow-sm"
 								disabled={notesLoading || !noteText.trim()}
@@ -250,9 +252,10 @@ export function HotelDashboard({ nepaliFlag }) {
 						<ul className="space-y-2 w-full">
 							{notes.length === 0 && <li className="text-gray-500">No notes yet.</li>}
 							{notes.map((note) => (
-								<li key={note._id} className="flex items-center gap-2 bg-slate-100 rounded px-3 py-2 w-full">
+								<li key={note._id} data-cy={`dashboard-note-${note._id}`} className="flex items-center gap-2 bg-slate-100 rounded px-3 py-2 w-full">
 									<span className="flex-1 break-words">{note.text}</span>
 									<Button
+										data-cy={`dashboard-note-delete-${note._id}`}
 										type="button"
 										size="sm"
 										className="w-36 min-w-[120px] bg-red-600 text-white hover:bg-red-700 px-4 py-1.5 rounded font-medium shadow-sm"
@@ -268,8 +271,8 @@ export function HotelDashboard({ nepaliFlag }) {
 				</div>
 				
 				{/* Hotel Overview Cards */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-					<Card className="hover:shadow-lg transition-shadow">
+				<div data-cy="dashboard-stats" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+					<Card data-cy="dashboard-stat-total-guests" className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
 							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-purple-100 rounded-lg">
@@ -277,12 +280,12 @@ export function HotelDashboard({ nepaliFlag }) {
 								</div>
 								<div>
 									<p className="text-sm text-gray-600">Total Guests</p>
-									<p className="text-2xl font-bold text-gray-800">{guests?.currentlyStaying}</p>
+									<p data-cy="dashboard-total-guests-value" className="text-2xl font-bold text-gray-800">{guests?.currentlyStaying}</p>
 								</div>
 							</div>
 						</CardContent>
 					</Card>
-					<Card className="hover:shadow-lg transition-shadow">
+					<Card data-cy="dashboard-stat-occupied-rooms" className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
 							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-blue-100 rounded-lg">
@@ -290,12 +293,12 @@ export function HotelDashboard({ nepaliFlag }) {
 								</div>
 								<div>
 									<p className="text-sm text-gray-600">Occupied Rooms</p>
-									<p className="text-2xl font-bold text-gray-800">{guests?.occupiedRooms}/{guests?.totalRooms}</p>
+									<p data-cy="dashboard-occupied-rooms-value" className="text-2xl font-bold text-gray-800">{guests?.occupiedRooms}/{guests?.totalRooms}</p>
 								</div>
 							</div>
 						</CardContent>
 					</Card>
-					<Card className="hover:shadow-lg transition-shadow">
+					<Card data-cy="dashboard-stat-checked-out" className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
 							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-green-100 rounded-lg">
@@ -303,12 +306,12 @@ export function HotelDashboard({ nepaliFlag }) {
 								</div>
 								<div>
 									<p className="text-sm text-gray-600">Checked Out</p>
-									<p className="text-2xl font-bold text-gray-800">{guests?.checkedOut || "-"}</p>
+									<p data-cy="dashboard-checked-out-value" className="text-2xl font-bold text-gray-800">{guests?.checkedOut || "-"}</p>
 								</div>
 							</div>
 						</CardContent>
 					</Card>
-					<Card className="hover:shadow-lg transition-shadow">
+					<Card data-cy="dashboard-stat-restaurant-orders" className="hover:shadow-lg transition-shadow">
 						<CardContent className="p-6">
 							<div className="flex items-center space-x-8">
 								<div className="p-3 bg-orange-100 rounded-lg">
@@ -316,7 +319,7 @@ export function HotelDashboard({ nepaliFlag }) {
 								</div>
 								<div>
 									<p className="text-sm text-gray-600">Restaurant Orders</p>
-									<p className="text-2xl font-bold text-gray-800">{orders.length}</p>
+									<p data-cy="dashboard-restaurant-orders-value" className="text-2xl font-bold text-gray-800">{orders.length}</p>
 								</div>
 							</div>
 						</CardContent>

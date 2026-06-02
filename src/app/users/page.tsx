@@ -413,9 +413,10 @@ export default function UsersPage() {
         nepaliFlag={hotel?.nepaliFlag}
       />
       <div className="max-w-9xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
+        <div data-cy="users-page" className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Users Management</h1>
           <button
+            data-cy="users-add-btn"
             onClick={openCreateModal}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
           >
@@ -442,6 +443,7 @@ export default function UsersPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Search (Name, Email)</label>
               <input
+                data-cy="users-search"
                 type="text"
                 value={filters.search}
                 onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
@@ -452,6 +454,7 @@ export default function UsersPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Role</label>
               <select
+                data-cy="users-role-filter"
                 value={filters.role}
                 onChange={(e) => setFilters(prev => ({ ...prev, role: e.target.value }))}
                 className="w-full border border-gray-300 rounded px-3 py-2"
@@ -466,6 +469,7 @@ export default function UsersPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Status</label>
               <select
+                data-cy="users-status-filter"
                 value={filters.active}
                 onChange={(e) => setFilters(prev => ({ ...prev, active: e.target.value }))}
                 className="w-full border border-gray-300 rounded px-3 py-2"
@@ -481,7 +485,7 @@ export default function UsersPage() {
         {/* Users Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table data-cy="users-table" className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -491,9 +495,9 @@ export default function UsersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.map((user: any) => (
-                  <tr key={user._id} className="hover:bg-gray-50">
+              <tbody data-cy="users-table-body" className="bg-white divide-y divide-gray-200">
+                {filteredUsers.map((user: any, index: number) => (
+                  <tr key={user._id} data-cy={`users-row-${index}`} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">{user.firstName} {user.lastName}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -513,18 +517,21 @@ export default function UsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
+                        data-cy={`users-edit-btn-${index}`}
                         onClick={() => openEditModal(user._id)}
                         className="text-blue-600 hover:text-blue-900 mr-3"
                       >
                         Edit
                       </button>
                       <button
+                        data-cy={`users-toggle-status-btn-${index}`}
                         onClick={() => handleToggleStatus(user)}
                         className={`${user.isActive ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'} mr-3`}
                       >
                         {user.isActive ? "Deactivate" : "Activate"}
                       </button>
                       <button
+                        data-cy={`users-delete-btn-${index}`}
                         onClick={() => handleDelete(user._id)}
                         className="text-red-600 hover:text-red-900"
                       >
@@ -602,21 +609,21 @@ export default function UsersPage() {
         </div>
 
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div data-cy="users-stats" className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{pagination.total}</div>
+            <div data-cy="users-stat-total" className="text-2xl font-bold text-blue-600">{pagination.total}</div>
             <div className="text-sm text-gray-600">Total Users</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">{users.filter((u: any) => u.isActive).length}</div>
+            <div data-cy="users-stat-active" className="text-2xl font-bold text-green-600">{users.filter((u: any) => u.isActive).length}</div>
             <div className="text-sm text-gray-600">Active</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-orange-600">{users.filter((u: any) => u.role === 'kitchen_staff').length}</div>
+            <div data-cy="users-stat-kitchen" className="text-2xl font-bold text-orange-600">{users.filter((u: any) => u.role === 'kitchen_staff').length}</div>
             <div className="text-sm text-gray-600">Kitchen Staff</div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-red-600">{users.filter((u: any) => !u.isActive).length}</div>
+            <div data-cy="users-stat-inactive" className="text-2xl font-bold text-red-600">{users.filter((u: any) => !u.isActive).length}</div>
             <div className="text-sm text-gray-600">Inactive</div>
           </div>
         </div>
@@ -624,7 +631,7 @@ export default function UsersPage() {
 
       {/* User Form Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div data-cy="users-modal" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">{currentUser ? "Edit User" : "Add New User"}</h2>
             
@@ -641,6 +648,7 @@ export default function UsersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">First Name *</label>
                   <input
+                    data-cy="users-form-firstname"
                     type="text"
                     name="firstName"
                     value={formData.firstName}
@@ -653,6 +661,7 @@ export default function UsersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Last Name *</label>
                   <input
+                    data-cy="users-form-lastname"
                     type="text"
                     name="lastName"
                     value={formData.lastName}
@@ -668,6 +677,7 @@ export default function UsersPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Email *</label>
                   <input
+                    data-cy="users-form-email"
                     type="email"
                     name="email"
                     value={formData.email}
@@ -682,6 +692,7 @@ export default function UsersPage() {
                   <div>
                     <label className="block text-sm font-medium mb-1">Password *</label>
                     <input
+                      data-cy="users-form-password"
                       type="password"
                       name="password"
                       value={formData.password}
@@ -697,6 +708,7 @@ export default function UsersPage() {
               <div>
                 <label className="block text-sm font-medium mb-1">Role *</label>
                 <select
+                  data-cy="users-form-role"
                   name="role"
                   value={formData.role}
                   onChange={handleFormChange}
@@ -741,6 +753,7 @@ export default function UsersPage() {
 
               <div className="flex items-center">
                 <input
+                  data-cy="users-form-active"
                   type="checkbox"
                   name="isActive"
                   checked={formData.isActive}
@@ -755,6 +768,7 @@ export default function UsersPage() {
 
               <div className="flex justify-end space-x-3 pt-4">
                 <button
+                  data-cy="users-form-cancel"
                   type="button"
                   onClick={() => setShowModal(false)}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -762,6 +776,7 @@ export default function UsersPage() {
                   Cancel
                 </button>
                 <button
+                  data-cy="users-form-submit"
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                   disabled={loading}
