@@ -392,7 +392,7 @@ export async function getGuests(params: Record<string, any> = {}) {
     });
     
     // Build the final URL
-    const url = `${API_URL}/guests/stats/count?${hotelId}`;
+    const url = `${API_URL}/guests/stats/count?${queryParams.toString()}`;
     
     const res = await fetch(url, {
       headers: mergeHeaders({}, getAuthHeaders()),

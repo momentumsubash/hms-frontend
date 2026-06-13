@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { PrinterIcon, PlusIcon, XMarkIcon, CheckCircleIcon, XCircleIcon, BeakerIcon } from "@heroicons/react/24/outline";
+import { Printer, Plus, X, CheckCircle, XCircle, FlaskConical } from "lucide-react";
 import { toast } from 'sonner';
 
 interface Printer {
@@ -237,7 +237,7 @@ export function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: Pr
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <PrinterIcon className="w-5 h-5" />
+            <Printer className="w-5 h-5" />
             Printer Management - {hotelName}
           </DialogTitle>
           <DialogDescription>
@@ -248,7 +248,7 @@ export function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: Pr
         <div className="space-y-4">
           {/* Add Printer Button */}
           <Button onClick={() => setShowAddPrinter(true)} className="w-full sm:w-auto">
-            <PlusIcon className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4 mr-2" />
             Add Printer
           </Button>
 
@@ -258,7 +258,7 @@ export function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: Pr
           ) : printers.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
-                <PrinterIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <Printer className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                 <p className="text-gray-500">No printers configured yet</p>
                 <p className="text-sm text-gray-400 mt-1">Click "Add Printer" to set up your first printer</p>
               </CardContent>
@@ -334,7 +334,7 @@ export function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: Pr
                           disabled={testingPrinter === printer._id}
                           className="flex items-center"
                         >
-                          <BeakerIcon className="w-4 h-4 mr-1" />
+                          <FlaskConical className="w-4 h-4 mr-1" />
                           {testingPrinter === printer._id ? 'Testing...' : 'Test'}
                         </Button>
                         {!printer.isDefault && (
@@ -357,7 +357,7 @@ export function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: Pr
                           }}
                           className="flex items-center"
                         >
-                          <XMarkIcon className="w-4 h-4 mr-1" />
+                          <X className="w-4 h-4 mr-1" />
                           Delete
                         </Button>
                       </div>

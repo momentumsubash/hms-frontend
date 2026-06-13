@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useAuth } from "@/components/ui/auth-provider";
-import { NavBar } from "@/components/ui/NavBar";
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { 
   getHotels, addHotel, updateHotel, updateHotelBalance,
   uploadHotelLogo, uploadHotelImages, uploadHotelGallery,
@@ -22,11 +21,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { format } from "date-fns";
 import Image from "next/image";
 import { 
-  PhotoIcon, PlusIcon, XMarkIcon, BellIcon, ClockIcon, 
-  DocumentTextIcon, EnvelopeIcon, GlobeAltIcon, MagnifyingGlassIcon,
-  PrinterIcon, ComputerDesktopIcon, ServerIcon, WifiIcon,
-  CheckCircleIcon, XCircleIcon, BeakerIcon, Cog6ToothIcon
-} from "@heroicons/react/24/outline";
+  Image as ImageIcon, Plus, X, Bell, Clock, 
+  FileText, Mail, Globe, Search,
+  Printer, Monitor, Server, Wifi,
+  CheckCircle, XCircle, FlaskConical, Settings,
+  Eye, Edit, Trash2, ChevronLeft, ChevronRight
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -303,12 +303,12 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
     await updatePrinter(printerId, { isDefault: true });
   };
 
-  const getPrinterIcon = (type: string) => {
+  const getPrinter = (type: string) => {
     switch(type) {
-      case 'network': return <WifiIcon className="w-4 h-4" />;
-      case 'system': return <ComputerDesktopIcon className="w-4 h-4" />;
-      case 'usb': return <ServerIcon className="w-4 h-4" />;
-      default: return <PrinterIcon className="w-4 h-4" />;
+      case 'network': return <Wifi className="w-4 h-4" />;
+      case 'system': return <Monitor className="w-4 h-4" />;
+      case 'usb': return <Server className="w-4 h-4" />;
+      default: return <Printer className="w-4 h-4" />;
     }
   };
 
@@ -324,7 +324,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl">
-            <PrinterIcon className="w-6 h-6" />
+            <Printer className="w-6 h-6" />
             Printer Management - {hotelName}
           </DialogTitle>
           <DialogDescription>
@@ -335,8 +335,8 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Configured Printers</h3>
-            <Button onClick={() => { setShowAddPrinter(true); fetchSystemPrinters(); }} className="bg-blue-600 hover:bg-blue-700">
-              <PlusIcon className="w-4 h-4 mr-2" />
+            <Button onClick={() => { setShowAddPrinter(true); fetchSystemPrinters(); }} className="bg-primary hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />
               Add Printer
             </Button>
           </div>
@@ -346,7 +346,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
           ) : printers.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
-                <PrinterIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <Printer className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-600 text-lg">No printers configured yet</p>
                 <p className="text-sm text-gray-400 mt-2">Click "Add Printer" to set up your first printer</p>
                 <Button 
@@ -376,7 +376,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3 flex-wrap">
                           <div className={`p-2 rounded-lg ${printer.status?.connected ? 'bg-green-100' : 'bg-gray-100'}`}>
-                            {getPrinterIcon(printer.printerType)}
+                            {getPrinter(printer.printerType)}
                           </div>
                           <h4 className="font-semibold text-lg">{printer.name}</h4>
                           <div className="flex gap-2 flex-wrap">
@@ -385,11 +385,11 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
                             )}
                             {printer.status?.connected ? (
                               <Badge className="bg-green-100 text-green-800 border-green-200 flex items-center gap-1">
-                                <CheckCircleIcon className="w-3 h-3" /> Online
+                                <CheckCircle className="w-3 h-3" /> Online
                               </Badge>
                             ) : (
                               <Badge variant="destructive" className="flex items-center gap-1">
-                                <XCircleIcon className="w-3 h-3" /> Offline
+                                <XCircle className="w-3 h-3" /> Offline
                               </Badge>
                             )}
                             {printer.testMode && (
@@ -471,7 +471,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
                           disabled={testingPrinter === printer._id}
                           className="flex items-center justify-center gap-1"
                         >
-                          <BeakerIcon className="w-4 h-4" />
+                          <FlaskConical className="w-4 h-4" />
                           {testingPrinter === printer._id ? 'Testing...' : 'Test'}
                         </Button>
                         
@@ -509,7 +509,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
                               }}
                               className="flex items-center justify-center gap-1"
                             >
-                              <XMarkIcon className="w-4 h-4" />
+                              <X className="w-4 h-4" />
                               Delete
                             </Button>
                           </>
@@ -581,7 +581,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
 {newPrinter.printerType === 'network' && (
   <div className="bg-gray-50 p-4 rounded-lg space-y-4">
     <h4 className="font-medium flex items-center gap-2">
-      <WifiIcon className="w-4 h-4" />
+      <Wifi className="w-4 h-4" />
       Network Printer Configuration
     </h4>
     
@@ -670,7 +670,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
 {newPrinter.printerType === 'system' && (
   <div className="bg-gray-50 p-4 rounded-lg space-y-4">
     <h4 className="font-medium flex items-center gap-2">
-      <ComputerDesktopIcon className="w-4 h-4" />
+      <Monitor className="w-4 h-4" />
       System Printer Configuration
     </h4>
     
@@ -734,7 +734,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
 
               <div className="bg-gray-50 p-4 rounded-lg space-y-4">
                 <h4 className="font-medium flex items-center gap-2">
-                  <Cog6ToothIcon className="w-4 h-4" />
+                  <Settings className="w-4 h-4" />
                   Printer Settings
                 </h4>
                 
@@ -819,7 +819,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
 
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setShowAddPrinter(false)}>Cancel</Button>
-              <Button onClick={addPrinter} className="bg-blue-600 hover:bg-blue-700">Add Printer</Button>
+              <Button onClick={addPrinter} className="bg-primary hover:bg-primary/90">Add Printer</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -931,19 +931,17 @@ export default function HotelsPage() {
     return null;
   });
   
-  const { logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({ name: "", city: "", search: "" });
 
-  const [hotel, setHotel] = useState(() => {
+  const [hotel, setHotel] = useState<any>(null);
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('hotel');
-      return stored ? JSON.parse(stored) : null;
+      if (stored) setHotel(JSON.parse(stored));
     }
-    return null;
-  });
+  }, []);
 
   const [newHotel, setNewHotel] = useState<Hotel>({
     name: "",
@@ -1324,25 +1322,28 @@ export default function HotelsPage() {
     return matchesName && matchesCity && matchesSearch;
   });
 
-  if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
+  if (loading) return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center gap-3">
+          <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading...</span>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        nepaliFlag={hotel?.nepaliFlag}
-      />
-      <div className="max-w-9xl mx-auto p-4 md:p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold">Hotels Management</h1>
-          {user?.role === 'super_admin' && (
-            <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
-              Add New Hotel
-            </Button>
-          )}
+    <DashboardLayout>
+      <div className="p-4 md:p-6">
+        <div className="bg-card rounded-xl border border-border p-3 mb-5">
+          <div className="flex items-center gap-3 flex-wrap">
+            {user?.role === 'super_admin' && (
+              <Button onClick={() => setShowCreateModal(true)} size="sm" className="ml-auto shrink-0">
+                Add New Hotel
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Create Hotel Modal */}
@@ -1422,7 +1423,7 @@ export default function HotelsPage() {
                 
                 <div>
                   <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea value={newHotel.description || ''} onChange={(e) => setNewHotel({...newHotel, description: e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2" rows={3} />
+                  <textarea value={newHotel.description || ''} onChange={(e) => setNewHotel({...newHotel, description: e.target.value})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={3} />
                 </div>
 
                 <div>
@@ -1463,7 +1464,7 @@ export default function HotelsPage() {
 
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setShowCreateModal(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Create Hotel</Button>
+                  <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">Create Hotel</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -1471,19 +1472,34 @@ export default function HotelsPage() {
         )}
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-            <button onClick={() => setError("")} className="float-right text-red-700 hover:text-red-900">×</button>
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-semibold mb-3">Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input type="text" value={filters.search} onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))} placeholder="Search hotels..." />
-            <Input type="text" value={filters.name} onChange={(e) => setFilters(prev => ({ ...prev, name: e.target.value }))} placeholder="Filter by name..." />
-            <Input type="text" value={filters.city} onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))} placeholder="Filter by city..." />
+        <div className="bg-card rounded-xl border border-border p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-foreground">Filters</h3>
+            </div>
+            <button onClick={() => setFilters({ name: "", city: "", search: "" })} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">Clear all</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Search</label>
+              <Input type="text" value={filters.search} onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))} placeholder="Search hotels..." className="h-10 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Name</label>
+              <Input type="text" value={filters.name} onChange={(e) => setFilters(prev => ({ ...prev, name: e.target.value }))} placeholder="Filter by name..." className="h-10 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">City</label>
+              <Input type="text" value={filters.city} onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))} placeholder="Filter by city..." className="h-10 text-sm" />
+            </div>
           </div>
         </div>
 
@@ -1491,36 +1507,36 @@ export default function HotelsPage() {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statistics</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">License</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Statistics</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Dates</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">License</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredHotels.map((hotel: Hotel) => (
-                  <tr key={hotel._id} className="hover:bg-gray-50">
+                  <tr key={hotel._id} className="hover:bg-muted/30">
                     <td className="px-4 py-4">
                       <div className="font-medium">{hotel.name || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{hotel.description || ''}</div>
+                      <div className="text-sm text-muted-foreground">{hotel.description || ''}</div>
                     </td>
                     <td className="px-4 py-4">
                       <div>{hotel.address?.city || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{hotel.address?.street || ''}</div>
+                      <div className="text-sm text-muted-foreground">{hotel.address?.street || ''}</div>
                     </td>
                     <td className="px-4 py-4">
                       <div>{hotel.contact?.phone || hotel.phone || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{hotel.contact?.email || ''}</div>
+                      <div className="text-sm text-muted-foreground">{hotel.contact?.email || ''}</div>
                     </td>
                     <td className="px-4 py-4">
                       <div>{safeNumber(hotel.roomCount)} Total Rooms</div>
-                      <div className="text-sm text-gray-500">{safeArray(hotel.amenities).length} Amenities</div>
-                      <div className="text-sm text-gray-500">{hotel.type || 'N/A'} Type</div>
+                      <div className="text-sm text-muted-foreground">{safeArray(hotel.amenities).length} Amenities</div>
+                      <div className="text-sm text-muted-foreground">{hotel.type || 'N/A'} Type</div>
                       {hotel.currentBalance !== undefined && (
                         <div className="text-sm text-green-600 font-medium">Balance: रु{hotel.currentBalance.toFixed(2)}</div>
                       )}
@@ -1538,18 +1554,20 @@ export default function HotelsPage() {
                         <Badge variant="outline">No License</Badge>
                       )}
                     </td>
-                    <td className="px-4 py-4 space-y-2 min-w-[140px]">
-                      <Button onClick={() => { setSelectedHotel(hotel); setShowEditModal(true); }} variant="outline" size="sm" className="w-full">Edit</Button>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => { setSelectedHotel(hotel); setShowEditModal(true); }} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit"><Edit className="w-4 h-4" /></button>
+                      </div>
                       {(user?.role === 'manager' || user?.role === 'super_admin') && (
                         <Button onClick={() => { setSelectedHotel(hotel); setBalanceAmount(hotel.initialAmount || 0); setShowBalanceModal(true); }} variant="outline" size="sm" className="w-full bg-green-100 text-green-800 hover:bg-green-200">Update Balance</Button>
                       )}
                       {user?.role === 'super_admin' && (
                         <>
-                          <Button onClick={() => handleOpenNotificationSettings(hotel)} variant="outline" size="sm" className="w-full bg-blue-100 text-blue-800 hover:bg-blue-200"><BellIcon className="w-4 h-4 mr-1" />Notifications</Button>
-                          <Button onClick={() => handleOpenLicenseModal(hotel)} variant="outline" size="sm" className="w-full bg-purple-100 text-purple-800 hover:bg-purple-200"><DocumentTextIcon className="w-4 h-4 mr-1" />License</Button>
-                          <Button onClick={async () => { try { const res = await getHotel(hotel._id!); setSelectedHotel(res?.data || hotel); } catch { setSelectedHotel(hotel); } finally { setShowWebsiteModal(true); } }} variant="outline" size="sm" className="w-full bg-teal-100 text-teal-800 hover:bg-teal-200"><GlobeAltIcon className="w-4 h-4 mr-1" />Website</Button>
-                          <Button onClick={() => { setSelectedHotel(hotel); setShowDomainModal(true); }} variant="outline" size="sm" className="w-full bg-orange-100 text-orange-800 hover:bg-orange-200"><GlobeAltIcon className="w-4 h-4 mr-1" />Domains</Button>
-                          <Button onClick={() => { setSelectedHotel(hotel); setShowPrinterModal(true); }} variant="outline" size="sm" className="w-full bg-indigo-100 text-indigo-800 hover:bg-indigo-200"><PrinterIcon className="w-4 h-4 mr-1" />Printers</Button>
+                          <Button onClick={() => handleOpenNotificationSettings(hotel)} variant="outline" size="sm" className="w-full bg-blue-100 text-blue-800 hover:bg-blue-200"><Bell className="w-4 h-4 mr-1" />Notifications</Button>
+                          <Button onClick={() => handleOpenLicenseModal(hotel)} variant="outline" size="sm" className="w-full bg-purple-100 text-purple-800 hover:bg-purple-200"><FileText className="w-4 h-4 mr-1" />License</Button>
+                          <Button onClick={async () => { try { const res = await getHotel(hotel._id!); setSelectedHotel(res?.data || hotel); } catch { setSelectedHotel(hotel); } finally { setShowWebsiteModal(true); } }} variant="outline" size="sm" className="w-full bg-teal-100 text-teal-800 hover:bg-teal-200"><Globe className="w-4 h-4 mr-1" />Website</Button>
+                          <Button onClick={() => { setSelectedHotel(hotel); setShowDomainModal(true); }} variant="outline" size="sm" className="w-full bg-orange-100 text-orange-800 hover:bg-orange-200"><Globe className="w-4 h-4 mr-1" />Domains</Button>
+                          <Button onClick={() => { setSelectedHotel(hotel); setShowPrinterModal(true); }} variant="outline" size="sm" className="w-full bg-indigo-100 text-indigo-800 hover:bg-indigo-200"><Printer className="w-4 h-4 mr-1" />Printers</Button>
                         </>
                       )}
                     </td>
@@ -1558,7 +1576,7 @@ export default function HotelsPage() {
               </tbody>
             </table>
           </div>
-          {filteredHotels.length === 0 && <div className="text-center py-12 text-gray-500">No hotels found matching your criteria.</div>}
+          {filteredHotels.length === 0 && <div className="text-center py-12 text-muted-foreground">No hotels found matching your criteria.</div>}
         </div>
 
         {/* Edit Hotel Modal */}
@@ -1690,7 +1708,7 @@ export default function HotelsPage() {
   </div>
 </div>
 
-                    <textarea value={selectedHotel.description || ''} onChange={(e) => setSelectedHotel({...selectedHotel, description: e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2" rows={3} placeholder="Description" />
+                    <textarea value={selectedHotel.description || ''} onChange={(e) => setSelectedHotel({...selectedHotel, description: e.target.value})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={3} placeholder="Description" />
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Input type="text" value={selectedHotel.address?.street || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, street: e.target.value }})} placeholder="Street" />
@@ -1713,7 +1731,7 @@ export default function HotelsPage() {
 
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                      <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Update Hotel</Button>
+                      <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">Update Hotel</Button>
                     </DialogFooter>
                   </form>
                 </div>
@@ -1728,11 +1746,11 @@ export default function HotelsPage() {
                     {selectedHotel.logo && isValidUrl(selectedHotel.logo) ? (
                       <div className="relative w-32 h-32">
                         <img src={selectedHotel.logo} alt="Hotel Logo" className="w-full h-full object-cover rounded-lg" />
-                        <button onClick={() => handleRemoveImage(selectedHotel._id!, selectedHotel.logo!, 'logo')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><XMarkIcon className="w-4 h-4" /></button>
+                        <button onClick={() => handleRemoveImage(selectedHotel._id!, selectedHotel.logo!, 'logo')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>
                       </div>
                     ) : (
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                        <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-500 mb-2">No logo uploaded</p>
                         <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
                           Upload Logo
@@ -1749,12 +1767,12 @@ export default function HotelsPage() {
                       {selectedHotel.images?.filter(url => isValidUrl(url)).map((image, index) => (
                         <div key={index} className="relative w-full h-24">
                           <img src={image} alt={`Hotel ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
-                          <button onClick={() => handleRemoveImage(selectedHotel._id!, image, 'images')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><XMarkIcon className="w-4 h-4" /></button>
+                          <button onClick={() => handleRemoveImage(selectedHotel._id!, image, 'images')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>
                         </div>
                       ))}
                     </div>
                     <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block">
-                      <PlusIcon className="w-4 h-4 inline mr-1" />Add Images
+                      <Plus className="w-4 h-4 inline mr-1" />Add Images
                       <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'images')} />
                     </label>
                   </div>
@@ -1766,12 +1784,12 @@ export default function HotelsPage() {
                       {selectedHotel.gallery?.filter(url => isValidUrl(url)).map((image, index) => (
                         <div key={index} className="relative w-full h-24">
                           <img src={image} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
-                          <button onClick={() => handleRemoveImage(selectedHotel._id!, image, 'gallery')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><XMarkIcon className="w-4 h-4" /></button>
+                          <button onClick={() => handleRemoveImage(selectedHotel._id!, image, 'gallery')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>
                         </div>
                       ))}
                     </div>
                     <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block">
-                      <PlusIcon className="w-4 h-4 inline mr-1" />Add Gallery Images
+                      <Plus className="w-4 h-4 inline mr-1" />Add Gallery Images
                       <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'gallery')} />
                     </label>
                   </div>
@@ -1814,7 +1832,7 @@ export default function HotelsPage() {
         <Button variant="outline" onClick={() => setShowBalanceModal(false)}>
           Cancel
         </Button>
-        <Button onClick={handleUpdateBalance} className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button onClick={handleUpdateBalance} className="bg-primary hover:bg-primary/90 text-primary-foreground">
           Update Balance
         </Button>
       </DialogFooter>
@@ -1845,7 +1863,7 @@ export default function HotelsPage() {
                   selectedHotel[domainType]!.map((domain, index) => (
                     <div key={index} className="flex items-center justify-between p-2 border rounded mb-2">
                       <span className="font-medium">{domain}</span>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveDomain(domain, domainType)}><XMarkIcon className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleRemoveDomain(domain, domainType)}><X className="w-4 h-4" /></Button>
                     </div>
                   ))
                 ) : (
@@ -1863,7 +1881,7 @@ export default function HotelsPage() {
             {emailServiceStatus && (
               <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
                 <div className="flex items-center">
-                  <EnvelopeIcon className="w-5 h-5 text-blue-600 mr-2" />
+                  <Mail className="w-5 h-5 text-blue-600 mr-2" />
                   <span className="font-medium">Email Service Status:</span>
                   <Badge variant="outline" className={`ml-2 ${emailServiceStatus.global.serviceAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                     {emailServiceStatus.global.serviceAvailable ? "Available" : "Unavailable"}
@@ -1936,7 +1954,7 @@ export default function HotelsPage() {
               size="sm"
               onClick={() => handleRemoveRecipient(recipient.email)}
             >
-              <XMarkIcon className="w-4 h-4" />
+              <X className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -2193,10 +2211,10 @@ export default function HotelsPage() {
 
         {/* Summary Stats */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card><CardContent><div className="text-2xl font-bold text-blue-600">{hotels.length}</div><div className="text-sm text-gray-600">Total Hotels</div></CardContent></Card>
-          <Card><CardContent><div className="text-2xl font-bold text-green-600">{hotels.reduce((sum, h) => sum + (h.roomCount || 0), 0)}</div><div className="text-sm text-gray-600">Total Rooms</div></CardContent></Card>
-          <Card><CardContent><div className="text-2xl font-bold text-orange-600">{hotels.reduce((sum, h) => sum + (h.amenities?.length || 0), 0)}</div><div className="text-sm text-gray-600">Total Amenities</div></CardContent></Card>
-          <Card><CardContent><div className="text-2xl font-bold text-purple-600">{hotels.filter(h => h.license?.status === 'active').length}</div><div className="text-sm text-gray-600">Active Licenses</div></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-primary">{hotels.length}</div><div className="text-sm text-muted-foreground">Total Hotels</div></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{hotels.reduce((sum, h) => sum + (h.roomCount || 0), 0)}</div><div className="text-sm text-muted-foreground">Total Rooms</div></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{hotels.reduce((sum, h) => sum + (h.amenities?.length || 0), 0)}</div><div className="text-sm text-muted-foreground">Total Amenities</div></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-violet-600 dark:text-violet-400">{hotels.filter(h => h.license?.status === 'active').length}</div><div className="text-sm text-muted-foreground">Active Licenses</div></CardContent></Card>
         </div>
 
         {/* Expenditures Section */}
@@ -2238,7 +2256,7 @@ export default function HotelsPage() {
 
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow mb-6 border border-blue-100">
               <div className="flex justify-between items-center">
-                <div><h3 className="text-sm font-medium text-gray-600">Filtered Results</h3><span className="text-3xl font-bold text-blue-700">रु{filteredTotal.toFixed(2)}</span></div>
+                <div><h3 className="text-sm font-medium text-muted-foreground">Filtered Results</h3><span className="text-3xl font-bold text-primary">रु{filteredTotal.toFixed(2)}</span></div>
                 <div className="flex gap-4">
                   <div className="bg-white px-4 py-2 rounded-lg shadow-sm"><span className="text-xs text-gray-500">Count</span><div className="text-xl font-semibold">{filteredCount}</div></div>
                   <div className="bg-white px-4 py-2 rounded-lg shadow-sm"><span className="text-xs text-gray-500">Average</span><div className="text-xl font-semibold">रु{filteredCount > 0 ? (filteredTotal / filteredCount).toFixed(2) : '0.00'}</div></div>
@@ -2329,7 +2347,7 @@ export default function HotelsPage() {
           required
           value={newExpenditure.description}
           onChange={(e) => setNewExpenditure(prev => ({ ...prev, description: e.target.value }))}
-          className="w-full border border-gray-300 rounded px-3 py-2"
+          className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background"
           rows={3}
           placeholder="Description"
         />
@@ -2352,7 +2370,7 @@ export default function HotelsPage() {
           id="expenditure-notes"
           value={newExpenditure.notes || ''}
           onChange={(e) => setNewExpenditure(prev => ({ ...prev, notes: e.target.value }))}
-          className="w-full border border-gray-300 rounded px-3 py-2"
+          className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background"
           rows={2}
           placeholder="Additional notes"
         />
@@ -2426,7 +2444,7 @@ export default function HotelsPage() {
         <Button type="button" variant="outline" onClick={() => setShowExpenditureModal(false)}>
           Cancel
         </Button>
-        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">
           Create Expenditure
         </Button>
       </DialogFooter>
@@ -2438,7 +2456,7 @@ export default function HotelsPage() {
               <DialogContent>
                 <DialogHeader><DialogTitle>Reject Expenditure</DialogTitle></DialogHeader>
                 <form onSubmit={(e) => { e.preventDefault(); if (selectedExpenditure) { handleRejectExpenditure(selectedExpenditure._id); setShowRejectModal(false); } }} className="space-y-4">
-                  <textarea required value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" rows={3} placeholder="Reason for Rejection" />
+                  <textarea required value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={3} placeholder="Reason for Rejection" />
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setShowRejectModal(false)}>Cancel</Button>
                     <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white">Reject</Button>
@@ -2449,6 +2467,6 @@ export default function HotelsPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

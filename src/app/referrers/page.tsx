@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useAuth } from "@/components/ui/auth-provider";
-import { NavBar } from "@/components/ui/NavBar";
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { format } from "date-fns";
+import { Search, X, Edit, Trash2, Plus, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface Referrer {
   _id: string;
@@ -59,25 +61,6 @@ interface PaymentForm {
 // ];
 
 export default function ReferrersPage() {
-  // Load hotel from localStorage
-  const [hotel, setHotel] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('hotel');
-      return stored ? JSON.parse(stored) : null;
-    }
-    return null;
-  });
-  // Listen for localStorage changes (e.g., nepaliLanguage toggle)
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-
-      if (event.key === 'hotel') {
-        setHotel(event.newValue ? JSON.parse(event.newValue) : null);
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
   const [referrers, setReferrers] = useState<Referrer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -109,15 +92,7 @@ export default function ReferrersPage() {
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalReferrers, setTotalReferrers] = useState(0);
-  const [user, setUser] = useState<any>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('user');
-      return stored ? JSON.parse(stored) : null;
-    }
-    return null;
-  });
-  const { logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false);
+
 
   const getRequestHeaders = (token: string) => {
     return {
@@ -392,230 +367,139 @@ export default function ReferrersPage() {
     }
   }, [notification]);
 
-  const generatePaginationButtons = () => {
-    const buttons = [];
-    const maxVisiblePages = 5;
 
-    let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    if (startPage > 1) {
-      buttons.push(
-        <button
-          key="first"
-          onClick={() => setPage(1)}
-          disabled={page === 1}
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-        >
-          «
-        </button>
-      );
-      buttons.push(
-        <button
-          key="prev"
-          onClick={() => setPage(page - 1)}
-          disabled={page === 1}
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-        >
-          ‹
-        </button>
-      );
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      buttons.push(
-        <button
-          key={i}
-          onClick={() => setPage(i)}
-          className={`px-3 py-2 text-sm font-medium rounded-md ${page === i
-              ? 'text-white bg-blue-600 border border-blue-600'
-              : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-            }`}
-        >
-          {i}
-        </button>
-      );
-    }
-
-    if (endPage < totalPages) {
-      buttons.push(
-        <button
-          key="next"
-          onClick={() => setPage(page + 1)}
-          disabled={page === totalPages}
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-        >
-          ›
-        </button>
-      );
-      buttons.push(
-        <button
-          key="last"
-          onClick={() => setPage(totalPages)}
-          disabled={page === totalPages}
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-        >
-          »
-        </button>
-      );
-    }
-
-    return buttons;
-  };
 
   if (loading && referrers.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50">
-<NavBar
-	user={user}
-	showUserMenu={showUserMenu}
-	setShowUserMenu={setShowUserMenu}
-	logout={logout}
-	nepaliFlag={hotel?.nepaliFlag}
-/>        <div className="max-w-9xl mx-auto p-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-3">
+            <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <span className="text-sm text-muted-foreground">Loading referrers...</span>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        nepaliFlag={hotel?.nepaliFlag}
-      />
-
-      <div className="max-w-9xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Referrers Management</h1>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Add New Referrer
-          </button>
-        </div>
+    <DashboardLayout>
+      <div className="p-6 space-y-5">
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-            <button onClick={() => setError("")} className="float-right">×</button>
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-semibold">Filters</h3>
-            <button onClick={clearFilters} className="text-blue-600 hover:text-blue-800 underline text-sm">
-              Clear Filters
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              >
-                <option value="">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="paid">Paid</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Search</label>
+        <div className="bg-card rounded-xl border border-border p-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[160px] max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                 placeholder="Search by name, taxi no, ID..."
               />
+              {filters.search && (
+                <button onClick={() => handleFilterChange('search', '')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
+            <select
+              value={filters.status}
+              onChange={(e) => handleFilterChange('status', e.target.value)}
+              className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px]"
+            >
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="paid">Paid</option>
+            </select>
+            {(filters.search || filters.status) && (
+              <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0">
+                Clear
+              </button>
+            )}
+            <Button onClick={() => setShowForm(true)} className="ml-auto shrink-0">
+              <Plus className="w-4 h-4" />
+              Add New
+            </Button>
           </div>
         </div>
 
         {/* Stats Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-blue-600">{totalReferrers}</div>
-            <div className="text-sm text-gray-600">Total Referrers</div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center">
+            <div className="text-2xl font-bold text-primary">{totalReferrers}</div>
+            <div className="text-sm text-muted-foreground">Total Referrers</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-green-600">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center">
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
               {referrers.filter(r => r.status === 'active').length}
             </div>
-            <div className="text-sm text-gray-600">Active</div>
+            <div className="text-sm text-muted-foreground">Active</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-yellow-600">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center">
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
               {referrers.reduce((sum, r) => sum + r.totalAmountToReceive, 0).toLocaleString()}
             </div>
-            <div className="text-sm text-gray-600">Amount to Receive</div>
+            <div className="text-sm text-muted-foreground">Amount to Receive</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-purple-600">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center">
+            <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">
               {referrers.reduce((sum, r) => sum + r.totalAmountReceived, 0).toLocaleString()}
             </div>
-            <div className="text-sm text-gray-600">Amount Received</div>
+            <div className="text-sm text-muted-foreground">Amount Received</div>
           </div>
         </div>
 
         {/* Referrers Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Referrer</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contact Info</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Financials</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guests</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Referrer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Contact Info</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Financials</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Guests</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-card divide-y divide-border">
                 {referrers.map((referrer) => (
-                  <tr key={referrer._id} className="hover:bg-gray-50">
+                  <tr key={referrer._id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{referrer.fullName}</div>
-                      <div className="text-sm text-gray-500">रु{referrer.referralPrice}/guest</div>
+                      <div className="text-sm font-medium text-foreground">{referrer.fullName}</div>
+                      <div className="text-sm text-muted-foreground">रु{referrer.referralPrice}/guest</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
+                      <div className="text-sm text-foreground space-y-0.5">
                         {referrer.taxiNo && <div>Taxi: {referrer.taxiNo}</div>}
                         {referrer.idNo && <div>ID: {referrer.idNo}</div>}
-                        {referrer.address && <div className="truncate max-w-xs">{referrer.address}</div>}
+                        {referrer.address && <div className="truncate max-w-xs text-muted-foreground">{referrer.address}</div>}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm">
-                        <div className="text-green-600">Received: रु{referrer.totalAmountReceived.toLocaleString()}</div>
-                        <div className="text-blue-600">Pending: रु{referrer.totalAmountToReceive.toLocaleString()}</div>
-                        <div className="text-gray-600">Total: रु{(referrer.totalAmountReceived + referrer.totalAmountToReceive).toLocaleString()}</div>
+                      <div className="text-sm space-y-0.5">
+                        <div className="text-emerald-600 dark:text-emerald-400">Received: रु{referrer.totalAmountReceived.toLocaleString()}</div>
+                        <div className="text-primary">Pending: रु{referrer.totalAmountToReceive.toLocaleString()}</div>
+                        <div className="text-muted-foreground">Total: रु{(referrer.totalAmountReceived + referrer.totalAmountToReceive).toLocaleString()}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <select
                         value={referrer.status}
                         onChange={(e) => handleStatusChange(referrer._id, e.target.value as 'active' | 'inactive' | 'paid')}
-                        className={`text-xs font-medium px-2 py-1 rounded ${referrer.status === 'active' ? 'bg-green-100 text-green-800' :
-                            referrer.status === 'paid' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
+                        className={`text-xs font-medium px-2 py-1 rounded-lg border-0 cursor-pointer ${referrer.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' :
+                            referrer.status === 'paid' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                              'bg-muted text-muted-foreground'
                           }`}
                       >
                         <option value="active">Active</option>
@@ -624,33 +508,26 @@ export default function ReferrersPage() {
                       </select>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm">
+                      <div className="text-sm text-foreground space-y-0.5">
                         <div>Total: {referrer.guestsReferred.length}</div>
                         <div>Paid: {referrer.guestsReferred.filter(g => g.isPaid).length}</div>
                         <div>Pending: {referrer.guestsReferred.filter(g => !g.isPaid).length}</div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 space-x-2">
-                      <button
-                        onClick={() => handleEdit(referrer)}
-                        className="text-indigo-600 hover:text-indigo-900 text-sm"
-                      >
-                        Edit
-                      </button>
-                      {referrer.totalAmountToReceive > 0 && (
-                        <button
-                          onClick={() => handlePayment(referrer)}
-                          className="text-green-600 hover:text-green-900 text-sm"
-                        >
-                          Pay
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => handleEdit(referrer)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit">
+                          <Edit className="w-4 h-4" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(referrer._id)}
-                        className="text-red-600 hover:text-red-900 text-sm"
-                      >
-                        Delete
-                      </button>
+                        {referrer.totalAmountToReceive > 0 && (
+                          <button onClick={() => handlePayment(referrer)} className="p-1.5 rounded-md text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all" title="Pay">
+                            <DollarSign className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button onClick={() => handleDelete(referrer._id)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all" title="Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -659,100 +536,94 @@ export default function ReferrersPage() {
           </div>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="px-6 py-4 bg-gray-50 border-t">
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-gray-700">
-                  Showing {referrers.length} of {totalReferrers} referrers
-                </div>
-                <div className="flex space-x-2">
-                  {generatePaginationButtons()}
-                </div>
-              </div>
-            </div>
-          )}
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            disabled={loading}
+          />
 
           {referrers.length === 0 && !loading && (
             <div className="text-center py-12">
-              <div className="text-gray-500">No referrers found</div>
+              <div className="text-muted-foreground">No referrers found</div>
             </div>
           )}
         </div>
 
         {/* Add/Edit Referrer Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h2 className="text-2xl font-bold mb-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-elevated animate-scale-in">
+              <h2 className="text-2xl font-bold text-foreground mb-4">
                 {editingReferrer ? "Edit Referrer" : "Add New Referrer"}
               </h2>
               <form onSubmit={handleFormSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Full Name *</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Full Name *</label>
                   <input
                     type="text"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.fullName ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    className={`w-full bg-background border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${formErrors.fullName ? 'border-destructive bg-destructive/5' : 'border-input'}`}
                     required
                   />
-                  {formErrors.fullName && <p className="text-red-600 text-sm mt-1">{formErrors.fullName}</p>}
+                  {formErrors.fullName && <p className="text-destructive text-sm mt-1">{formErrors.fullName}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Address</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Address</label>
                   <textarea
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.address ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    className={`w-full bg-background border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${formErrors.address ? 'border-destructive bg-destructive/5' : 'border-input'}`}
                     rows={2}
                   />
-                  {formErrors.address && <p className="text-red-600 text-sm mt-1">{formErrors.address}</p>}
+                  {formErrors.address && <p className="text-destructive text-sm mt-1">{formErrors.address}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">ID Number</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">ID Number</label>
                   <input
                     type="text"
                     value={formData.idNo}
                     onChange={(e) => setFormData({ ...formData, idNo: e.target.value })}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.idNo ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    className={`w-full bg-background border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${formErrors.idNo ? 'border-destructive bg-destructive/5' : 'border-input'}`}
                   />
-                  {formErrors.idNo && <p className="text-red-600 text-sm mt-1">{formErrors.idNo}</p>}
+                  {formErrors.idNo && <p className="text-destructive text-sm mt-1">{formErrors.idNo}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Taxi Number</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Taxi Number</label>
                   <input
                     type="text"
                     value={formData.taxiNo}
                     onChange={(e) => setFormData({ ...formData, taxiNo: e.target.value })}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.taxiNo ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    className={`w-full bg-background border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${formErrors.taxiNo ? 'border-destructive bg-destructive/5' : 'border-input'}`}
                   />
-                  {formErrors.taxiNo && <p className="text-red-600 text-sm mt-1">{formErrors.taxiNo}</p>}
+                  {formErrors.taxiNo && <p className="text-destructive text-sm mt-1">{formErrors.taxiNo}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Referral Price (रु) *</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Referral Price (रु) *</label>
                   <input
                     type="number"
                     value={formData.referralPrice}
                     onChange={(e) => setFormData({ ...formData, referralPrice: e.target.value })}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.referralPrice ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                    className={`w-full bg-background border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring ${formErrors.referralPrice ? 'border-destructive bg-destructive/5' : 'border-input'}`}
                     min="0"
                     step="0.01"
                     required
                   />
-                  {formErrors.referralPrice && <p className="text-red-600 text-sm mt-1">{formErrors.referralPrice}</p>}
+                  {formErrors.referralPrice && <p className="text-destructive text-sm mt-1">{formErrors.referralPrice}</p>}
                 </div>
-                <div className="flex justify-end space-x-3">
+                <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="px-4 py-2 border border-gray-300 rounded"
+                    className="px-4 py-2 border border-input bg-background text-foreground rounded-lg hover:bg-muted transition-colors text-sm font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={formLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm font-medium"
                   >
                     {formLoading ? "Saving..." : editingReferrer ? "Update" : "Add Referrer"}
                   </button>
@@ -764,21 +635,21 @@ export default function ReferrersPage() {
 
         {/* Payment Modal */}
         {showPaymentForm && payingReferrer && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h2 className="text-2xl font-bold mb-4">Process Payment</h2>
-              <div className="mb-4">
-                <h3 className="font-semibold">{payingReferrer.fullName}</h3>
-                <p>Amount to receive: रु{payingReferrer.totalAmountToReceive.toLocaleString()}</p>
-                <p>Pending referrals: {payingReferrer.guestsReferred.filter(g => !g.isPaid).length}</p>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-elevated animate-scale-in">
+              <h2 className="text-2xl font-bold text-foreground mb-4">Process Payment</h2>
+              <div className="mb-4 p-3 bg-muted/30 rounded-lg space-y-1">
+                <h3 className="font-semibold text-foreground">{payingReferrer.fullName}</h3>
+                <p className="text-sm text-muted-foreground">Amount to receive: <span className="text-foreground font-medium">रु{payingReferrer.totalAmountToReceive.toLocaleString()}</span></p>
+                <p className="text-sm text-muted-foreground">Pending referrals: <span className="text-foreground font-medium">{payingReferrer.guestsReferred.filter(g => !g.isPaid).length}</span></p>
               </div>
               <form onSubmit={handlePaymentSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Payment Method *</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Payment Method *</label>
                   <select
                     value={paymentFormData.paymentMethod}
                     onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentMethod: e.target.value as 'cash' | 'online' })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     required
                   >
                     <option value="cash">Cash</option>
@@ -786,36 +657,36 @@ export default function ReferrersPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Payment Date *</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Payment Date *</label>
                   <input
                     type="date"
                     value={paymentFormData.paymentDate}
                     onChange={(e) => setPaymentFormData({ ...paymentFormData, paymentDate: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Notes</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Notes</label>
                   <textarea
                     value={paymentFormData.notes}
                     onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                     rows={2}
                   />
                 </div>
-                <div className="flex justify-end space-x-3">
+                <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
                     onClick={resetPaymentForm}
-                    className="px-4 py-2 border border-gray-300 rounded"
+                    className="px-4 py-2 border border-input bg-background text-foreground rounded-lg hover:bg-muted transition-colors text-sm font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={paymentLoading}
-                    className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50"
+                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors text-sm font-medium"
                   >
                     {paymentLoading ? "Processing..." : "Process Payment"}
                   </button>
@@ -827,12 +698,16 @@ export default function ReferrersPage() {
 
         {/* Notification */}
         {notification && (
-          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-            }`}>
-            {notification.message}
+          <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-lg shadow-elevated flex items-center gap-3 animate-slide-up ${
+            notification.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-destructive text-destructive-foreground'
+          }`}>
+            <span className="text-sm font-medium flex-1">{notification.message}</span>
+            <button onClick={() => setNotification(null)} className="p-0.5 hover:opacity-70 transition-opacity">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

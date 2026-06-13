@@ -40,7 +40,7 @@ type Role = "staff" | "manager" | "super_admin" | "kitchen_staff";
 
   // Default navigation links with proper role definitions
   const defaultNavLinks: NavLink[] = [
-    { label: "Dashboard", href: "/dashboard", np: "ड्यासबोर्ड", roles: ["staff", "manager", "super_admin"] },
+    { label: "Dashboard", href: "/dashboard", np: "ड्यासबोर्ड", roles: ["manager", "super_admin"] },
     { label: "Checkouts", href: "/checkouts", np: "चेकआउट", roles: ["staff", "manager", "super_admin"] },
     { label: "Guests", href: "/guests", np: "अतिथि", roles: ["staff", "manager", "super_admin"] },
     { label: "Dues", href: "/dues", np: "बक्यौता", roles: ["staff", "manager", "super_admin"] },

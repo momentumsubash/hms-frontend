@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { useAuth } from "@/components/ui/auth-provider";
-import { NavBar } from "@/components/ui/NavBar";
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -107,8 +106,6 @@ export default function StatsPage() {
     return localStorage.getItem("token") || sessionStorage.getItem("token");
   }
   
-  const { logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
 
   // Add this state with your other states
@@ -702,18 +699,8 @@ const handleApplyDateFilter = () => {
   const isManager = user?.role === 'manager' || user?.role === 'super_admin';
 
   return (
-    <div>
-      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        nepaliFlag={hotel?.nepaliFlag}
-      />
-
-      <div className="max-w-9xl mx-auto py-10 px-6 space-y-8">
-        <h1 className="text-3xl font-bold mb-6 text-center">Statistics & Financial Management</h1>
-        
+    <DashboardLayout>
+      <div className="py-10 px-6 space-y-8">
         {/* Date Filter Section - Global */}
         <Card className="mb-6">
           <CardHeader>
@@ -756,7 +743,7 @@ const handleApplyDateFilter = () => {
                 </>
               )}
               
-              <Button onClick={handleApplyDateFilter} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleApplyDateFilter} className="bg-primary hover:bg-primary/90">
                 Apply Date Filter
               </Button>
             </div>
@@ -764,11 +751,16 @@ const handleApplyDateFilter = () => {
         </Card>
 
         {/* Global Error */}
-        {error && <div className="text-red-600 text-center bg-red-50 p-4 rounded">{error}</div>}
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+          </div>
+        )}
 
         {/* Notification Toast */}
         {notification && (
-          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
             {notification.message}
           </div>
         )}
@@ -780,8 +772,8 @@ const handleApplyDateFilter = () => {
               <button
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'summary' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
+                    : 'text-muted-foreground hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('summary')}
               >
@@ -790,8 +782,8 @@ const handleApplyDateFilter = () => {
               <button
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'item' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
+                    : 'text-muted-foreground hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('item')}
               >
@@ -800,8 +792,8 @@ const handleApplyDateFilter = () => {
               <button
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'room' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
+                    : 'text-muted-foreground hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('room')}
               >
@@ -810,8 +802,8 @@ const handleApplyDateFilter = () => {
               <button
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'expenditure' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
+                    : 'text-muted-foreground hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('expenditure')}
               >
@@ -820,8 +812,8 @@ const handleApplyDateFilter = () => {
               <button
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'financial' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
+                    : 'text-muted-foreground hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('financial')}
               >
@@ -830,8 +822,8 @@ const handleApplyDateFilter = () => {
               <button
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'daily' 
-                    ? 'border-b-2 border-blue-500 text-blue-600 bg-blue-50' 
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
+                    : 'text-muted-foreground hover:text-gray-800'
                 }`}
                 onClick={() => setActiveTab('daily')}
               >
@@ -844,9 +836,14 @@ const handleApplyDateFilter = () => {
 {activeTab === 'summary' && (
   <div className="space-y-6">
     {loadingStates.summary ? (
-      <div className="text-center py-10">Loading summary data...</div>
+      <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center gap-3">
+          <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading summary data...</span>
+        </div>
+      </div>
     ) : errorStates.summary ? (
-      <div className="text-red-600 text-center bg-red-50 p-4 rounded">{errorStates.summary}</div>
+      <div className="text-destructive text-center bg-destructive/10 p-4 rounded">{errorStates.summary}</div>
     ) : (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
@@ -861,17 +858,17 @@ const handleApplyDateFilter = () => {
               </div>
               <div className="flex justify-between">
                 <span>Total Gained:</span>
-                <span className="font-semibold text-green-600">रु{summaryStats?.hotelBalance?.currentBalance && summaryStats?.hotelBalance?.initialAmount 
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">रु{summaryStats?.hotelBalance?.currentBalance && summaryStats?.hotelBalance?.initialAmount 
                   ? (summaryStats.hotelBalance.currentBalance - summaryStats.hotelBalance.initialAmount).toLocaleString() 
                   : 0}</span>
               </div>
               <div className="flex justify-between">
                 <span>Total Expenditures:</span>
-                <span className="font-semibold text-red-600">रु{summaryStats?.expenditures?.total?.toLocaleString() ?? 0}</span>
+                <span className="font-semibold text-destructive">रु{summaryStats?.expenditures?.total?.toLocaleString() ?? 0}</span>
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span>Current Balance:</span>
-                <span className="font-semibold text-blue-600">
+                <span className="font-semibold text-primary">
                   रु{summaryStats?.hotelBalance?.currentBalance?.toLocaleString() ?? 0}
                 </span>
               </div>
@@ -887,13 +884,13 @@ const handleApplyDateFilter = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Room Sales:</span>
-                <span className="font-semibold text-green-600">
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                   रु{summaryStats?.earnings?.roomRevenue?.toLocaleString() ?? 0}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Item Sales:</span>
-                <span className="font-semibold text-blue-600">
+                <span className="font-semibold text-primary">
                   रु{summaryStats?.earnings?.itemSales?.toLocaleString() ?? 0}
                 </span>
               </div>
@@ -915,7 +912,7 @@ const handleApplyDateFilter = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Net Profit/Loss:</span>
-                <span className={`font-semibold ${(summaryStats?.financial?.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`font-semibold ${(summaryStats?.financial?.netProfit || 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
                   रु{summaryStats?.financial?.netProfit?.toLocaleString() ?? 0}
                 </span>
               </div>
@@ -941,7 +938,7 @@ const handleApplyDateFilter = () => {
             {activeTab === 'item' && (
               <div>
                 {/* Category Filter Section */}
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                <div className="mb-6 p-4 bg-muted/50 rounded-lg">
                   <h4 className="font-medium mb-3">Filter by Category</h4>
                   <div className="flex flex-wrap items-center gap-3">
                     <select
@@ -959,7 +956,7 @@ const handleApplyDateFilter = () => {
                     
                     <Button 
                       onClick={applyItemCategoryFilter} 
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-primary hover:bg-primary/90"
                     >
                       Apply Filter
                     </Button>
@@ -968,7 +965,7 @@ const handleApplyDateFilter = () => {
                       <Button 
                         onClick={clearCategoryFilter}
                         variant="outline"
-                        className="border-gray-300"
+                        className="border-input"
                       >
                         Clear Filter
                       </Button>
@@ -976,23 +973,28 @@ const handleApplyDateFilter = () => {
                   </div>
                   
                   {selectedCategory && (
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="text-sm text-muted-foreground mt-2">
                       Showing items from category: {categories.find(c => c._id === selectedCategory)?.name}
                     </p>
                   )}
                 </div>
 
                 {loadingStates.item ? (
-                  <div className="text-center py-10">Loading item sales data...</div>
+                  <div className="flex items-center justify-center py-12">
+                    <div className="flex flex-col items-center gap-3">
+                      <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading item sales data...</span>
+                    </div>
+                  </div>
                 ) : errorStates.item ? (
-                  <div className="text-red-600 text-center bg-red-50 p-4 rounded">{errorStates.item}</div>
+                  <div className="text-destructive text-center bg-destructive/10 p-4 rounded">{errorStates.item}</div>
                 ) : itemBreakdown.length === 0 ? (
-                  <div className="text-gray-500 text-center py-8">No item sales data for this filter.</div>
+                  <div className="text-muted-foreground text-center py-8">No item sales data for this filter.</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full border text-sm">
                       <thead>
-                        <tr className="bg-gray-100">
+                        <tr className="bg-muted">
                           <th className="px-3 py-2 border text-left">Item Name</th>
                           <th className="px-3 py-2 border text-left">Category</th>
                           <th className="px-3 py-2 border text-center">Quantity Sold</th>
@@ -1003,16 +1005,16 @@ const handleApplyDateFilter = () => {
                       </thead>
                       <tbody>
                         {itemBreakdown.map((row) => (
-                          <tr key={row.itemId} className="hover:bg-gray-50">
+                          <tr key={row.itemId} className="hover:bg-muted/30">
                             <td className="px-3 py-2 border">{row.name}</td>
                             <td className="px-3 py-2 border">{row.category}</td>
                             <td className="px-3 py-2 border text-center">{row.quantity}</td>
                             <td className="px-3 py-2 border text-right">रु{(row.averagePrice || 0).toFixed(2)}</td>
-                            <td className="px-3 py-2 border text-right font-medium text-blue-600">रु{row.sales?.toLocaleString()}</td>
+                            <td className="px-3 py-2 border text-right font-medium text-primary">रु{row.sales?.toLocaleString()}</td>
                             <td className="px-3 py-2 border text-center">{row.salesCount || 0}</td>
                           </tr>
                         ))}
-                        <tr className="bg-gray-50 font-bold">
+                        <tr className="bg-muted/50 font-bold">
                           <td colSpan={2} className="px-3 py-2 border text-right">Total Item Sales:</td>
                           <td className="px-3 py-2 border text-center">{totalItemQuantity}</td>
                           <td className="px-3 py-2 border text-right">-</td>
@@ -1041,22 +1043,27 @@ const handleApplyDateFilter = () => {
                       <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
                     ))}
                   </select>
-                  <Button onClick={applyRoomTypeFilter} size="sm" className="bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={applyRoomTypeFilter} size="sm" className="bg-primary hover:bg-primary/90">
                     Apply Room Filter
                   </Button>
                 </div>
 
                 {loadingStates.room ? (
-                  <div className="text-center py-10">Loading room sales data...</div>
+                  <div className="flex items-center justify-center py-12">
+                    <div className="flex flex-col items-center gap-3">
+                      <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading room sales data...</span>
+                    </div>
+                  </div>
                 ) : errorStates.room ? (
-                  <div className="text-red-600 text-center bg-red-50 p-4 rounded">{errorStates.room}</div>
+                  <div className="text-destructive text-center bg-destructive/10 p-4 rounded">{errorStates.room}</div>
                 ) : roomBreakdown.length === 0 ? (
-                  <div className="text-gray-500 text-center py-8">No room sales data for this filter.</div>
+                  <div className="text-muted-foreground text-center py-8">No room sales data for this filter.</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full border text-sm">
                       <thead>
-                        <tr className="bg-gray-100">
+                        <tr className="bg-muted">
                           <th className="px-3 py-2 border text-left">Room Number</th>
                           <th className="px-3 py-2 border text-left">Type</th>
                           <th className="px-3 py-2 border text-center">Nights</th>
@@ -1068,17 +1075,17 @@ const handleApplyDateFilter = () => {
                       </thead>
                       <tbody>
                         {roomBreakdown.map((row, idx) => (
-                          <tr key={row.roomId || idx} className="hover:bg-gray-50">
+                          <tr key={row.roomId || idx} className="hover:bg-muted/30">
                             <td className="px-3 py-2 border">{row.roomNumber || '-'}</td>
                             <td className="px-3 py-2 border">{row.type || '-'}</td>
                             <td className="px-3 py-2 border text-center">{row.totalNights || '-'}</td>
                             <td className="px-3 py-2 border text-center">{row.checkoutCount || '-'}</td>
                             <td className="px-3 py-2 border text-right">रु{(row.baseRate || 0).toFixed(2)}</td>
-                            <td className="px-3 py-2 border text-right font-medium text-green-600">रु{row.actualRoomRevenue?.toFixed(2) || 0}</td>
+                            <td className="px-3 py-2 border text-right font-medium text-emerald-600 dark:text-emerald-400">रु{row.actualRoomRevenue?.toFixed(2) || 0}</td>
                             <td className="px-3 py-2 border text-right">रु{(row.averageDailyRate || 0).toFixed(2)}</td>
                           </tr>
                         ))}
-                        <tr className="bg-gray-50 font-bold">
+                        <tr className="bg-muted/50 font-bold">
                           <td colSpan={2} className="px-3 py-2 border text-right">Total:</td>
                           <td className="px-3 py-2 border text-center">{totalNights}</td>
                           <td className="px-3 py-2 border text-center">{totalRoomCheckouts}</td>
@@ -1100,7 +1107,7 @@ const handleApplyDateFilter = () => {
                   <h3 className="text-lg font-semibold">Expenditure Management</h3>
                   <Button 
                     onClick={() => setShowExpenditureForm(true)}
-                    className="bg-blue-600 hover:bg-blue-700"
+                    className="bg-primary hover:bg-primary/90"
                   >
                     Create New Expenditure
                   </Button>
@@ -1111,27 +1118,27 @@ const handleApplyDateFilter = () => {
   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
     <Card>
       <CardContent className="p-4">
-        <div className="text-sm text-gray-600">Total Expenditures</div>
-        <div className="text-2xl font-bold text-red-600">रु{(expenditureStats?.totals?.totalAmount || 0).toLocaleString()}</div>
-        <div className="text-xs text-gray-500">Count: {expenditureStats?.totals?.totalCount || 0}</div>
+        <div className="text-sm text-muted-foreground">Total Expenditures</div>
+        <div className="text-2xl font-bold text-destructive">रु{(expenditureStats?.totals?.totalAmount || 0).toLocaleString()}</div>
+        <div className="text-xs text-muted-foreground">Count: {expenditureStats?.totals?.totalCount || 0}</div>
       </CardContent>
     </Card>
     <Card>
       <CardContent className="p-4">
-        <div className="text-sm text-gray-600">Average Amount</div>
-        <div className="text-2xl font-bold text-blue-600">रु{(expenditureStats?.totals?.averageAmount || 0).toLocaleString()}</div>
+        <div className="text-sm text-muted-foreground">Average Amount</div>
+        <div className="text-2xl font-bold text-primary">रु{(expenditureStats?.totals?.averageAmount || 0).toLocaleString()}</div>
       </CardContent>
     </Card>
     <Card>
       <CardContent className="p-4">
-        <div className="text-sm text-gray-600">Filtered Total</div>
-        <div className="text-2xl font-bold text-purple-600">रु{(expenditureStats?.filteredTotal || 0).toLocaleString()}</div>
-        <div className="text-xs text-gray-500">Count: {expenditureStats?.filteredCount || 0}</div>
+        <div className="text-sm text-muted-foreground">Filtered Total</div>
+        <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">रु{(expenditureStats?.filteredTotal || 0).toLocaleString()}</div>
+        <div className="text-xs text-muted-foreground">Count: {expenditureStats?.filteredCount || 0}</div>
       </CardContent>
     </Card>
     <Card>
       <CardContent className="p-4">
-        <div className="text-sm text-gray-600">Range</div>
+        <div className="text-sm text-muted-foreground">Range</div>
         <div className="text-sm font-medium">Min: रु{(expenditureStats?.totals?.minAmount || 0).toLocaleString()}</div>
         <div className="text-sm font-medium">Max: रु{(expenditureStats?.totals?.maxAmount || 0).toLocaleString()}</div>
       </CardContent>
@@ -1140,7 +1147,7 @@ const handleApplyDateFilter = () => {
 )}
 
                 {/* Expenditure Filters with Search */}
-                <div className="flex flex-wrap gap-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex flex-wrap gap-4 p-4 bg-muted/50 rounded-lg">
                   {/* Search Bar */}
                   <div className="flex-1 min-w-[250px]">
                     <input
@@ -1177,26 +1184,31 @@ const handleApplyDateFilter = () => {
                   <Button 
                     onClick={clearExpenditureFilters}
                     variant="outline"
-                    className="border-gray-300"
+                    className="border-input"
                   >
                     Clear Filters
                   </Button>
                   
-                  <Button onClick={fetchExpenditureData} className="bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={fetchExpenditureData} className="bg-primary hover:bg-primary/90">
                     Apply Filters
                   </Button>
                 </div>
 
                 {/* Expenditures Table */}
                 {loadingStates.expenditure ? (
-                  <div className="text-center py-10">Loading expenditures...</div>
+                  <div className="flex items-center justify-center py-12">
+                    <div className="flex flex-col items-center gap-3">
+                      <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading expenditures...</span>
+                    </div>
+                  </div>
                 ) : errorStates.expenditure ? (
-                  <div className="text-red-600 text-center bg-red-50 p-4 rounded">{errorStates.expenditure}</div>
+                  <div className="text-destructive text-center bg-destructive/10 p-4 rounded">{errorStates.expenditure}</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full border text-sm">
                       <thead>
-                        <tr className="bg-gray-100">
+                        <tr className="bg-muted">
                           <th className="px-3 py-2 border text-left">Date</th>
                           <th className="px-3 py-2 border text-left">Description</th>
                           <th className="px-3 py-2 border text-left">Category</th>
@@ -1209,13 +1221,13 @@ const handleApplyDateFilter = () => {
                       <tbody>
                         {expenditures.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="px-3 py-4 text-center text-gray-500">
+                            <td colSpan={7} className="px-3 py-4 text-center text-muted-foreground">
                               No expenditures found
                             </td>
                           </tr>
                         ) : (
                           expenditures.map((expenditure) => (
-                            <tr key={expenditure._id} className="hover:bg-gray-50">
+                            <tr key={expenditure._id} className="hover:bg-muted/30">
                               <td className="px-3 py-2 border">
                                 {format(new Date(expenditure.date), "MMM dd, yyyy")}
                               </td>
@@ -1225,10 +1237,10 @@ const handleApplyDateFilter = () => {
                               <td className="px-3 py-2 border text-center">
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                   expenditure.status === 'approved' 
-                                    ? 'bg-green-100 text-green-800'
+                                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200'
                                     : expenditure.status === 'rejected'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-yellow-100 text-yellow-800'
+                                    ? 'bg-destructive/10 text-destructive'
+                                    : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200'
                                 }`}>
                                   {expenditure.status}
                                 </span>
@@ -1254,7 +1266,7 @@ const handleApplyDateFilter = () => {
                                       </>
                                     )}
                                     {expenditure.status !== 'pending' && (
-                                      <span className="text-sm text-gray-500">
+                                      <span className="text-sm text-muted-foreground">
                                         {expenditure.status === 'approved' ? 'Approved' : 'Rejected'}
                                       </span>
                                     )}
@@ -1269,7 +1281,7 @@ const handleApplyDateFilter = () => {
                     
                     {/* Pagination Info */}
                     {expenditureStats?.pagination && (
-                      <div className="mt-4 text-sm text-gray-600">
+                      <div className="mt-4 text-sm text-muted-foreground">
                         Showing {expenditures.length} of {expenditureStats.pagination.total} entries
                       </div>
                     )}
@@ -1282,9 +1294,14 @@ const handleApplyDateFilter = () => {
             {activeTab === 'financial' && (
               <div className="space-y-6">
                 {loadingStates.financial ? (
-                  <div className="text-center py-10">Loading financial data...</div>
+                  <div className="flex items-center justify-center py-12">
+                    <div className="flex flex-col items-center gap-3">
+                      <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading financial data...</span>
+                    </div>
+                  </div>
                 ) : errorStates.financial ? (
-                  <div className="text-red-600 text-center bg-red-50 p-4 rounded">{errorStates.financial}</div>
+                  <div className="text-destructive text-center bg-destructive/10 p-4 rounded">{errorStates.financial}</div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card>
@@ -1300,49 +1317,49 @@ const handleApplyDateFilter = () => {
                             </span>
                           </div>
                         
-                          <div className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                          <div className="flex justify-between items-center p-3 bg-muted/50 rounded">
                             <span className="font-medium">Initial Amount</span>
                             <span className="font-bold">रु{financialOverview?.hotel?.initialAmount?.toLocaleString() ?? 0}</span>
                           </div>
                           
-                          <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                          <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded">
                             <span className="font-medium">Total Sales without VAT</span>
-                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">रु{financialOverview?.summary?.totalEarningsWithoutVat?.toLocaleString() ?? 0}</span>
                           </div>
                           
-                          <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                          <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded">
                             <span className="font-medium">Room Revenue</span>
-                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalRoomRevenue?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">रु{financialOverview?.summary?.totalRoomRevenue?.toLocaleString() ?? 0}</span>
                           </div>
                           
-                          <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                          <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded">
                             <span className="font-medium">Item Sales</span>
-                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalItemSales?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">रु{financialOverview?.summary?.totalItemSales?.toLocaleString() ?? 0}</span>
                           </div>
                           
-                          <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                          <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded">
                             <span className="font-medium">Total VAT Amount</span>
-                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalVatAmount?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">रु{financialOverview?.summary?.totalVatAmount?.toLocaleString() ?? 0}</span>
                           </div>
                           
-                          <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                          <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded">
                             <span className="font-medium">Total Advance Paid</span>
-                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalAdvancePaid?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">रु{financialOverview?.summary?.totalAdvancePaid?.toLocaleString() ?? 0}</span>
                           </div>
                           
-                          <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                          <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded">
                             <span className="font-medium">Total Room Discounts</span>
-                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalRoomDiscount?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">रु{financialOverview?.summary?.totalRoomDiscount?.toLocaleString() ?? 0}</span>
                           </div>
                           
-                          <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                          <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded">
                             <span className="font-medium">Total Money Collected</span>
-                            <span className="font-bold text-green-600">रु{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">रु{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
                           </div>
                           
-                          <div className="flex justify-between items-center p-3 bg-red-50 rounded">
+                          <div className="flex justify-between items-center p-3 bg-destructive/10 rounded">
                             <span className="font-medium">Total Expenditures</span>
-                            <span className="font-bold text-red-600">रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
+                            <span className="font-bold text-destructive">रु{financialOverview?.summary?.totalExpenditures?.toLocaleString() ?? 0}</span>
                           </div>
                         </div>
                       </CardContent>
@@ -1353,16 +1370,16 @@ const handleApplyDateFilter = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
+                          <div className="flex justify-between items-center p-3 bg-primary/5 rounded">
                             <span className="font-medium">Net Profit/Loss</span>
-                            <span className={`text-lg font-bold ${financialOverview?.summary?.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            <span className={`text-lg font-bold ${financialOverview?.summary?.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
                               रु{financialOverview?.summary?.netProfit?.toLocaleString() ?? 0}
                             </span>
                           </div>
                           
                           <div className="flex justify-between items-center p-3 bg-purple-50 rounded">
                             <span className="font-medium">Profit Margin</span>
-                            <span className="text-lg font-bold text-purple-600">{financialOverview?.summary?.profitMargin ?? '0%'}</span>
+                            <span className="text-lg font-bold text-violet-600 dark:text-violet-400">{financialOverview?.summary?.profitMargin ?? '0%'}</span>
                           </div>
                           
                           <div className="flex justify-between items-center p-3 bg-indigo-50 rounded">
@@ -1391,9 +1408,14 @@ const handleApplyDateFilter = () => {
             {activeTab === 'daily' && (
               <div className="space-y-6">
                 {loadingStates.daily ? (
-                  <div className="text-center py-10">Loading daily summary...</div>
+                  <div className="flex items-center justify-center py-12">
+                    <div className="flex flex-col items-center gap-3">
+                      <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading daily summary...</span>
+                    </div>
+                  </div>
                 ) : errorStates.daily ? (
-                  <div className="text-red-600 text-center bg-red-50 p-4 rounded">{errorStates.daily}</div>
+                  <div className="text-destructive text-center bg-destructive/10 p-4 rounded">{errorStates.daily}</div>
                 ) : dailySummary ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <Card>
@@ -1401,8 +1423,8 @@ const handleApplyDateFilter = () => {
                         <CardTitle className="text-sm">Total Earnings</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-green-600">रु{dailySummary.earnings?.total?.toLocaleString() ?? 0}</div>
-                        <div className="text-sm text-gray-600">Checkouts: {dailySummary.earnings?.checkoutCount ?? 0}</div>
+                        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">रु{dailySummary.earnings?.total?.toLocaleString() ?? 0}</div>
+                        <div className="text-sm text-muted-foreground">Checkouts: {dailySummary.earnings?.checkoutCount ?? 0}</div>
                       </CardContent>
                     </Card>
                     <Card>
@@ -1410,7 +1432,7 @@ const handleApplyDateFilter = () => {
                         <CardTitle className="text-sm">Room Revenue</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">रु{dailySummary.earnings?.roomRevenue?.toLocaleString() ?? 0}</div>
+                        <div className="text-2xl font-bold text-primary">रु{dailySummary.earnings?.roomRevenue?.toLocaleString() ?? 0}</div>
                       </CardContent>
                     </Card>
                     <Card>
@@ -1418,7 +1440,7 @@ const handleApplyDateFilter = () => {
                         <CardTitle className="text-sm">Item Sales</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-purple-600">रु{dailySummary.earnings?.itemSales?.toLocaleString() ?? 0}</div>
+                        <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">रु{dailySummary.earnings?.itemSales?.toLocaleString() ?? 0}</div>
                       </CardContent>
                     </Card>
                     <Card>
@@ -1426,8 +1448,8 @@ const handleApplyDateFilter = () => {
                         <CardTitle className="text-sm">Expenditures</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-red-600">रु{dailySummary.expenditures?.total?.toLocaleString() ?? 0}</div>
-                        <div className="text-sm text-gray-600">Count: {dailySummary.expenditures?.count ?? 0}</div>
+                        <div className="text-2xl font-bold text-destructive">रु{dailySummary.expenditures?.total?.toLocaleString() ?? 0}</div>
+                        <div className="text-sm text-muted-foreground">Count: {dailySummary.expenditures?.count ?? 0}</div>
                       </CardContent>
                     </Card>
                     <Card>
@@ -1435,10 +1457,10 @@ const handleApplyDateFilter = () => {
                         <CardTitle className="text-sm">Net Profit</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className={`text-2xl font-bold ${dailySummary.financial?.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <div className={`text-2xl font-bold ${dailySummary.financial?.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
                           रु{dailySummary.financial?.netProfit?.toLocaleString() ?? 0}
                         </div>
-                        <div className="text-sm text-gray-600">Margin: {dailySummary.financial?.profitMargin ?? '0%'}</div>
+                        <div className="text-sm text-muted-foreground">Margin: {dailySummary.financial?.profitMargin ?? '0%'}</div>
                       </CardContent>
                     </Card>
                     <Card>
@@ -1446,8 +1468,8 @@ const handleApplyDateFilter = () => {
                         <CardTitle className="text-sm">Occupancy</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold text-orange-600">{dailySummary.rooms?.occupied || 0} / {dailySummary.rooms?.total || 0}</div>
-                        <div className="text-sm text-gray-600">Occupancy Rate: {dailySummary.rooms?.occupancyRate || 0}%</div>
+                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{dailySummary.rooms?.occupied || 0} / {dailySummary.rooms?.total || 0}</div>
+                        <div className="text-sm text-muted-foreground">Occupancy Rate: {dailySummary.rooms?.occupancyRate || 0}%</div>
                       </CardContent>
                     </Card>
                     <Card>
@@ -1456,7 +1478,7 @@ const handleApplyDateFilter = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold text-indigo-600">{dailySummary.guests?.checkedIn || 0}</div>
-                        <div className="text-sm text-gray-600">Checked In / {dailySummary.guests?.total || 0} Total</div>
+                        <div className="text-sm text-muted-foreground">Checked In / {dailySummary.guests?.total || 0} Total</div>
                       </CardContent>
                     </Card>
                     <Card>
@@ -1465,13 +1487,13 @@ const handleApplyDateFilter = () => {
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold text-teal-600">रु{dailySummary.hotelBalance?.currentBalance?.toLocaleString() ?? 0}</div>
-                        <div className="text-sm text-gray-600">Initial: रु{dailySummary.hotelBalance?.initialAmount?.toLocaleString() ?? 0}</div>
-                        <div className="text-sm text-gray-600">Last updated: {dailySummary.hotelBalance?.lastBalanceUpdate ? format(new Date(dailySummary.hotelBalance.lastBalanceUpdate), "MMM dd, yyyy") : 'N/A'}</div>
+                        <div className="text-sm text-muted-foreground">Initial: रु{dailySummary.hotelBalance?.initialAmount?.toLocaleString() ?? 0}</div>
+                        <div className="text-sm text-muted-foreground">Last updated: {dailySummary.hotelBalance?.lastBalanceUpdate ? format(new Date(dailySummary.hotelBalance.lastBalanceUpdate), "MMM dd, yyyy") : 'N/A'}</div>
                       </CardContent>
                     </Card>
                   </div>
                 ) : (
-                  <div className="text-gray-500 text-center py-8">No daily summary data available.</div>
+                  <div className="text-muted-foreground text-center py-8">No daily summary data available.</div>
                 )}
               </div>
             )}
@@ -1480,8 +1502,8 @@ const handleApplyDateFilter = () => {
 
         {/* Expenditure Form Modal */}
         {showExpenditureForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-card rounded-lg p-6 w-full max-w-md">
               <h2 className="text-2xl font-bold mb-4">Create New Expenditure</h2>
               
               <form onSubmit={handleExpenditureSubmit} className="space-y-4">
@@ -1494,7 +1516,7 @@ const handleApplyDateFilter = () => {
                     step="0.01"
                     value={expenditureForm.amount}
                     onChange={e => setExpenditureForm({ ...expenditureForm, amount: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-input rounded px-3 py-2"
                     placeholder="Enter amount"
                   />
                 </div>
@@ -1506,7 +1528,7 @@ const handleApplyDateFilter = () => {
                     required
                     value={expenditureForm.description}
                     onChange={e => setExpenditureForm({ ...expenditureForm, description: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-input rounded px-3 py-2"
                     placeholder="Enter description"
                   />
                 </div>
@@ -1517,7 +1539,7 @@ const handleApplyDateFilter = () => {
                     required
                     value={expenditureForm.category}
                     onChange={e => setExpenditureForm({ ...expenditureForm, category: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-input rounded px-3 py-2"
                   >
                     {EXPENDITURE_CATEGORIES.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
@@ -1532,7 +1554,7 @@ const handleApplyDateFilter = () => {
                     required
                     value={expenditureForm.date}
                     onChange={e => setExpenditureForm({ ...expenditureForm, date: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-input rounded px-3 py-2"
                   />
                 </div>
                 
@@ -1541,7 +1563,7 @@ const handleApplyDateFilter = () => {
                   <textarea
                     value={expenditureForm.notes}
                     onChange={e => setExpenditureForm({ ...expenditureForm, notes: e.target.value })}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    className="w-full border border-input rounded px-3 py-2"
                     rows={3}
                     placeholder="Additional notes (optional)"
                   />
@@ -1552,7 +1574,7 @@ const handleApplyDateFilter = () => {
                     <label className="block text-sm font-medium mb-1">Inventory Items</label>
                     <button
                       type="button"
-                      className="text-sm text-blue-600 hover:underline"
+                      className="text-sm text-primary hover:underline"
                       onClick={() => setSelectedInventoryItems(prev => ([
                         ...prev,
                         { itemId: inventoryItems.length > 0 ? inventoryItems[0]._id : '', quantity: 1 }
@@ -1563,7 +1585,7 @@ const handleApplyDateFilter = () => {
                   </div>
 
                   {selectedInventoryItems.length === 0 && (
-                    <p className="text-sm text-gray-500">Select inventory-enabled items to update stock when this expenditure is created.</p>
+                    <p className="text-sm text-muted-foreground">Select inventory-enabled items to update stock when this expenditure is created.</p>
                   )}
 
                   {selectedInventoryItems.map((selected, index) => (
@@ -1574,7 +1596,7 @@ const handleApplyDateFilter = () => {
                           id={`inventory-item-${index}`}
                           value={selected.itemId}
                           onChange={e => setSelectedInventoryItems(prev => prev.map((item, idx) => idx === index ? { ...item, itemId: e.target.value } : item))}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-input rounded px-3 py-2"
                         >
                           <option value="">Select item</option>
                           {inventoryItems.map(item => (
@@ -1593,7 +1615,7 @@ const handleApplyDateFilter = () => {
                           min="1"
                           value={selected.quantity}
                           onChange={e => setSelectedInventoryItems(prev => prev.map((item, idx) => idx === index ? { ...item, quantity: Math.max(1, parseInt(e.target.value) || 1) } : item))}
-                          className="w-full border border-gray-300 rounded px-3 py-2"
+                          className="w-full border border-input rounded px-3 py-2"
                         />
                       </div>
 
@@ -1617,14 +1639,14 @@ const handleApplyDateFilter = () => {
                       setShowExpenditureForm(false);
                       setSelectedInventoryItems([]);
                     }}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="px-4 py-2 border border-input rounded-lg hover:bg-muted/30"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
                     disabled={formLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
                   >
                     {formLoading ? "Creating..." : "Create Expenditure"}
                   </Button>
@@ -1636,8 +1658,8 @@ const handleApplyDateFilter = () => {
 
         {/* Approval Modal */}
         {showApprovalModal && selectedExpenditure && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-card rounded-lg p-6 w-full max-w-md">
               <h2 className="text-2xl font-bold mb-4">Review Expenditure</h2>
               
               <div className="space-y-4 mb-6">
@@ -1675,7 +1697,7 @@ const handleApplyDateFilter = () => {
                     <textarea
                       value={rejectionReason}
                       onChange={e => setRejectionReason(e.target.value)}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
+                      className="w-full border border-input rounded px-3 py-2"
                       rows={3}
                       placeholder="Enter reason for rejection (optional)"
                     />
@@ -1689,7 +1711,7 @@ const handleApplyDateFilter = () => {
                       setSelectedExpenditure(null);
                       setRejectionReason("");
                     }}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="px-4 py-2 border border-input rounded-lg hover:bg-muted/30"
                   >
                     Cancel
                   </Button>
@@ -1715,6 +1737,6 @@ const handleApplyDateFilter = () => {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

@@ -23,14 +23,22 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
-Cypress.Commands.add('login', (email, password) => {
- cy.visit('http://localhost:3001/login');
-    cy.get('[data-cy="login-email"]').type('ram@mirana.com');
-    cy.get('[data-cy="login-password"]').type('manager123');
-    cy.get('[data-cy="login-submit"]').click();
-    // Assert redirect to dashboard or presence of dashboard element
-    cy.url().should('include', '/dashboard');
-    cy.get('body').should('contain.text', 'Dashboard');
+Cypress.Commands.add('login', (email = 'manager@momentum.com', password = 'Manager@123') => {
+  cy.visit('http://localhost:3001/login');
+  cy.window().then((win) => {
+    return cy.request('POST', 'http://localhost:3000/api/auth/login', { email, password })
+      .then((resp) => {
+        expect(resp.status).to.eq(200);
+        expect(resp.body).to.have.property('token');
+        win.localStorage.setItem('token', resp.body.token);
+        if (resp.body.user) {
+          win.localStorage.setItem('user', JSON.stringify(resp.body.user));
+        }
+      });
+  });
+  cy.visit('http://localhost:3001/dashboard');
+  cy.url({ timeout: 15000 }).should('include', '/dashboard');
+  cy.get('body', { timeout: 10000 }).should('contain.text', 'Dashboard');
 });
 
 

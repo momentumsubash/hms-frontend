@@ -31,7 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       try {
         const userData = await getCurrentUser();
-        setUser(userData); // This should now be the user object directly
+        setUser(userData);
+        if (userData && typeof window !== "undefined") {
+          localStorage.setItem("user", JSON.stringify(userData));
+        }
       } catch (err: any) {
         console.error('Failed to fetch user:', err);
         setUser(null);

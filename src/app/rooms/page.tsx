@@ -1,13 +1,14 @@
 "use client";
 
 import { getRooms, updateRoom, updateRoomMaintenance } from "@/lib/api";
-import { useAuth } from "@/components/ui/auth-provider";
-import { NavBar } from "@/components/ui/NavBar";
-import { PaginationControls } from "@/components/common/PaginationControls";
-import { useEffect, useState, useCallback } from "react";
+import { DashboardLayout } from "@/components/dashboard-layout";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import React, { useEffect, useState, useCallback } from "react";
+import { Bed, Users, Plus, Eye, Edit, Trash2, Search, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export default function RoomsPage() {
-  const { logout } = useAuth();
   const [user, setUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('user');
@@ -22,7 +23,6 @@ export default function RoomsPage() {
     }
     return null;
   });
-  // Listen for localStorage changes (e.g., nepaliLanguage toggle)
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
       if (event.key === 'hotel') {
@@ -32,9 +32,7 @@ export default function RoomsPage() {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   
-  // Pagination and filter state
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
@@ -46,26 +44,13 @@ export default function RoomsPage() {
     roomNumber: ""
   });
 
-  // Debounce search inputs
   const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
-  
-  const navLinks = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Checkouts", href: "/checkouts" },
-    { label: "Guests", href: "/guests" },
-    { label: "Hotels", href: "/hotels" },
-    { label: "Items", href: "/items" },
-    { label: "Orders", href: "/orders" },
-    { label: "Rooms", href: "/rooms" },
-    { label: "Users", href: "/users" },
-  ];
   
   const [rooms, setRooms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toast, setToast] = useState<{message: string, type: 'error' | 'success'} | null>(null);
   
-  // Edit modal state
   const [showEdit, setShowEdit] = useState(false);
   const [editRoom, setEditRoom] = useState<any>(null);
   const [editForm, setEditForm] = useState<any>({
@@ -78,7 +63,6 @@ export default function RoomsPage() {
   });
   const [editLoading, setEditLoading] = useState(false);
 
-  // Add room modal state
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState<any>({
     roomNumber: "",
@@ -92,63 +76,38 @@ export default function RoomsPage() {
   });
   const [addLoading, setAddLoading] = useState(false);
 
-  // Delete confirmation state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Room details modal state
   const [showDetails, setShowDetails] = useState(false);
   const [roomDetails, setRoomDetails] = useState<any>(null);
 
-  // Form errors state
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
   const [editFormErrors, setEditFormErrors] = useState<{[key: string]: string}>({});
 
-  // Reset form errors on modal open/close
   const resetFormErrors = () => setFormErrors({});
   const resetEditFormErrors = () => setEditFormErrors({});
 
-  // Validation function for add form
   const validateAddForm = (): boolean => {
     const errors: {[key: string]: string} = {};
-    
-    if (!addForm.roomNumber || addForm.roomNumber.trim() === '') {
-      errors.roomNumber = 'Room number is required';
-    }
-    if (!addForm.type) {
-      errors.type = 'Room type is required';
-    }
-    if (!addForm.rate || Number(addForm.rate) <= 0) {
-      errors.rate = 'Rate must be greater than 0';
-    }
-    if (!addForm.capacity || Number(addForm.capacity) <= 0) {
-      errors.capacity = 'Capacity must be greater than 0';
-    }
-    
+    if (!addForm.roomNumber || addForm.roomNumber.trim() === '') errors.roomNumber = 'Room number is required';
+    if (!addForm.type) errors.type = 'Room type is required';
+    if (!addForm.rate || Number(addForm.rate) <= 0) errors.rate = 'Rate must be greater than 0';
+    if (!addForm.capacity || Number(addForm.capacity) <= 0) errors.capacity = 'Capacity must be greater than 0';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  // Validation function for edit form
   const validateEditForm = (): boolean => {
     const errors: {[key: string]: string} = {};
-    
-    if (!editForm.type) {
-      errors.type = 'Room type is required';
-    }
-    if (!editForm.rate || Number(editForm.rate) <= 0) {
-      errors.rate = 'Rate must be greater than 0';
-    }
-    if (!editForm.capacity || Number(editForm.capacity) <= 0) {
-      errors.capacity = 'Capacity must be greater than 0';
-    }
-    
+    if (!editForm.type) errors.type = 'Room type is required';
+    if (!editForm.rate || Number(editForm.rate) <= 0) errors.rate = 'Rate must be greater than 0';
+    if (!editForm.capacity || Number(editForm.capacity) <= 0) errors.capacity = 'Capacity must be greater than 0';
     setEditFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  // Helper function to get standard headers
   const getRequestHeaders = (token: string) => {
     return {
       'Accept': 'application/json',
@@ -156,28 +115,22 @@ export default function RoomsPage() {
     };
   };
 
-  // Load data with server-side filtering and pagination - UPDATED FOR YOUR API FORMAT
   const loadData = useCallback(async (resetPage = false, customFilters?: typeof filters) => {
     try {
       setLoading(true);
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
 
-      // Use custom filters if provided, otherwise use current filters
       const currentFilters = customFilters || filters;
       const currentPage = resetPage ? 1 : page;
 
-      // Build query parameters exactly like the curl example
       const queryParams = new URLSearchParams();
       queryParams.append('page', currentPage.toString());
       queryParams.append('limit', limit.toString());
-      
-      // Add filters if they exist
       if (currentFilters.type) queryParams.append('type', currentFilters.type);
       if (currentFilters.isOccupied !== "") queryParams.append('isOccupied', currentFilters.isOccupied);
       if (currentFilters.roomNumber) queryParams.append('roomNumber', currentFilters.roomNumber);
 
-      // Make the API call exactly like the curl example
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?${queryParams.toString()}`, {
         method: 'GET',
         headers: getRequestHeaders(token),
@@ -189,42 +142,27 @@ export default function RoomsPage() {
       }
 
       const data = await response.json();
-      // Handle the specific response structure from your API
       let roomsData = [];
       let totalCount = 0;
       let totalPagesCount = 0;
       let currentPageNum = 1;
 
       if (data.success && Array.isArray(data.data)) {
-        // Structure: { success: true, data: [], pagination: {}, roomCount: number }
         roomsData = data.data;
         totalCount = data.roomCount || data.pagination?.total || 0;
         totalPagesCount = data.pagination?.pages || Math.ceil(totalCount / limit);
         currentPageNum = data.pagination?.page || currentPage;
       } else if (Array.isArray(data)) {
-        // Fallback: simple array response
         roomsData = data;
         totalCount = data.length;
         totalPagesCount = Math.ceil(totalCount / limit);
-      } else {
-        // Fallback - ensure roomsData is always an array
-        roomsData = [];
-        totalCount = 0;
-        totalPagesCount = 0;
       }
 
       setRooms(roomsData);
       setTotalPages(totalPagesCount);
       setTotalRooms(totalCount);
-      
-      // Update page if it's different from what API returned
-      if (currentPageNum !== page) {
-        setPage(currentPageNum);
-      }
-
-      if (resetPage) {
-        setPage(1);
-      }
+      if (currentPageNum !== page) setPage(currentPageNum);
+      if (resetPage) setPage(1);
     } catch (e: any) {
       console.error('Error loading rooms:', e);
       setError(e.message);
@@ -236,57 +174,34 @@ export default function RoomsPage() {
     }
   }, [filters, page, limit]);
 
-  // Handle filter changes with debouncing for search inputs
   const handleFilterChange = (filterKey: string, value: string) => {
     const newFilters = { ...filters, [filterKey]: value };
     setFilters(newFilters);
-    
-    // Clear existing timeout
-    if (searchDebounce) {
-      clearTimeout(searchDebounce);
-    }
-    
-    // Set a new timeout to debounce the API call for search inputs
+    if (searchDebounce) clearTimeout(searchDebounce);
     if (filterKey === 'roomNumber') {
-      setSearchDebounce(setTimeout(() => {
-        loadData(true, newFilters);
-      }, 1000));
+      setSearchDebounce(setTimeout(() => loadData(true, newFilters), 1000));
     } else {
-      // For other filters, apply immediately
       loadData(true, newFilters);
     }
   };
 
   useEffect(() => {
-    // Initial data load
     const fetchAll = async () => {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      if (!token) {
-        setUser(null);
-        return;
-      }
+      if (!token) { setUser(null); return; }
       try {
-        // 1. /auth/me
-        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-          headers: getRequestHeaders(token),
-        });
+        const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, { headers: getRequestHeaders(token) });
         if (!meRes.ok) throw new Error("Not authenticated");
         const meData = await meRes.json();
         setUser(meData.data || null);
         localStorage.setItem('user', JSON.stringify(meData.data || null));
-        
-        // 2. /hotels/me
-        const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, {
-          headers: getRequestHeaders(token),
-        });
+        const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, { headers: getRequestHeaders(token) });
         if (hotelRes.ok) {
           const hotelData = await hotelRes.json();
           const hotelInfo = hotelData.data || null;
           setHotel(hotelInfo);
           localStorage.setItem('hotel', JSON.stringify(hotelInfo));
         }
-        
-        // 3. Load rooms with initial filters
         await loadData();
       } catch (e: any) {
         setUser(null);
@@ -297,18 +212,10 @@ export default function RoomsPage() {
     fetchAll();
   }, []);
 
-  // Load data when page changes
-  useEffect(() => {
-    loadData(false);
-  }, [page, loadData]);
+  useEffect(() => { loadData(false); }, [page, loadData]);
 
-  // Clean up debounce timeout
   useEffect(() => {
-    return () => {
-      if (searchDebounce) {
-        clearTimeout(searchDebounce);
-      }
-    };
+    return () => { if (searchDebounce) clearTimeout(searchDebounce); };
   }, [searchDebounce]);
 
   const showToast = (message: string, type: 'error' | 'success' = 'error') => {
@@ -316,362 +223,250 @@ export default function RoomsPage() {
     setTimeout(() => setToast(null), 5000);
   };
 
-  // Create room function
   const createRoom = async (roomData: any) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
-
     const storedHotel = typeof window !== "undefined" ? localStorage.getItem("hotel") : null;
     const hotelData = storedHotel ? JSON.parse(storedHotel) : hotel;
-    
-    if (!hotelData || !hotelData._id) {
-      throw new Error("Hotel information not found");
-    }
-
-    const roomDataWithHotel = {
-      ...roomData,
-      hotel: hotelData._id
-    };
-
+    if (!hotelData || !hotelData._id) throw new Error("Hotel information not found");
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms`, {
       method: 'POST',
-      headers: {
-        ...getRequestHeaders(token),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(roomDataWithHotel),
+      headers: { ...getRequestHeaders(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...roomData, hotel: hotelData._id }),
     });
-
     const responseData = await response.json();
-    
     if (!response.ok) {
-      // Handle API validation errors
       if (responseData.details) {
-        const errorDetails = responseData.details;
-        const fieldMatch = errorDetails.match(/"(\w+)"/);
-        if (fieldMatch) {
-          const fieldName = fieldMatch[1];
-          setFormErrors({ [fieldName]: errorDetails });
-        }
-        const errorMessage = responseData?.message || 'Validation error';
-        throw new Error(errorMessage);
+        const fieldMatch = responseData.details.match(/"(\w+)"/);
+        if (fieldMatch) setFormErrors({ [fieldMatch[1]]: responseData.details });
       }
-      const errorMessage = responseData?.message || 'Failed to create room';
-      throw new Error(errorMessage);
+      throw new Error(responseData?.message || 'Failed to create room');
     }
-
     return responseData;
   };
 
-  // Delete room function
   const deleteRoom = async (roomNumber: string) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
-
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/${roomNumber}`, {
       method: 'DELETE',
       headers: getRequestHeaders(token),
     });
-
     if (!response.ok) {
       const responseData = await response.json();
-      const errorMessage = responseData?.message || 'Failed to delete room';
-      throw new Error(errorMessage);
+      throw new Error(responseData?.message || 'Failed to delete room');
     }
-
     return await response.json();
   };
 
-  // Update room function
   const updateRoomLocal = async (roomNumber: string, roomData: any) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
-
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/${roomNumber}`, {
       method: 'PUT',
-      headers: {
-        ...getRequestHeaders(token),
-        'Content-Type': 'application/json',
-      },
+      headers: { ...getRequestHeaders(token), 'Content-Type': 'application/json' },
       body: JSON.stringify(roomData),
     });
-
     const responseData = await response.json();
-    
     if (!response.ok) {
-      // Handle API validation errors
       if (responseData.details) {
-        const errorDetails = responseData.details;
-        const fieldMatch = errorDetails.match(/"(\w+)"/);
-        if (fieldMatch) {
-          const fieldName = fieldMatch[1];
-          setEditFormErrors({ [fieldName]: errorDetails });
-        }
-        const errorMessage = responseData?.message || 'Validation error';
-        throw new Error(errorMessage);
+        const fieldMatch = responseData.details.match(/"(\w+)"/);
+        if (fieldMatch) setEditFormErrors({ [fieldMatch[1]]: responseData.details });
       }
-      const errorMessage = responseData?.message || 'Failed to update room';
-      throw new Error(errorMessage);
+      throw new Error(responseData?.message || 'Failed to update room');
     }
-
     return responseData;
   };
 
-  // Update room maintenance function
   const updateRoomMaintenanceLocal = async (roomNumber: string, status: string) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
-
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/${roomNumber}/maintenance`, {
       method: 'PUT',
-      headers: {
-        ...getRequestHeaders(token),
-        'Content-Type': 'application/json',
-      },
+      headers: { ...getRequestHeaders(token), 'Content-Type': 'application/json' },
       body: JSON.stringify({ maintenanceStatus: status }),
     });
-
-    const responseData = await response.json();
-    
     if (!response.ok) {
-      const errorMessage = responseData?.message || 'Failed to update room maintenance';
-      throw new Error(errorMessage);
+      const responseData = await response.json();
+      throw new Error(responseData?.message || 'Failed to update room maintenance');
     }
-
-    return responseData;
+    return await response.json();
   };
 
-  // Clear all filters
   const clearFilters = () => {
-    const clearedFilters = {
-      type: "",
-      isOccupied: "",
-      roomNumber: ""
-    };
+    const clearedFilters = { type: "", isOccupied: "", roomNumber: "" };
     setFilters(clearedFilters);
     loadData(true, clearedFilters);
   };
 
+  const Modal = ({ show, onClose, title, children }: { show: boolean; onClose: () => void; title: string; children: React.ReactNode }) => show ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-card rounded-xl shadow-elevated animate-scale-in overflow-hidden border border-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-base font-semibold text-foreground">{title}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  ) : null;
+
+  const FormField = ({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) => (
+    <div>
+      <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
+      {children}
+      {error && <p className="text-destructive text-xs mt-1">{error}</p>}
+    </div>
+  );
+
   if (loading && rooms.length === 0) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>;
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center gap-3">
+            <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <span className="text-sm text-muted-foreground">Loading rooms...</span>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
   }
   
   return (
-    <div className="min-h-screen bg-slate-50">
-      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        nepaliFlag={hotel?.nepaliFlag}
-      />
-
-      <div className="max-w-9xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Rooms Management</h1>
-          <button
-            onClick={() => {
-              setAddForm({
-                roomNumber: "",
-                type: "",
-                rate: 0,
-                description: "",
-                amenities: [],
-                isOccupied: false,
-                capacity: 1,
-                maintanenceStatus: "",
-              });
-              setShowAdd(true);
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Add New Room
-          </button>
-        </div>
-
-        {/* Summary Section - UPDATED */}
-        <div className="flex gap-8 mb-6">
-          <div className="bg-blue-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-blue-700 text-sm font-semibold">Total Rooms</div>
-            <div className="text-2xl font-bold text-blue-900">{totalRooms}</div>
-          </div>
-          <div className="bg-green-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-green-700 text-sm font-semibold">Current Page</div>
-            <div className="text-2xl font-bold text-green-900">{rooms.length} of {Math.min(limit, totalRooms - (page - 1) * limit)}</div>
-          </div>
-          <div className="bg-purple-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-purple-700 text-sm font-semibold">Page Info</div>
-            <div className="text-2xl font-bold text-purple-900">{page} / {totalPages}</div>
-          </div>
-        </div>
+    <DashboardLayout>
+      <div className="p-6 max-w-[1600px] mx-auto space-y-5">
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-            <button 
-              onClick={() => setError("")} 
-              className="float-right text-red-700 hover:text-red-900"
-            >
-              ×
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors">
+              <X className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-semibold">Filters</h3>
-            <button
-              onClick={clearFilters}
-              className="text-sm text-blue-600 hover:text-blue-800 underline"
-            >
-              Clear All Filters
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Room Number</label>
+        <div className="bg-card rounded-xl border border-border p-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[160px] max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 value={filters.roomNumber}
                 onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                 placeholder="Search by room number..."
               />
+              {filters.roomNumber && (
+                <button onClick={() => handleFilterChange('roomNumber', '')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Room Type</label>
-              <select
-                value={filters.type}
-                onChange={(e) => handleFilterChange('type', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              >
-                <option value="">All Types</option>
-                <option value="single">Single</option>
-                <option value="double">Double</option>
-                <option value="suite">Suite</option>
-                <option value="deluxe">Deluxe</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Occupancy Status</label>
-              <select
-                value={filters.isOccupied}
-                onChange={(e) => handleFilterChange('isOccupied', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              >
-                <option value="">All Rooms</option>
-                <option value="true">Occupied</option>
-                <option value="false">Available</option>
-              </select>
-            </div>
+            <select
+              value={filters.type}
+              onChange={(e) => handleFilterChange('type', e.target.value)}
+              className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px]"
+            >
+              <option value="">All Types</option>
+              <option value="single">Single</option>
+              <option value="double">Double</option>
+              <option value="suite">Suite</option>
+              <option value="deluxe">Deluxe</option>
+            </select>
+            <select
+              value={filters.isOccupied}
+              onChange={(e) => handleFilterChange('isOccupied', e.target.value)}
+              className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px]"
+            >
+              <option value="">All Rooms</option>
+              <option value="true">Occupied</option>
+              <option value="false">Available</option>
+            </select>
+            {(filters.roomNumber || filters.type || filters.isOccupied) && (
+              <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0">
+                Clear
+              </button>
+            )}
+            <Button onClick={() => { setAddForm({ roomNumber: "", type: "", rate: 0, description: "", amenities: [], isOccupied: false, capacity: 1, maintanenceStatus: "" }); setShowAdd(true); }} className="ml-auto shrink-0">
+              <Plus className="w-4 h-4" />
+              Add New
+            </Button>
           </div>
         </div>
 
-        {/* Loading indicator for filter changes */}
         {loading && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4 flex items-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
-            Loading rooms...
+          <div className="bg-primary/5 border border-primary/10 rounded-lg px-5 py-3 flex items-center gap-2.5">
+            <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <span className="text-sm text-muted-foreground">Loading rooms...</span>
           </div>
         )}
 
-        {/* Rooms Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room #</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amenities</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Capacity</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest Phone</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Occupied</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Maintenance</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            <table className="w-full">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Room #</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amenities</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Capacity</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Guest Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Occupied</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Maintenance</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {Array.isArray(rooms) && rooms.length > 0 ? (
                   rooms.map((room: any) => (
-                    <tr key={room._id} className="hover:bg-gray-50">
-                      <td className="px-4 py-4 whitespace-nowrap font-medium">{room.roomNumber}</td>
-                      <td className="px-4 py-4 whitespace-nowrap capitalize">{room.type}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                    <tr key={room._id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap font-medium text-sm">{room.roomNumber}</td>
+                      <td className="px-4 py-3 whitespace-nowrap capitalize text-sm">{room.type}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {room.amenities && room.amenities.length > 0 ? (
-                          <div className="flex flex-wrap gap-1 max-w-xs">
+                          <div className="flex flex-wrap gap-1 max-w-[200px]">
                             {room.amenities.slice(0, 3).map((a: string, i: number) => (
-                              <span key={i} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">{a}</span>
+                              <Badge key={i} variant="secondary" className="text-xs rounded px-1.5 py-0.5 font-normal">{a}</Badge>
                             ))}
                             {room.amenities.length > 3 && (
-                              <span className="text-gray-500 text-xs">+{room.amenities.length - 3}</span>
+                              <span className="text-muted-foreground text-xs">+{room.amenities.length - 3}</span>
                             )}
                           </div>
                         ) : "-"}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">{room.capacity}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">{room.hotel?.name || '-'}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">{room.guestName || '-'}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">{room.guestPhone || '-'}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">रु{room.rate}</td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">{room.capacity}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">{room.guestName || '-'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap font-medium text-sm">रु{room.rate}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {room.isOccupied ? (
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                            Occupied
-                          </span>
+                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-destructive/10 text-destructive border border-destructive/20">Occupied</span>
                         ) : (
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                            Available
-                          </span>
+                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">Available</span>
                         )}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {(room.maintenanceStatus || room.maintanenceStatus) ? (
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                            {(room.maintenanceStatus || room.maintanenceStatus)}
-                          </span>
+                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 border border-amber-200">{(room.maintenanceStatus || room.maintanenceStatus)}</span>
                         ) : '-'}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex space-x-2">
-                          <button
-                            className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                            onClick={() => {
-                              setRoomDetails(room);
-                              setShowDetails(true);
-                            }}
-                          >
-                            View
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <button className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" onClick={() => { setRoomDetails(room); setShowDetails(true); }} title="View">
+                            <Eye className="w-4 h-4" />
                           </button>
-                          <button
-                            className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                            onClick={() => {
-                              setEditRoom(room);
-                              setEditForm({
-                                type: room.type,
-                                rate: room.rate,
-                                amenities: room.amenities || [],
-                                isOccupied: room.isOccupied,
-                                capacity: room.capacity,
-                                maintanenceStatus: (room.maintenanceStatus || room.maintanenceStatus || ""),
-                              });
-                              setShowEdit(true);
-                            }}
-                          >
-                            Edit
+                          <button className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" onClick={() => {
+                            setEditRoom(room);
+                            setEditForm({ type: room.type, rate: room.rate, amenities: room.amenities || [], isOccupied: room.isOccupied, capacity: room.capacity, maintanenceStatus: (room.maintenanceStatus || room.maintanenceStatus || "") });
+                            setShowEdit(true);
+                          }} title="Edit">
+                            <Edit className="w-4 h-4" />
                           </button>
-                          <button
-                            className="text-red-600 hover:text-red-900 text-sm font-medium"
-                            onClick={() => {
-                              setRoomToDelete(room);
-                              setShowDeleteConfirm(true);
-                            }}
-                          >
-                            Delete
+                          <button className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all" onClick={() => { setRoomToDelete(room); setShowDeleteConfirm(true); }} title="Delete">
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -679,8 +474,14 @@ export default function RoomsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={11} className="px-4 py-8 text-center text-gray-500">
-                      {loading ? 'Loading rooms...' : 'No rooms found'}
+                    <td colSpan={9} className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <Search className="w-8 h-8 text-muted-foreground/40" />
+                        <p className="text-muted-foreground">{loading ? 'Loading rooms...' : 'No rooms found'}</p>
+                        {Object.values(filters).some(f => f !== "") && (
+                          <p className="text-sm text-muted-foreground/60">Try adjusting your filters.</p>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -688,460 +489,202 @@ export default function RoomsPage() {
             </table>
           </div>
 
-          {/* Enhanced Pagination Controls */}
           <PaginationControls
-            page={page}
+            currentPage={page}
             totalPages={totalPages}
-            loading={loading}
-            onPageChange={(newPage) => setPage(newPage)}
-            showInput={true}
+            onPageChange={setPage}
+            disabled={loading}
           />
-
-          {(!Array.isArray(rooms) || rooms.length === 0) && !loading && (
-            <div className="text-center py-12">
-              <div className="text-gray-500 text-lg mb-2">No rooms found</div>
-              <div className="text-gray-400 text-sm">
-                {Object.values(filters).some(f => f !== "") 
-                  ? "Try adjusting your filters or clearing them to see more results."
-                  : "Get started by adding your first room."
-                }
-              </div>
-              {Object.values(filters).some(f => f !== "") && (
-                <button
-                  onClick={clearFilters}
-                  className="mt-3 px-4 py-2 text-sm text-blue-600 hover:text-blue-800 underline"
-                >
-                  Clear all filters
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* Room Details Modal */}
-        {showDetails && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold mb-4">Room Details - {roomDetails?.roomNumber}</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Room Number</label>
-                  <div className="text-lg font-medium">{roomDetails?.roomNumber}</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Type</label>
-                  <div className="text-lg capitalize">{roomDetails?.type}</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Rate</label>
-                  <div className="text-lg">रु{roomDetails?.rate}</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Description</label>
-                  <div className="text-lg">{roomDetails?.description || 'No description available'}</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Amenities</label>
-                  <div className="flex flex-wrap gap-2">
-                    {roomDetails?.amenities && roomDetails.amenities.length > 0 ? (
-                      roomDetails.amenities.map((a: string, i: number) => (
-                        <span key={i} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                          {a}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-500">No amenities</span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Capacity</label>
-                  <div className="text-lg">{roomDetails?.capacity}</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Hotel</label>
-                  <div className="text-lg">{roomDetails?.hotel?.name || '-'}</div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Occupied</label>
-                  <div className="text-lg">
-                    {roomDetails?.isOccupied ? (
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                        Occupied
-                      </span>
-                    ) : (
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                        Available
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Maintenance Status</label>
-                  <div className="text-lg">
-                    {(roomDetails?.maintenanceStatus || roomDetails?.maintanenceStatus) ? (
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                        {(roomDetails?.maintenanceStatus || roomDetails?.maintanenceStatus)}
-                      </span>
-                    ) : 'No maintenance'}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Created At</label>
-                  <div className="text-lg">
-                    {roomDetails?.createdAt ? new Date(roomDetails.createdAt).toLocaleDateString() : '-'}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-500">Updated At</label>
-                  <div className="text-lg">
-                    {roomDetails?.updatedAt ? new Date(roomDetails.updatedAt).toLocaleDateString() : '-'}
-                  </div>
-                </div>
-                <div className="flex justify-end pt-4">
-                  <button
-                    onClick={() => setShowDetails(false)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    Close
-                  </button>
-                </div>
+        <Modal show={showDetails} onClose={() => setShowDetails(false)} title={`Room ${roomDetails?.roomNumber}`}>
+          <div className="p-5 space-y-4">
+            {[
+              { label: "Room Number", value: roomDetails?.roomNumber },
+              { label: "Type", value: roomDetails?.type },
+              { label: "Rate", value: `रु${roomDetails?.rate}` },
+              { label: "Description", value: roomDetails?.description || 'No description' },
+              { label: "Capacity", value: roomDetails?.capacity },
+              { label: "Hotel", value: roomDetails?.hotel?.name || '-' },
+              { label: "Created", value: roomDetails?.createdAt ? new Date(roomDetails.createdAt).toLocaleDateString() : '-' },
+            ].map((item) => (
+              <div key={item.label}>
+                <label className="block text-xs font-medium text-muted-foreground mb-0.5">{item.label}</label>
+                <div className="text-sm font-medium text-foreground">{item.value}</div>
+              </div>
+            ))}
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-0.5">Amenities</label>
+              <div className="flex flex-wrap gap-1">
+                {roomDetails?.amenities?.length > 0 ? (
+                  roomDetails.amenities.map((a: string, i: number) => (
+                    <Badge key={i} variant="secondary" className="text-xs rounded px-2 py-0.5 font-normal">{a}</Badge>
+                  ))
+                ) : <span className="text-xs text-muted-foreground">None</span>}
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Add Room Modal */}
-        {showAdd && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold mb-4">Add New Room</h2>
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!validateAddForm()) {
-                    showToast("Please fix validation errors", "error");
-                    return;
-                  }
-                  setAddLoading(true);
-                  try {
-                    await createRoom({
-                      roomNumber: addForm.roomNumber,
-                      type: addForm.type,
-                      rate: Number(addForm.rate),
-                      description: addForm.description,
-                      amenities: Array.isArray(addForm.amenities)
-                        ? addForm.amenities.filter((a: string) => a.trim() !== "")
-                        : [],
-                      isOccupied: addForm.isOccupied,
-                      capacity: Number(addForm.capacity),
-                      maintenanceStatus: addForm.maintanenceStatus || undefined,
-                    });
-                    
-                    setShowAdd(false);
-                    resetFormErrors();
-                    showToast("Room created successfully!", "success");
-                    await loadData(true);
-                  } catch (e: any) {
-                    const errorMessage = e.message || 'An unexpected error occurred';
-                    showToast(errorMessage, "error");
-                  } finally {
-                    setAddLoading(false);
-                  }
-                }}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-sm font-medium mb-1">Room Number</label>
-                  <input
-                    type="text"
-                    value={addForm.roomNumber}
-                    onChange={e => setAddForm((f: any) => ({ ...f, roomNumber: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.roomNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                    required
-                  />
-                  {formErrors.roomNumber && <p className="text-red-600 text-sm mt-1">{formErrors.roomNumber}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Type</label>
-                  <select
-                    value={addForm.type}
-                    onChange={e => setAddForm((f: any) => ({ ...f, type: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.type ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                    required
-                  >
-                    <option value="">Select Type</option>
-                    <option value="single">Single</option>
-                    <option value="double">Double</option>
-                    <option value="suite">Suite</option>
-                    <option value="deluxe">Deluxe</option>
-                  </select>
-                  {formErrors.type && <p className="text-red-600 text-sm mt-1">{formErrors.type}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Rate</label>
-                  <input
-                    type="number"
-                    value={addForm.rate}
-                    onChange={e => setAddForm((f: any) => ({ ...f, rate: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.rate ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                    required
-                  />
-                  {formErrors.rate && <p className="text-red-600 text-sm mt-1">{formErrors.rate}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea
-                    value={addForm.description}
-                    onChange={e => setAddForm((f: any) => ({ ...f, description: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    rows={2}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Amenities (comma separated)</label>
-                  <input
-                    type="text"
-                    value={Array.isArray(addForm.amenities) ? addForm.amenities.join(", ") : ""}
-                    onChange={e => setAddForm((f: any) => ({ ...f, amenities: e.target.value.split(",").map((a: string) => a.trim()) }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Occupied</label>
-                  <select
-                    value={addForm.isOccupied ? "true" : "false"}
-                    onChange={e => setAddForm((f: any) => ({ ...f, isOccupied: e.target.value === "true" }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  >
-                    <option value="false">No</option>
-                    <option value="true">Yes</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Capacity</label>
-                  <input
-                    type="number"
-                    value={addForm.capacity}
-                    onChange={e => setAddForm((f: any) => ({ ...f, capacity: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.capacity ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                    required
-                  />
-                  {formErrors.capacity && <p className="text-red-600 text-sm mt-1">{formErrors.capacity}</p>}
-                </div>
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdd(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    disabled={addLoading}
-                  >Cancel</button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                    disabled={addLoading}
-                  >{addLoading ? "Creating..." : "Create Room"}</button>
-                </div>
-              </form>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-0.5">Status</label>
+              {roomDetails?.isOccupied ? (
+                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-destructive/10 text-destructive border border-destructive/20">Occupied</span>
+              ) : (
+                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">Available</span>
+              )}
             </div>
           </div>
-        )}
+        </Modal>
 
-        {/* Edit Room Modal */}
-        {showEdit && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold mb-4">Edit Room {editRoom?.roomNumber}</h2>
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!validateEditForm()) {
-                    showToast("Please fix validation errors", "error");
-                    return;
-                  }
-                  setEditLoading(true);
-                  try {
-                    await updateRoomLocal(editRoom.roomNumber, {
-                      type: editForm.type,
-                      rate: Number(editForm.rate),
-                      amenities: Array.isArray(editForm.amenities)
-                        ? editForm.amenities.filter((a: string) => a.trim() !== "")
-                        : [],
-                      capacity: Number(editForm.capacity),
-                    });
+        <Modal show={showAdd} onClose={() => setShowAdd(false)} title="Add New Room">
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!validateAddForm()) { showToast("Please fix validation errors", "error"); return; }
+            setAddLoading(true);
+            try {
+              await createRoom({
+                roomNumber: addForm.roomNumber, type: addForm.type, rate: Number(addForm.rate),
+                description: addForm.description,
+                amenities: Array.isArray(addForm.amenities) ? addForm.amenities.filter((a: string) => a.trim() !== "") : [],
+                isOccupied: addForm.isOccupied, capacity: Number(addForm.capacity),
+                maintenanceStatus: addForm.maintanenceStatus || undefined,
+              });
+              setShowAdd(false); resetFormErrors(); showToast("Room created successfully!", "success"); await loadData(true);
+            } catch (e: any) { showToast(e.message, "error"); } finally { setAddLoading(false); }
+          }} className="p-5 space-y-4">
+            <FormField label="Room Number" error={formErrors.roomNumber}>
+              <input type="text" value={addForm.roomNumber} onChange={e => setAddForm((f: any) => ({ ...f, roomNumber: e.target.value }))}
+                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.roomNumber ? 'border-destructive bg-destructive/5' : 'border-input'}`} required />
+            </FormField>
+            <FormField label="Type" error={formErrors.type}>
+              <select value={addForm.type} onChange={e => setAddForm((f: any) => ({ ...f, type: e.target.value }))}
+                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.type ? 'border-destructive bg-destructive/5' : 'border-input'}`} required>
+                <option value="">Select Type</option>
+                <option value="single">Single</option>
+                <option value="double">Double</option>
+                <option value="suite">Suite</option>
+                <option value="deluxe">Deluxe</option>
+              </select>
+            </FormField>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Rate" error={formErrors.rate}>
+                <input type="number" value={addForm.rate} onChange={e => setAddForm((f: any) => ({ ...f, rate: e.target.value }))}
+                  className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.rate ? 'border-destructive bg-destructive/5' : 'border-input'}`} required />
+              </FormField>
+              <FormField label="Capacity" error={formErrors.capacity}>
+                <input type="number" value={addForm.capacity} onChange={e => setAddForm((f: any) => ({ ...f, capacity: e.target.value }))}
+                  className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.capacity ? 'border-destructive bg-destructive/5' : 'border-input'}`} required />
+              </FormField>
+            </div>
+            <FormField label="Description">
+              <textarea value={addForm.description} onChange={e => setAddForm((f: any) => ({ ...f, description: e.target.value }))}
+                className="w-full h-20 px-3 py-2 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all" rows={2} />
+            </FormField>
+            <FormField label="Amenities (comma separated)">
+              <input type="text" value={Array.isArray(addForm.amenities) ? addForm.amenities.join(", ") : ""}
+                onChange={e => setAddForm((f: any) => ({ ...f, amenities: e.target.value.split(",").map((a: string) => a.trim()) }))}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all" />
+            </FormField>
+            <FormField label="Occupied">
+              <select value={addForm.isOccupied ? "true" : "false"} onChange={e => setAddForm((f: any) => ({ ...f, isOccupied: e.target.value === "true" }))}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all">
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select>
+            </FormField>
+            <div className="flex justify-end gap-3 pt-2 border-t border-border">
+              <Button type="button" variant="outline" onClick={() => setShowAdd(false)} disabled={addLoading}>Cancel</Button>
+              <Button type="submit" disabled={addLoading}>
+                {addLoading ? <><span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> Creating...</> : "Create Room"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
 
-                    if (editForm.maintanenceStatus) {
-                      await updateRoomMaintenanceLocal(editRoom.roomNumber, editForm.maintanenceStatus);
-                    }
+        <Modal show={showEdit} onClose={() => setShowEdit(false)} title={`Edit Room ${editRoom?.roomNumber}`}>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (!validateEditForm()) { showToast("Please fix validation errors", "error"); return; }
+            setEditLoading(true);
+            try {
+              await updateRoomLocal(editRoom.roomNumber, { type: editForm.type, rate: Number(editForm.rate), amenities: Array.isArray(editForm.amenities) ? editForm.amenities.filter((a: string) => a.trim() !== "") : [], capacity: Number(editForm.capacity) });
+              if (editForm.maintanenceStatus) await updateRoomMaintenanceLocal(editRoom.roomNumber, editForm.maintanenceStatus);
+              setShowEdit(false); setEditRoom(null); resetEditFormErrors(); showToast("Room updated successfully!", "success"); await loadData();
+            } catch (e: any) { showToast(e.message, "error"); } finally { setEditLoading(false); }
+          }} className="p-5 space-y-4">
+            <FormField label="Type" error={editFormErrors.type}>
+              <select value={editForm.type} onChange={e => setEditForm((f: any) => ({ ...f, type: e.target.value }))}
+                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${editFormErrors.type ? 'border-destructive bg-destructive/5' : 'border-input'}`} required>
+                <option value="">Select Type</option>
+                <option value="single">Single</option>
+                <option value="double">Double</option>
+                <option value="suite">Suite</option>
+                <option value="deluxe">Deluxe</option>
+              </select>
+            </FormField>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Rate" error={editFormErrors.rate}>
+                <input type="number" value={editForm.rate} onChange={e => setEditForm((f: any) => ({ ...f, rate: e.target.value }))}
+                  className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${editFormErrors.rate ? 'border-destructive bg-destructive/5' : 'border-input'}`} required />
+              </FormField>
+              <FormField label="Capacity" error={editFormErrors.capacity}>
+                <input type="number" value={editForm.capacity} onChange={e => setEditForm((f: any) => ({ ...f, capacity: e.target.value }))}
+                  className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${editFormErrors.capacity ? 'border-destructive bg-destructive/5' : 'border-input'}`} required />
+              </FormField>
+            </div>
+            <FormField label="Amenities (comma separated)">
+              <input type="text" value={Array.isArray(editForm.amenities) ? editForm.amenities.join(", ") : ""}
+                onChange={e => setEditForm((f: any) => ({ ...f, amenities: e.target.value.split(",").map((a: string) => a.trim()) }))}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all" />
+            </FormField>
+            <FormField label="Maintenance Status">
+              <select value={editForm.maintanenceStatus} onChange={e => setEditForm((f: any) => ({ ...f, maintanenceStatus: e.target.value }))}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all">
+                <option value="">No Maintenance</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+              </select>
+            </FormField>
+            <div className="flex justify-end gap-3 pt-2 border-t border-border">
+              <Button type="button" variant="outline" onClick={() => setShowEdit(false)} disabled={editLoading}>Cancel</Button>
+              <Button type="submit" disabled={editLoading}>
+                {editLoading ? <><span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> Saving...</> : "Update Room"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
 
-                    setShowEdit(false);
-                    setEditRoom(null);
-                    resetEditFormErrors();
-                    showToast("Room updated successfully!", "success");
-                    await loadData();
-                  } catch (e: any) {
-                    const errorMessage = e.message || 'An unexpected error occurred while updating the room';
-                    showToast(errorMessage, "error");
-                  } finally {
-                    setEditLoading(false);
-                  }
-                }}
-                className="space-y-4"
-              >
-                <div>
-                  <label className="block text-sm font-medium mb-1">Type</label>
-                  <select
-                    value={editForm.type}
-                    onChange={e => setEditForm((f: any) => ({ ...f, type: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${editFormErrors.type ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                    required
-                  >
-                    <option value="">Select Type</option>
-                    <option value="single">Single</option>
-                    <option value="double">Double</option>
-                    <option value="suite">Suite</option>
-                    <option value="deluxe">Deluxe</option>
-                  </select>
-                  {editFormErrors.type && <p className="text-red-600 text-sm mt-1">{editFormErrors.type}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Rate</label>
-                  <input
-                    type="number"
-                    value={editForm.rate}
-                    onChange={e => setEditForm((f: any) => ({ ...f, rate: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${editFormErrors.rate ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                    required
-                  />
-                  {editFormErrors.rate && <p className="text-red-600 text-sm mt-1">{editFormErrors.rate}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Amenities (comma separated)</label>
-                  <input
-                    type="text"
-                    value={Array.isArray(editForm.amenities) ? editForm.amenities.join(", ") : ""}
-                    onChange={e => setEditForm((f: any) => ({ ...f, amenities: e.target.value.split(",").map((a: string) => a.trim()) }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Occupied</label>
-                  <select
-                    value={editForm.isOccupied ? "true" : "false"}
-                    onChange={e => setEditForm((f: any) => ({ ...f, isOccupied: e.target.value === "true" }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  >
-                    <option value="false">No</option>
-                    <option value="true">Yes</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Capacity</label>
-                  <input
-                    type="number"
-                    value={editForm.capacity}
-                    onChange={e => setEditForm((f: any) => ({ ...f, capacity: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${editFormErrors.capacity ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                    required
-                  />
-                  {editFormErrors.capacity && <p className="text-red-600 text-sm mt-1">{editFormErrors.capacity}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Maintenance Status</label>
-                  <select
-                    value={editForm.maintanenceStatus}
-                    onChange={e => setEditForm((f: any) => ({ ...f, maintanenceStatus: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  >
-                    <option value="">No Maintenance</option>
-                    <option value="pending">Pending</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </div>
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowEdit(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    disabled={editLoading}
-                  >Cancel</button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                    disabled={editLoading}
-                  >{editLoading ? "Saving..." : "Update Room"}</button>
-                </div>
-              </form>
+        <Modal show={showDeleteConfirm} onClose={() => { setShowDeleteConfirm(false); setRoomToDelete(null); }} title="Confirm Delete">
+          <div className="p-5">
+            <p className="text-sm text-foreground/80 mb-6">Are you sure you want to delete room <strong>{roomToDelete?.roomNumber}</strong>? This action cannot be undone.</p>
+            <div className="flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => { setShowDeleteConfirm(false); setRoomToDelete(null); }} disabled={deleteLoading}>Cancel</Button>
+              <Button onClick={async () => {
+                setDeleteLoading(true);
+                try {
+                  await deleteRoom(roomToDelete.roomNumber);
+                  setShowDeleteConfirm(false); setRoomToDelete(null);
+                  showToast("Room deleted successfully!", "success"); await loadData(true);
+                } catch (e: any) {
+                  const msg = e.message || '';
+                  showToast(msg.includes('occupied') || msg.includes('checkout') ? "Cannot delete: Room is occupied or has active checkouts" : msg, "error");
+                } finally { setDeleteLoading(false); }
+              }} variant="destructive" disabled={deleteLoading}>
+                {deleteLoading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Deleting...</> : "Delete"}
+              </Button>
             </div>
           </div>
-        )}
+        </Modal>
 
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
-              <h2 className="text-xl font-bold mb-4">Confirm Delete</h2>
-              <p className="mb-6">Are you sure you want to delete room {roomToDelete?.roomNumber}? This action cannot be undone.</p>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDeleteConfirm(false);
-                    setRoomToDelete(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                  disabled={deleteLoading}
-                >Cancel</button>
-                <button
-                  onClick={async () => {
-                    setDeleteLoading(true);
-                    try {
-                      await deleteRoom(roomToDelete.roomNumber);
-                      
-                      setShowDeleteConfirm(false);
-                      setRoomToDelete(null);
-                      showToast("Room deleted successfully!", "success");
-                      await loadData(true);
-                    } catch (e: any) {
-                      const errorMessage = e.message || 'An unexpected error occurred while deleting the room';
-                      if (errorMessage.includes('occupied') || errorMessage.includes('checkout')) {
-                        showToast("Cannot delete room: Room is currently occupied or has active checkouts", "error");
-                      } else {
-                        showToast(errorMessage, "error");
-                      }
-                    } finally {
-                      setDeleteLoading(false);
-                    }
-                  }}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-                  disabled={deleteLoading}
-                >{deleteLoading ? "Deleting..." : "Delete"}</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Toast Notification */}
         {toast && (
-          <div 
-            className={`fixed bottom-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
-              toast.type === 'error' 
-                ? 'bg-red-500 text-white border border-red-600' 
-                : 'bg-green-500 text-white border border-green-600'
-            }`}
-          >
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">{toast.message}</span>
-              <button
-                onClick={() => setToast(null)}
-                className="ml-3 text-white hover:text-gray-200"
-              >
-                ×
-              </button>
-            </div>
+          <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-elevated flex items-center gap-3 animate-slide-up ${
+            toast.type === 'error' ? 'bg-destructive text-destructive-foreground' : 'bg-emerald-600 text-white'
+          }`}>
+            <span className="text-sm font-medium flex-1">{toast.message}</span>
+            <button onClick={() => setToast(null)} className="p-0.5 hover:opacity-70 transition-opacity">
+              <X className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
