@@ -1,32 +1,13 @@
 "use client";
 import { getUsers, createUser, updateUser, deleteUser, getUserById, getHotels } from "@/lib/api";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/ui/auth-provider";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { NavBar } from "@/components/ui/NavBar";
+import { DashboardLayout } from "@/components/dashboard-layout";
+import { Search, X, Eye, Edit, Trash2, Plus } from "lucide-react";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 export default function UsersPage() {
-  // Load hotel from localStorage
-  const [hotel, setHotel] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('hotel');
-      return stored ? JSON.parse(stored) : null;
-    }
-    return null;
-  });
-
-  // Listen for localStorage changes (e.g., nepaliLanguage toggle)
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === 'hotel') {
-        setHotel(event.newValue ? JSON.parse(event.newValue) : null);
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
-
   const [user, setUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('user');
@@ -35,8 +16,6 @@ export default function UsersPage() {
     return null;
   });
 
-  const { logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -401,135 +380,124 @@ export default function UsersPage() {
     ];
   };
 
-  if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
+  if (loading) return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center gap-3">
+          <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading...</span>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
   
   return (
-    <div className="min-h-screen bg-slate-50">
-      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        nepaliFlag={hotel?.nepaliFlag}
-      />
-      <div className="max-w-9xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Users Management</h1>
-          <button
-            onClick={openCreateModal}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-          >
-            Create New User
-          </button>
-        </div>
+    <DashboardLayout>
+      <div className="px-6 py-6 max-w-[1600px] mx-auto space-y-5">
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-            <button 
-              onClick={() => setError("")} 
-              className="float-right text-red-700 hover:text-red-900"
-            >
-              ×
-            </button>
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-semibold mb-3">Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Search (Name, Email)</label>
-              <input
-                type="text"
-                value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Search users..."
-              />
+        <div className="bg-card rounded-xl border border-border p-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[160px] max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input type="text" value={filters.search} onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all" placeholder="Search users..." />
+              {filters.search && (
+                <button onClick={() => setFilters(prev => ({ ...prev, search: "" }))} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Role</label>
-              <select
-                value={filters.role}
-                onChange={(e) => setFilters(prev => ({ ...prev, role: e.target.value }))}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              >
-                <option value="">All Roles</option>
-                <option value="super_admin">Super Admin</option>
-                <option value="manager">Manager</option>
-                <option value="staff">Staff</option>
-                <option value="kitchen_staff">Kitchen Staff</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Status</label>
-              <select
-                value={filters.active}
-                onChange={(e) => setFilters(prev => ({ ...prev, active: e.target.value }))}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              >
-                <option value="">All</option>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
-              </select>
-            </div>
+            <select value={filters.role} onChange={(e) => setFilters(prev => ({ ...prev, role: e.target.value }))}
+              className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[110px]">
+              <option value="">All Roles</option>
+              <option value="super_admin">Super Admin</option>
+              <option value="manager">Manager</option>
+              <option value="staff">Staff</option>
+              <option value="kitchen_staff">Kitchen Staff</option>
+            </select>
+            <select value={filters.active} onChange={(e) => setFilters(prev => ({ ...prev, active: e.target.value }))}
+              className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[100px]">
+              <option value="">All Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+            {(filters.search || filters.role || filters.active) && (
+              <button onClick={() => setFilters({ role: "", active: "", search: "" })} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0">
+                Clear
+              </button>
+            )}
+            <button
+              onClick={openCreateModal}
+              className="ml-auto shrink-0 h-9 px-4 bg-gradient-brand text-white font-medium rounded-lg hover:opacity-90 transition-all shadow-elevated shadow-primary/25 flex items-center gap-1.5 text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              New User
+            </button>
           </div>
         </div>
 
         {/* Users Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            <table className="w-full">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {filteredUsers.map((user: any) => (
-                  <tr key={user._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">{user.firstName} {user.lastName}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        user.role === 'super_admin' ? 'bg-purple-100 text-purple-800' :
-                        user.role === 'manager' ? 'bg-blue-100 text-blue-800' :
-                        user.role === 'kitchen_staff' ? 'bg-orange-100 text-orange-800' :
-                        'bg-gray-100 text-gray-800'
+                  <tr key={user._id} className="hover:bg-secondary/50 transition-colors">
+                    <td className="px-5 py-3.5 whitespace-nowrap text-sm font-medium">{user.firstName} {user.lastName}</td>
+                    <td className="px-5 py-3.5 whitespace-nowrap text-sm text-muted-foreground">{user.email}</td>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${
+                        user.role === 'super_admin' ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' :
+                        user.role === 'manager' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800' :
+                        user.role === 'kitchen_staff' ? 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800' :
+                        'bg-muted text-muted-foreground border-border'
                       }`}>
                         {user.role.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${user.isActive ? 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800' : 'bg-destructive/10 text-destructive border-destructive/30'}`}>
                         {user.isActive ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => openEditModal(user._id)}
-                        className="text-blue-600 hover:text-blue-900 mr-3"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleToggleStatus(user)}
-                        className={`${user.isActive ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'} mr-3`}
-                      >
-                        {user.isActive ? "Deactivate" : "Activate"}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user._id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEditModal(user._id)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+                          title="Edit">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleToggleStatus(user)}
+                          className={`p-1.5 rounded-md transition-all ${user.isActive ? 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'}`}
+                          title={user.isActive ? "Deactivate" : "Activate"}>
+                          {user.isActive ? (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                          )}
+                        </button>
+                        <button onClick={() => handleDelete(user._id)}
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                          title="Delete">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -537,244 +505,142 @@ export default function UsersPage() {
             </table>
           </div>
           {filteredUsers.length === 0 && !loading && (
-            <div className="text-center py-12">
-              <div className="text-gray-500">No users found matching your criteria.</div>
+            <div className="px-5 py-12 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <svg className="w-8 h-8 text-muted-foreground/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>
+                <p className="text-muted-foreground">No users found matching your criteria.</p>
+              </div>
             </div>
           )}
 
           {/* Pagination */}
-          <div className="px-6 py-3 flex items-center justify-between border-t border-gray-200">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                disabled={pagination.page === 1}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                disabled={pagination.page >= pagination.pages}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Next
-              </button>
-            </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Showing <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
-                  <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{' '}
-                  <span className="font-medium">{pagination.total}</span> results
-                </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                  <button
-                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
-                    disabled={pagination.page === 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                  >
-                    <span className="sr-only">Previous</span>
-                    &larr;
-                  </button>
-                  {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => setPagination(prev => ({ ...prev, page }))}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${pagination.page === page ? 'z-10 bg-blue-50 border-blue-500 text-blue-600' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
-                    disabled={pagination.page >= pagination.pages}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                  >
-                    <span className="sr-only">Next</span>
-                    &rarr;
-                  </button>
-                </nav>
-              </div>
-            </div>
-          </div>
+          <PaginationControls
+            currentPage={pagination.page}
+            totalPages={pagination.pages}
+            onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
+            disabled={loading}
+          />
         </div>
 
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{pagination.total}</div>
-            <div className="text-sm text-gray-600">Total Users</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">{users.filter((u: any) => u.isActive).length}</div>
-            <div className="text-sm text-gray-600">Active</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-orange-600">{users.filter((u: any) => u.role === 'kitchen_staff').length}</div>
-            <div className="text-sm text-gray-600">Kitchen Staff</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-red-600">{users.filter((u: any) => !u.isActive).length}</div>
-            <div className="text-sm text-gray-600">Inactive</div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[
+            { label: "Total Users", value: pagination.total, gradient: "from-blue-500 to-cyan-500" },
+            { label: "Active", value: users.filter((u: any) => u.isActive).length, gradient: "from-green-500 to-emerald-500" },
+            { label: "Kitchen Staff", value: users.filter((u: any) => u.role === 'kitchen_staff').length, gradient: "from-orange-500 to-amber-500" },
+            { label: "Inactive", value: users.filter((u: any) => !u.isActive).length, gradient: "from-red-500 to-pink-500" },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-card border border-border rounded-xl shadow-sm p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{stat.value}</p>
+                </div>
+                <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg`}>
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" /></svg>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* User Form Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">{currentUser ? "Edit User" : "Add New User"}</h2>
-            
-            {/* Error Alert */}
-            {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-red-800 font-semibold">Error</p>
-                <p className="text-red-700">{error}</p>
-              </div>
-            )}
-            
-            <form onSubmit={currentUser ? (e) => { e.preventDefault(); handleUpdate(); } : (e) => { e.preventDefault(); handleCreate(); }} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">First Name *</label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleFormChange}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.firstName ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                    required
-                  />
-                  {formErrors.firstName && <p className="text-red-600 text-sm mt-1">{formErrors.firstName}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Last Name *</label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleFormChange}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.lastName ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                    required
-                  />
-                  {formErrors.lastName && <p className="text-red-600 text-sm mt-1">{formErrors.lastName}</p>}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Email *</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleFormChange}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.email ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                    required
-                    disabled={!!currentUser}
-                  />
-                  {formErrors.email && <p className="text-red-600 text-sm mt-1">{formErrors.email}</p>}
-                </div>
-                {!currentUser && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-card border border-border rounded-xl shadow-elevated w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-scale-in">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4 sticky top-0 bg-card z-10">
+              <h2 className="text-lg font-bold text-foreground">{currentUser ? "Edit User" : "Add New User"}</h2>
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="px-6 py-5">
+              {error && (
+                <div className="mb-4 p-3.5 bg-destructive/10 border border-destructive/30 rounded-xl flex items-center gap-2.5">
+                  <svg className="w-5 h-5 text-destructive shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Password *</label>
-                    <input
-                      type="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleFormChange}
-                      className={`w-full border rounded px-3 py-2 ${formErrors.password ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                      required
-                    />
-                    {formErrors.password && <p className="text-red-600 text-sm mt-1">{formErrors.password}</p>}
+                    <p className="text-sm font-semibold text-destructive">Error</p>
+                    <p className="text-sm text-destructive/80">{error}</p>
                   </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">Role *</label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleFormChange}
-                  className={`w-full border rounded px-3 py-2 ${formErrors.role ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                  required
-                >
-                  {getAvailableRoles().map(role => (
-                    <option key={role.value} value={role.value}>{role.label}</option>
-                  ))}
-                </select>
-                {formErrors.role && <p className="text-red-600 text-sm mt-1">{formErrors.role}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  {user?.role === 'super_admin' ? 'Hotel *' : 'Hotel'}
-                </label>
-                {user?.role === 'super_admin' ? (
-                  <select
-                    name="hotel"
-                    value={formData.hotel}
-                    onChange={handleFormChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    required
-                  >
-                    <option value="">Select Hotel</option>
-                    {hotels.map((h: any) => (
-                      <option key={h._id} value={h._id}>{h.name}</option>
-                    ))}
+                </div>
+              )}
+              <form onSubmit={currentUser ? (e) => { e.preventDefault(); handleUpdate(); } : (e) => { e.preventDefault(); handleCreate(); }} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">First Name *</label>
+                    <input type="text" name="firstName" value={formData.firstName} onChange={handleFormChange}
+                      className={`w-full h-10 px-3.5 bg-secondary/50 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all ${formErrors.firstName ? 'border-destructive bg-destructive/5' : 'border-border'}`} required />
+                    {formErrors.firstName && <p className="text-destructive text-xs mt-1">{formErrors.firstName}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">Last Name *</label>
+                    <input type="text" name="lastName" value={formData.lastName} onChange={handleFormChange}
+                      className={`w-full h-10 px-3.5 bg-secondary/50 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all ${formErrors.lastName ? 'border-destructive bg-destructive/5' : 'border-border'}`} required />
+                    {formErrors.lastName && <p className="text-destructive text-xs mt-1">{formErrors.lastName}</p>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">Email *</label>
+                    <input type="email" name="email" value={formData.email} onChange={handleFormChange}
+                      className={`w-full h-10 px-3.5 bg-secondary/50 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all ${formErrors.email ? 'border-destructive bg-destructive/5' : 'border-border'}`} required disabled={!!currentUser} />
+                    {formErrors.email && <p className="text-destructive text-xs mt-1">{formErrors.email}</p>}
+                  </div>
+                  {!currentUser && (
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1.5">Password *</label>
+                      <input type="password" name="password" value={formData.password} onChange={handleFormChange}
+                        className={`w-full h-10 px-3.5 bg-secondary/50 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all ${formErrors.password ? 'border-destructive bg-destructive/5' : 'border-border'}`} required />
+                      {formErrors.password && <p className="text-destructive text-xs mt-1">{formErrors.password}</p>}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Role *</label>
+                  <select name="role" value={formData.role} onChange={handleFormChange}
+                    className={`w-full h-10 px-3.5 bg-secondary/50 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all ${formErrors.role ? 'border-destructive bg-destructive/5' : 'border-border'}`} required>
+                    {getAvailableRoles().map(role => <option key={role.value} value={role.value}>{role.label}</option>)}
                   </select>
-                ) : (
-                  <input
-                    type="text"
-                    name="hotel"
-                    value={formData.hotel}
-                    className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
-                    readOnly
-                    disabled
-                  />
-                )}
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="isActive"
-                  checked={formData.isActive}
-                  onChange={handleFormChange}
-                  id="isActive"
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
-                  Active
+                  {formErrors.role && <p className="text-destructive text-xs mt-1">{formErrors.role}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    {user?.role === 'super_admin' ? 'Hotel *' : 'Hotel'}
+                  </label>
+                  {user?.role === 'super_admin' ? (
+                    <select name="hotel" value={formData.hotel} onChange={handleFormChange}
+                      className="w-full h-10 px-3.5 bg-secondary/50 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all" required>
+                      <option value="">Select Hotel</option>
+                      {hotels.map((h: any) => <option key={h._id} value={h._id}>{h.name}</option>)}
+                    </select>
+                  ) : (
+                    <input type="text" name="hotel" value={formData.hotel}
+                      className="w-full h-10 px-3.5 bg-secondary/50 border border-border rounded-xl text-sm cursor-not-allowed opacity-60" readOnly disabled />
+                  )}
+                </div>
+                <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+                  <input type="checkbox" name="isActive" checked={formData.isActive} onChange={handleFormChange}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary/30" />
+                  <span>Active</span>
                 </label>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  disabled={loading}
-                >
-                  {loading ? (currentUser ? "Updating..." : "Creating...") : currentUser ? "Update User" : "Create User"}
-                </button>
-              </div>
-            </form>
+                <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                  <button type="button" onClick={() => setShowModal(false)}
+                    className="h-10 px-5 text-sm font-medium text-muted-foreground bg-secondary/50 border border-border rounded-xl hover:bg-secondary transition-all">
+                    Cancel
+                  </button>
+                  <button type="submit"
+                    className="h-10 px-5 bg-gradient-brand text-white font-medium rounded-xl hover:opacity-90 transition-all shadow-lg shadow-primary/25 text-sm disabled:opacity-50"
+                    disabled={loading}>
+                    {loading ? (currentUser ? "Updating..." : "Creating...") : currentUser ? "Update User" : "Create User"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Toast container */}
       <ToastContainer 
         position="bottom-right"
         autoClose={5000}
@@ -788,6 +654,6 @@ export default function UsersPage() {
         theme="light"
         style={{ zIndex: 9999 }}
       />
-    </div>
+    </DashboardLayout>
   );
 }

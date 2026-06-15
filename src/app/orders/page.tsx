@@ -1,28 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useAuth } from "@/components/ui/auth-provider";
-import { NavBar } from "@/components/ui/NavBar";
+import React, { useEffect, useState, useCallback } from "react";
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { useDebounce } from "@/hooks/useDebounce";
+import { Search, X, Eye, Edit, Printer, Plus, Info, SlidersHorizontal } from "lucide-react";
 import { format } from "date-fns";
-
-// Fetch hotel info for nepaliFlag
-const fetchHotel = async (token: string) => {
-  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const res = await fetch(`${apiBase}/hotels/me`, {
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`
-    }
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data?.data || data;
-};
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 export default function OrdersPage() {
-  // Hotel state for nepaliFlag
-  const [hotel, setHotel] = useState<any>(null);
   // Pagination state
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
@@ -32,6 +17,10 @@ export default function OrdersPage() {
   const [updating, setUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
   const [updateError, setUpdateError] = useState("");
+  const [showMobileStats, setShowMobileStats] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const toggleRow = (id: string) => setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
   
   // Create/Edit order modal state
   const [showCreate, setShowCreate] = useState(false);
@@ -508,7 +497,7 @@ const handleTestPrinter = async () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ items })
+        body: JSON.stringify({ items, roomNumber: createForm.roomNumber })
       });
       
       const data = await res.json().catch(() => ({}));
@@ -530,18 +519,6 @@ const handleTestPrinter = async () => {
     }
   };
   
-  const navLinks = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Checkouts", href: "/checkouts" },
-    { label: "Guests", href: "/guests" },
-    { label: "Hotels", href: "/hotels" },
-    { label: "Items", href: "/items" },
-    { label: "Orders", href: "/orders" },
-    { label: "Rooms", href: "/rooms" },
-    { label: "Users", href: "/users" },
-  ];
-  
-  const { logout } = useAuth();
   const [user, setUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('user');
@@ -549,8 +526,6 @@ const handleTestPrinter = async () => {
     }
     return null;
   });
-  
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -583,11 +558,10 @@ const handleTestPrinter = async () => {
     }
   };
 
-  // Fetch hotel info on mount
+  // Fetch KOT stats on mount
   useEffect(() => {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (token) {
-      fetchHotel(token).then(setHotel);
       fetchKOTStats();
       // checkPrinterStatus();
     }
@@ -686,13 +660,13 @@ const handleTestPrinter = async () => {
   // Get KOT status badge color
   const getKOTStatusBadge = (status: string) => {
     const colors: {[key: string]: string} = {
-      'pending': 'bg-orange-100 text-orange-800 border-orange-200',
-      'preparing': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'ready': 'bg-green-100 text-green-800 border-green-200',
-      'served': 'bg-blue-100 text-blue-800 border-blue-200',
-      'cancelled': 'bg-red-100 text-red-800 border-red-200'
+      'pending': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 border-orange-200',
+      'preparing': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+      'ready': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+      'served': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-primary/20',
+      'cancelled': 'bg-destructive/10 text-destructive border-destructive/30'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+    return colors[status] || 'bg-muted text-muted-foreground border-border';
   };
 
   // Get printer status indicator
@@ -707,7 +681,7 @@ const handleTestPrinter = async () => {
 const getPrinterStatusIndicator = () => {
   if (!printerInfo) {
     return (
-      <span className="text-gray-400 flex items-center gap-1">
+      <span className="text-muted-foreground flex items-center gap-1">
         <span className="w-2 h-2 bg-gray-400 rounded-full"></span>
         Not Tested
       </span>
@@ -716,7 +690,7 @@ const getPrinterStatusIndicator = () => {
   
   if (printerInfo.success) {
     return (
-      <span className="text-green-600 font-semibold flex items-center gap-1" title={`Last tested: ${new Date(printerInfo.lastTested).toLocaleString()}`}>
+      <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1" title={`Last tested: ${new Date(printerInfo.lastTested).toLocaleString()}`}>
         <span className="w-2 h-2 bg-green-600 rounded-full animate-pulse"></span>
         {printerInfo.name} ({printerInfo.method})
       </span>
@@ -724,7 +698,7 @@ const getPrinterStatusIndicator = () => {
   }
   
   return (
-    <span className="text-red-600 font-semibold flex items-center gap-1" title={`Last tested: ${new Date(printerInfo.lastTested).toLocaleString()}`}>
+    <span className="text-destructive font-semibold flex items-center gap-1" title={`Last tested: ${new Date(printerInfo.lastTested).toLocaleString()}`}>
       <span className="w-2 h-2 bg-red-600 rounded-full"></span>
       {printerInfo.name} (Failed)
     </span>
@@ -740,92 +714,56 @@ const getPrinterStatusIndicator = () => {
 // Also remove the checkPrinterStatus button onClick handler
 // Keep only the Test Printer button
 
-  if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
+  if (loading) return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center gap-3">
+          <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading...</span>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        nepaliFlag={hotel?.nepaliFlag}
-      />
-      
-      <div className="max-w-9xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Orders Management</h1>
-<div className="flex gap-2">
-  {/* Remove this entire button - we don't need separate status check */}
-  {/* <button
-    onClick={checkPrinterStatus}
-    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm flex items-center gap-2"
-    disabled={checkingPrinter}
-  >
-    <span>Printer: {getPrinterStatusIndicator()}</span>
-    {checkingPrinter && <span className="animate-spin">⟳</span>}
-  </button> */}
-  
-  {/* Keep only the Test Printer button */}
-  <button
-    onClick={handleTestPrinter}
-    className="px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 text-sm flex items-center gap-2"
-  >
-    <span>Printer: {getPrinterStatusIndicator()}</span>
-  </button>
-  
-  <button
-    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-    onClick={() => {
-      setShowCreate(true);
-      setEditingOrder(null);
-      setCreateError("");
-      setCreateForm({
-        roomNumber: "",
-        items: [{ itemId: "", name: "", quantity: "1", price: 0 }],
-        showRoomDropdown: false
-      });
-    }}
-    data-cy="orders-add-btn"
-  >+ New Order</button>
-</div>
-        </div>
+    <DashboardLayout>
+        <div className="px-6 py-6 max-w-[1600px] mx-auto space-y-5">
         
         {/* KOT Statistics Dashboard */}
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className={`mb-6 gap-4 ${showMobileStats ? 'grid' : 'hidden'} md:grid grid-cols-1 md:grid-cols-5`}>
           <div className="bg-orange-50 p-4 rounded-lg shadow border-l-4 border-orange-500">
-            <div className="text-2xl font-bold text-orange-600">{kotStats.pending.count}</div>
-            <div className="text-sm text-gray-600">Pending in Kitchen</div>
-            <div className="text-xs text-gray-500">रु{kotStats.pending.amount.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{kotStats.pending.count}</div>
+            <div className="text-sm text-muted-foreground">Pending in Kitchen</div>
+            <div className="text-xs text-muted-foreground">रु{kotStats.pending.amount.toLocaleString()}</div>
           </div>
-          <div className="bg-yellow-50 p-4 rounded-lg shadow border-l-4 border-yellow-500">
-            <div className="text-2xl font-bold text-yellow-600">{kotStats.preparing.count}</div>
-            <div className="text-sm text-gray-600">Preparing</div>
-            <div className="text-xs text-gray-500">रु{kotStats.preparing.amount.toLocaleString()}</div>
+          <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-lg shadow border-l-4 border-yellow-500">
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{kotStats.preparing.count}</div>
+            <div className="text-sm text-muted-foreground">Preparing</div>
+            <div className="text-xs text-muted-foreground">रु{kotStats.preparing.amount.toLocaleString()}</div>
           </div>
           <div className="bg-green-50 p-4 rounded-lg shadow border-l-4 border-green-500">
-            <div className="text-2xl font-bold text-green-600">{kotStats.ready.count}</div>
-            <div className="text-sm text-gray-600">Ready to Serve</div>
-            <div className="text-xs text-gray-500">रु{kotStats.ready.amount.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{kotStats.ready.count}</div>
+            <div className="text-sm text-muted-foreground">Ready to Serve</div>
+            <div className="text-xs text-muted-foreground">रु{kotStats.ready.amount.toLocaleString()}</div>
           </div>
-          <div className="bg-blue-50 p-4 rounded-lg shadow border-l-4 border-blue-500">
-            <div className="text-2xl font-bold text-blue-600">{kotStats.served.count}</div>
-            <div className="text-sm text-gray-600">Served Today</div>
-            <div className="text-xs text-gray-500">रु{kotStats.served.amount.toLocaleString()}</div>
+          <div className="bg-primary/5 p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <div className="text-2xl font-bold text-primary">{kotStats.served.count}</div>
+            <div className="text-sm text-muted-foreground">Served Today</div>
+            <div className="text-xs text-muted-foreground">रु{kotStats.served.amount.toLocaleString()}</div>
           </div>
           <div className="bg-purple-50 p-4 rounded-lg shadow border-l-4 border-purple-500">
-            <div className="text-2xl font-bold text-purple-600">{kotStats.averages.preparationTime} min</div>
-            <div className="text-sm text-gray-600">Avg Prep Time</div>
-            <div className="text-xs text-gray-500">Serving: {kotStats.averages.servingTime} min</div>
+            <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">{kotStats.averages.preparationTime} min</div>
+            <div className="text-sm text-muted-foreground">Avg Prep Time</div>
+            <div className="text-xs text-muted-foreground">Serving: {kotStats.averages.servingTime} min</div>
           </div>
         </div>
         
         {/* Create/Edit Order Modal */}
         {showCreate && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div data-cy="orders-modal" className="bg-white rounded-lg p-8 w-full max-w-6xl max-h-[90vh] flex gap-8 overflow-y-auto">
+            <div data-cy="orders-modal" className="bg-card rounded-lg p-4 sm:p-8 w-full max-w-6xl max-h-[90vh] flex-col lg:flex-row gap-4 lg:gap-8 overflow-y-auto">
               {/* Left: Form */}
-              <div className="flex-1 min-w-[320px]">
+              <div className="flex-1 min-w-0 lg:min-w-[320px]">
                 <h2 data-cy="orders-modal-title" className="text-2xl font-bold mb-4">
                   {editingOrder ? "Edit Order" : "Create New Order"}
                 </h2>
@@ -896,7 +834,7 @@ const getPrinterStatusIndicator = () => {
                 >
                   {/* Notification Toast */}
                   {notification && (
-                    <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white transition-all ${
+                    <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${
                       notification.type === 'success' ? 'bg-green-600' : 
                       notification.type === 'warning' ? 'bg-orange-600' : 'bg-red-600'
                     }`}>
@@ -907,32 +845,29 @@ const getPrinterStatusIndicator = () => {
                   <div data-cy="orders-room-selector-container">
                     <label className="block text-sm font-medium mb-1">Select Room</label>
                     {roomsLoading ? (
-                      <div className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100">Loading rooms...</div>
+                      <div className="w-full border border-input rounded px-3 py-2 bg-muted">Loading rooms...</div>
                     ) : occupiedRooms.length === 0 ? (
-                      <div className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100">No occupied rooms available</div>
+                      <div className="w-full border border-input rounded px-3 py-2 bg-muted">No occupied rooms available</div>
                     ) : (
                       <div>
                         <div className="relative">
                           <div
                             data-cy="orders-room-select"
                             onClick={() => setCreateForm(f => ({ ...f, showRoomDropdown: !f.showRoomDropdown }))}
-                            className={`w-full border rounded px-3 py-2 cursor-pointer flex justify-between items-center ${formErrors.roomNumber ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                            className={`w-full border rounded px-3 py-2 cursor-pointer flex justify-between items-center ${formErrors.roomNumber ? 'border-destructive bg-destructive/10' : 'border-input'}`}
                           >
                             <span className="text-gray-700">
-                              {createForm.roomNumber 
-                                ? occupiedRooms.find(r => r.roomNumber === createForm.roomNumber)?.roomNumber || 'Select a room'
-                                : 'Select a room'
-                              }
+                              {createForm.roomNumber || 'Select a room'}
                             </span>
                             <span
                               data-cy="orders-room-select-icon"
-                              className="text-gray-600"
+                              className="text-muted-foreground"
                             >
                               ▼
                             </span>
                           </div>
                           {createForm.showRoomDropdown && (
-                            <div data-cy="orders-room-dropdown" className="absolute top-full left-0 right-0 border border-gray-300 rounded mt-1 bg-white z-10 max-h-48 overflow-y-auto">
+                            <div data-cy="orders-room-dropdown" className="absolute top-full left-0 right-0 border border-input rounded mt-1 bg-card z-10 max-h-48 overflow-y-auto">
                               {occupiedRooms.map((room, index) => (
                                 <div
                                   key={room._id}
@@ -943,23 +878,23 @@ const getPrinterStatusIndicator = () => {
                                   className="px-3 py-2 hover:bg-blue-100 cursor-pointer border-b border-gray-100 last:border-b-0"
                                 >
                                   <div className="font-semibold">Room {room.roomNumber}</div>
-                                  <div className="text-sm text-gray-600">{room.guestName || 'Guest'} (Check-in: {new Date(room.checkInDate).toLocaleDateString()})</div>
+                                  <div className="text-sm text-muted-foreground">{room.guestName || 'Guest'} (Check-in: {new Date(room.checkInDate).toLocaleDateString()})</div>
                                 </div>
                               ))}
                             </div>
                           )}
                         </div>
-                        {formErrors.roomNumber && <p className="text-red-600 text-sm mt-1">{formErrors.roomNumber}</p>}
+                        {formErrors.roomNumber && <p className="text-destructive text-sm mt-1">{formErrors.roomNumber}</p>}
                       </div>
                     )}
                   </div>
                   
                   {/* Items section */}
                   <div data-cy="orders-items-container">
-                    <label className="block text-sm font-medium mb-1">Items {formErrors.items && <span className="text-red-600">- {formErrors.items}</span>}</label>
-                    {formErrors.items && <p className="text-red-600 text-sm mb-2">{formErrors.items}</p>}
+                    <label className="block text-sm font-medium mb-1">Items {formErrors.items && <span className="text-destructive">- {formErrors.items}</span>}</label>
+                    {formErrors.items && <p className="text-destructive text-sm mb-2">{formErrors.items}</p>}
                     {createForm.items.map((item, index) => (
-                      <div key={index} data-cy={`orders-item-row-${index}`} className="flex gap-2 mb-2 items-center">
+                      <div key={index} data-cy={`orders-item-row-${index}`} className="flex flex-wrap gap-2 mb-2 items-center">
                         <div className="flex-1">
                           <div className="text-sm font-medium mb-1">{item.name || "Select an item"}</div>
                           <div className="flex gap-2">
@@ -984,7 +919,7 @@ const getPrinterStatusIndicator = () => {
                                 newItems[index].quantity = e.target.value;
                                 setCreateForm(f => ({ ...f, items: newItems }));
                               }}
-                              className="w-16 border border-gray-300 rounded px-2 py-1 text-center"
+                              className="w-16 border border-input rounded px-2 py-1 text-center"
                               min="1"
                               required
                             />
@@ -1000,7 +935,7 @@ const getPrinterStatusIndicator = () => {
                             >+</button>
                           </div>
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-muted-foreground">
                           रु{item.price * parseInt(item.quantity) || 0}
                         </div>
                         <button
@@ -1012,7 +947,7 @@ const getPrinterStatusIndicator = () => {
                               setCreateForm(f => ({ ...f, items: newItems }));
                             }
                           }}
-                          className="px-2 text-red-600 hover:bg-red-100 rounded"
+                          className="px-2 text-destructive hover:bg-destructive/10 rounded"
                         >
                           ×
                         </button>
@@ -1025,13 +960,13 @@ const getPrinterStatusIndicator = () => {
                         ...f, 
                         items: [...f.items, { itemId: "", name: "", quantity: "1", price: 0 }] 
                       }))}
-                      className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+                      className="mt-2 text-sm text-primary hover:text-primary/80"
                     >
                       + Add Another Item
                     </button>
                   </div>
                   
-                  {createError && <div className="text-red-600 mb-2">{createError}</div>}
+                  {createError && <div className="text-destructive mb-2">{createError}</div>}
                   
                   <div className="flex justify-end space-x-3 pt-4">
                     <button
@@ -1040,13 +975,13 @@ const getPrinterStatusIndicator = () => {
                         setShowCreate(false);
                         setEditingOrder(null);
                       }}
-                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      className="px-4 py-2 border border-input rounded-lg hover:bg-muted/30"
                       disabled={createLoading}
                       data-cy="orders-cancel"
                     >Cancel</button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
                       disabled={createLoading || roomsLoading || occupiedRooms.length === 0}
                       data-cy="orders-submit"
                     >
@@ -1060,22 +995,22 @@ const getPrinterStatusIndicator = () => {
               </div>
               
               {/* Right: Item List */}
-              <div className="flex-1 min-w-[320px] max-w-[400px]">
+              <div className="flex-1 min-w-0 lg:min-w-[320px] lg:max-w-[400px]">
                 <div className="flex items-center mb-2">
                   <input
                     data-cy="orders-item-search"
                     type="text"
                     value={itemSearch}
                     onChange={e => setItemSearch(e.target.value)}
-                    className="border border-gray-300 rounded px-3 py-2 w-full"
+                    className="border border-input rounded px-3 py-2 w-full"
                     placeholder="Search items by name..."
                   />
                 </div>
-                <div data-cy="orders-items-list" className="border rounded h-[400px] overflow-y-auto bg-gray-50 p-2">
+                <div data-cy="orders-items-list" className="border rounded h-[400px] overflow-y-auto bg-muted/50 p-2">
                   {itemLoading ? (
-                    <div className="text-center text-gray-500 py-8">Loading...</div>
+                    <div className="text-center text-muted-foreground py-8">Loading...</div>
                   ) : itemList.length === 0 ? (
-                    <div className="text-center text-gray-500 py-8">No items found.</div>
+                    <div className="text-center text-muted-foreground py-8">No items found.</div>
                   ) : (
                     <ul>
                       {itemList.map((item: any) => (
@@ -1107,8 +1042,8 @@ const getPrinterStatusIndicator = () => {
                           }}
                         >
                           <div className="font-semibold">{item.name}</div>
-                          <div className="text-xs text-gray-500">{item.category?.name || 'No category'}</div>
-                          <div className="text-xs text-gray-400">Price: रु{item.price}</div>
+                          <div className="text-xs text-muted-foreground">{item.category?.name || 'No category'}</div>
+                          <div className="text-xs text-muted-foreground">Price: रु{item.price}</div>
                         </li>
                       ))}
                     </ul>
@@ -1120,122 +1055,256 @@ const getPrinterStatusIndicator = () => {
         )}
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-            <button 
-              onClick={() => setError("")} 
-              className="float-right text-red-700 hover:text-red-900"
-            >
-              ×
-            </button>
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-semibold">Filters</h3>
-            {hasActiveFilters() && (
-              <button 
-                onClick={clearFilters}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                Clear All Filters
-              </button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Search</label>
+        <div className="bg-card rounded-xl border border-border p-3 mb-5">
+          {/* Mobile row: search + filter toggle + action */}
+          <div className="flex items-center gap-2 md:hidden">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                 placeholder="Search..."
                 data-cy="orders-search"
               />
+              {filters.search && (
+                <button
+                  onClick={() => handleFilterChange('search', '')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Order Status</label>
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-all shrink-0 ${showMobileFilters ? 'bg-primary text-white border-primary' : 'bg-muted/50 border-input text-muted-foreground hover:text-foreground'}`}
+              title="Filters"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+            <button
+              className="h-9 px-3 bg-gradient-brand text-white font-medium rounded-lg hover:opacity-90 transition-all shadow-elevated shadow-primary/25 flex items-center gap-1.5 text-sm shrink-0"
+              onClick={() => {
+                setShowCreate(true);
+                setEditingOrder(null);
+                setCreateError("");
+                setCreateForm({
+                  roomNumber: "",
+                  items: [{ itemId: "", name: "", quantity: "1", price: 0 }],
+                  showRoomDropdown: false
+                });
+              }}
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Mobile filter panel */}
+          {showMobileFilters && (
+            <div className="mt-3 space-y-2 md:hidden">
               <select
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                data-cy="orders-status-filter"
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
               >
-                <option value="">All</option>
+                <option value="">All Order Status</option>
                 <option value="pending">Pending</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">KOT Status</label>
               <select
                 value={filters.kotStatus}
                 onChange={(e) => handleFilterChange('kotStatus', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
               >
-                <option value="">All</option>
+                <option value="">All KOT Status</option>
                 <option value="pending">Pending</option>
                 <option value="preparing">Preparing</option>
                 <option value="ready">Ready</option>
                 <option value="served">Served</option>
                 <option value="cancelled">Cancelled</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Room Number</label>
               <input
                 type="text"
                 value={filters.roomNumber}
                 onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Room number"
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm"
+                placeholder="Room #..."
                 data-cy="orders-room-filter"
               />
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={filters.fromDate}
+                  onChange={(e) => handleFilterChange('fromDate', e.target.value)}
+                  className="flex-1 h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm"
+                />
+                <input
+                  type="date"
+                  value={filters.toDate}
+                  onChange={(e) => handleFilterChange('toDate', e.target.value)}
+                  className="flex-1 h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={handleTestPrinter}
+                  className="h-9 px-3 bg-secondary/50 border border-border text-foreground font-medium rounded-lg hover:bg-secondary transition-all text-xs flex items-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>{getPrinterStatusIndicator()}</span>
+                </button>
+                <button
+                  onClick={() => setShowMobileStats(!showMobileStats)}
+                  className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                  {showMobileStats ? 'Hide' : 'Show'} Stats
+                </button>
+                {hasActiveFilters() && (
+                  <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 ml-auto shrink-0">
+                    Clear all filters
+                  </button>
+                )}
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">From Date</label>
+          )}
+
+          {/* Desktop: filters row + action buttons */}
+          <div className="hidden md:flex items-start gap-3">
+            <div className="flex items-center gap-3 flex-nowrap overflow-x-auto flex-1 min-w-0">
+              <div className="relative flex-1 min-w-[160px] max-w-xs shrink-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+                  placeholder="Search..."
+                  data-cy="orders-search"
+                />
+                {filters.search && (
+                  <button
+                    onClick={() => handleFilterChange('search', '')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <select
+                value={filters.status}
+                onChange={(e) => handleFilterChange('status', e.target.value)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[110px] shrink-0"
+                data-cy="orders-status-filter"
+              >
+                <option value="">All Order Status</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <select
+                value={filters.kotStatus}
+                onChange={(e) => handleFilterChange('kotStatus', e.target.value)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[110px] shrink-0"
+              >
+                <option value="">All KOT Status</option>
+                <option value="pending">Pending</option>
+                <option value="preparing">Preparing</option>
+                <option value="ready">Ready</option>
+                <option value="served">Served</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <input
+                type="text"
+                value={filters.roomNumber}
+                onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[100px] w-[110px] shrink-0"
+                placeholder="Room #..."
+                data-cy="orders-room-filter"
+              />
               <input
                 type="date"
                 value={filters.fromDate}
                 onChange={(e) => handleFilterChange('fromDate', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px] shrink-0"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">To Date</label>
               <input
                 type="date"
                 value={filters.toDate}
                 onChange={(e) => handleFilterChange('toDate', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px] shrink-0"
               />
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={handleTestPrinter}
+                className="h-9 px-3 bg-secondary/50 border border-border text-foreground font-medium rounded-lg hover:bg-secondary transition-all text-xs flex items-center gap-1.5 shrink-0"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>{getPrinterStatusIndicator()}</span>
+              </button>
+              <button
+                onClick={() => setShowMobileStats(!showMobileStats)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0"
+                title={showMobileStats ? 'Hide Kitchen Stats' : 'Show Kitchen Stats'}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                <span className="hidden lg:inline">{showMobileStats ? 'Hide' : 'Show'} Stats</span>
+              </button>
+              {hasActiveFilters() && (
+                <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 shrink-0 whitespace-nowrap">
+                  Clear
+                </button>
+              )}
+              <button
+                className="h-9 px-4 bg-gradient-brand text-white font-medium rounded-lg hover:opacity-90 transition-all shadow-elevated shadow-primary/25 flex items-center gap-1.5 text-sm shrink-0"
+                onClick={() => {
+                  setShowCreate(true);
+                  setEditingOrder(null);
+                  setCreateError("");
+                  setCreateForm({
+                    roomNumber: "",
+                    items: [{ itemId: "", name: "", quantity: "1", price: 0 }],
+                    showRoomDropdown: false
+                  });
+                }}
+                data-cy="orders-add-btn"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden lg:inline">New Order</span>
+              </button>
             </div>
           </div>
         </div>
 
 {/* Orders Table */}
-<div data-cy="orders-table-container" className="bg-white rounded-lg shadow overflow-hidden">
+<div data-cy="orders-table-container" className="bg-card rounded-lg shadow overflow-hidden">
   <div className="overflow-x-auto">
-    <table data-cy="orders-table" className="min-w-full divide-y divide-gray-200">
-      <thead className="bg-gray-50">
+    <table data-cy="orders-table" className="min-w-full divide-y divide-border">
+      <thead className="bg-muted/50">
         <tr>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KOT #</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Guest</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Room</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Status</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KOT Status</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Print Status</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created By</th>
-          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">KOT #</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Guest</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Room</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Items</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Total</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Order Status</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">KOT Status</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Print Status</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Created By</th>
+          <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
         </tr>
       </thead>
-      <tbody data-cy="orders-table-body" className="bg-white divide-y divide-gray-200">
+      <tbody data-cy="orders-table-body" className="bg-card divide-y divide-border">
         {orders.map((order: any, index: number) => {
           const guest = order.guestId && typeof order.guestId === 'object'
             ? `${order.guestId.firstName || ''} ${order.guestId.lastName || ''}`.trim() || "-"
@@ -1258,143 +1327,149 @@ const getPrinterStatusIndicator = () => {
             (order.kotPrinted ? '📄' : '⏳');
           
           return (
-            <tr key={order._id} data-cy={`orders-row-${index}`} className={`hover:bg-gray-50 ${selectedOrder?._id === order._id ? 'bg-blue-50' : ''}`}>
-              <td className="px-6 py-4 whitespace-nowrap font-mono text-sm">{kotNumber}</td>
-              <td className="px-6 py-4 whitespace-nowrap">{guest}</td>
-              <td className="px-6 py-4 whitespace-nowrap">{room}</td>
-              <td className="px-6 py-4 whitespace-nowrap max-w-xs truncate" title={items}>{items}</td>
-              <td className="px-6 py-4 whitespace-nowrap">{total}</td>
-              <td className="px-6 py-4 whitespace-nowrap">
+            <React.Fragment key={order._id}>
+            <tr data-cy={`orders-row-${index}`} className={`hover:bg-muted/30 ${selectedOrder?._id === order._id ? 'bg-primary/5' : ''}`}>
+              <td className="px-6 py-4 whitespace-nowrap font-mono text-sm">
+                <span className="md:hidden inline-flex items-center gap-1">
+                  <button
+                    onClick={() => toggleRow(order._id)}
+                    className="p-0.5 rounded text-muted-foreground hover:text-foreground"
+                  >
+                    <Info className="w-3.5 h-3.5" />
+                  </button>
+                </span>
+                <span className="ml-1">{kotNumber}</span>
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">{guest}</td>
+              <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">{room}</td>
+              <td className="px-6 py-4 whitespace-nowrap max-w-xs truncate hidden md:table-cell" title={items}>{items}</td>
+              <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">{total}</td>
+              <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                  status === 'completed' ? 'bg-green-100 text-green-800' :
-                  status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                  'bg-gray-100 text-gray-800'
+                  status === 'completed' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' :
+                  status === 'pending' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
+                  status === 'cancelled' ? 'bg-destructive/10 text-destructive' :
+                  'bg-muted text-muted-foreground'
                 }`}>
                   {status}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                 {order.kotPrinted ? (
                   <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getKOTStatusBadge(kotStatus)}`}>
                     {kotStatus}
                   </span>
                 ) : (
-                  <span className="text-gray-400 text-xs">Not sent</span>
+                  <span className="text-muted-foreground text-xs">Not sent</span>
                 )}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-center">
+              <td className="px-6 py-4 whitespace-nowrap text-center hidden md:table-cell">
                 <span title={printInfo ? `Printed: ${printInfo.printerType}` : ''}>
                   {printStatus}
                 </span>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">{createdBy}</td>
+              <td className="px-6 py-4 whitespace-nowrap hidden lg:table-cell">{createdBy}</td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex flex-col gap-1">
-                  <div className="flex space-x-2">
+                <div className="flex items-center gap-1">
+                  <button
+                    data-cy={`orders-status-btn-${index}`}
+                    onClick={() => handleSelectOrder(order)}
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+                    title="Status"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  {!order.kotPrinted && (
                     <button
-                      data-cy={`orders-status-btn-${index}`}
-                      onClick={() => handleSelectOrder(order)}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
+                      data-cy={`orders-edit-btn-${index}`}
+                      onClick={() => handleEditOrder(order)}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+                      title="Edit"
                     >
-                      Status
+                      <Edit className="w-4 h-4" />
                     </button>
-                    {!order.kotPrinted && (
-                      <button
-                        data-cy={`orders-edit-btn-${index}`}
-                        onClick={() => handleEditOrder(order)}
-                        className="text-green-600 hover:text-green-800 text-sm"
-                      >
-                        Edit
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex space-x-2 mt-1">
-                    {order.status === 'pending' && !order.kotPrinted && (
-                      <button
-                        onClick={() => {
-                          setSelectedKOTOrder(order);
-                          setShowKOTModal(true);
-                        }}
-                        className="text-orange-600 hover:text-orange-800 text-sm font-semibold"
-                      >
-                        🧾 Send KOT
-                      </button>
-                    )}
-                    {order.kotPrinted && (
-                      <button
-                        onClick={() => handleReprintKOT(order._id)}
-                        className="text-purple-600 hover:text-purple-800 text-sm"
-                        title="Reprint KOT"
-                      >
-                        🔄 Reprint
-                      </button>
-                    )}
-                  </div>
+                  )}
+                  {order.status === 'pending' && !order.kotPrinted && (
+                    <button
+                      onClick={() => {
+                        setSelectedKOTOrder(order);
+                        setShowKOTModal(true);
+                      }}
+                      className="px-2 py-1.5 rounded-md bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all text-xs font-medium"
+                      title="Send to Kitchen"
+                    >
+                      🧾 KOT
+                    </button>
+                  )}
+                  {order.kotPrinted && (
+                    <button
+                      onClick={() => handleReprintKOT(order._id)}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+                      title="Reprint KOT"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>
+            {expandedRows[order._id] && (
+              <tr className="md:hidden">
+                <td colSpan={10} className="px-4 py-3 bg-muted/20">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">Guest:</span> {guest}</div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">Room:</span> {room}</div>
+                    <div className="col-span-2 break-words min-w-0"><span className="text-muted-foreground">Items:</span> {items}</div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">Total:</span> {total}</div>
+                    <div className="break-words min-w-0">
+                      <span className="text-muted-foreground">Status:</span>{' '}
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
+                        status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                        status === 'cancelled' ? 'bg-destructive/10 text-destructive' :
+                        'bg-muted text-muted-foreground'
+                      }`}>{status}</span>
+                    </div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">KOT:</span> {kotStatus}</div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">Print:</span> {printStatus}</div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">Created:</span> {createdBy}</div>
+                  </div>
+                </td>
+              </tr>
+            )}
+            </React.Fragment>
           );
         })}
       </tbody>
     </table>
   </div>
   
-  {/* Pagination Controls */}
-  <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-    <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-      <div className="text-sm text-gray-700">
-        Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{" "}
-        <span className="font-medium">{Math.min(page * limit, totalCount)}</span> of{" "}
-        <span className="font-medium">{totalCount}</span> results
-      </div>
-      
-      <div className="flex items-center space-x-2">
-        <select
-          value={limit}
-          onChange={(e) => {
-            setLimit(Number(e.target.value));
-            setPage(1);
-          }}
-          className="border border-gray-300 rounded-md px-3 py-1 text-sm"
-        >
-          <option value="10">10 per page</option>
-          <option value="20">20 per page</option>
-          <option value="50">50 per page</option>
-          <option value="100">100 per page</option>
-        </select>
-        
-        <div className="flex space-x-1">
-          <button
-            className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
-            onClick={() => setPage(1)}
-            disabled={page === 1}
-          >«</button>
-          <button
-            className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
-            onClick={() => setPage(page - 1)}
-            disabled={page === 1}
-          >‹</button>
-          <span className="px-3 py-1">Page {page} of {totalPages}</span>
-          <button
-            className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
-            onClick={() => setPage(page + 1)}
-            disabled={page === totalPages}
-          >›</button>
-          <button
-            className="px-3 py-1 rounded border bg-white disabled:opacity-50 text-sm"
-            onClick={() => setPage(totalPages)}
-            disabled={page === totalPages}
-          >»</button>
-        </div>
-      </div>
-    </div>
-  </div>
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+          <div className="flex items-center gap-2 px-4 py-3">
+            <label className="text-sm text-muted-foreground">Rows per page:</label>
+            <select
+              value={limit}
+              onChange={(e) => {
+                setLimit(Number(e.target.value));
+                setPage(1);
+              }}
+             className="border border-input rounded-md px-3 py-1 text-sm bg-card max-w-full truncate"
+           >
+             <option value="10">10</option>
+             <option value="20">20</option>
+             <option value="50">50</option>
+             <option value="100">100</option>
+           </select>
+          </div>
   
   {/* Status Update Modal */}
   {selectedOrder && (
     <div data-cy="orders-status-modal" className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+      <div className="bg-card rounded-lg shadow-elevated p-6 w-full max-w-md">
         <h2 className="text-xl font-bold mb-4">Update Order Status</h2>
         <div className="mb-4">
           <div className="mb-2"><b>KOT #:</b> {selectedOrder.kotNumber || 'Not generated'}</div>
@@ -1410,14 +1485,19 @@ const getPrinterStatusIndicator = () => {
             data-cy="orders-status-select"
             value={updateStatus}
             onChange={e => setUpdateStatus(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-          >
-            <option value="pending" data-cy="orders-status-pending">Pending</option>
-            <option value="completed" data-cy="orders-status-completed">Completed</option>
-            <option value="cancelled" data-cy="orders-status-cancelled">Cancelled</option>
-          </select>
+            className="w-full border border-input rounded px-3 py-2"
+           >
+             {(user?.role !== 'staff' || selectedOrder?.status !== 'completed') && (
+               <option value="pending" data-cy="orders-status-pending">Pending</option>
+             )}
+              <option value="completed" data-cy="orders-status-completed">Completed</option>
+              <option value="cancelled" data-cy="orders-status-cancelled">Cancelled</option>
+           </select>
+           {user?.role === 'staff' && selectedOrder?.status === 'completed' && (
+             <p className="text-xs text-muted-foreground mt-1">Completed orders cannot be reverted by staff.</p>
+           )}
         </div>
-        {updateError && <div className="text-red-600 mb-2">{updateError}</div>}
+        {updateError && <div className="text-destructive mb-2">{updateError}</div>}
         <div className="flex justify-end space-x-2">
           <button
             data-cy="orders-status-modal-cancel"
@@ -1427,7 +1507,7 @@ const getPrinterStatusIndicator = () => {
           >Cancel</button>
           <button
             data-cy="orders-status-modal-update"
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
             onClick={handleUpdateOrderStatus}
             disabled={updating}
           >{updating ? 'Updating...' : 'Update'}</button>
@@ -1439,7 +1519,7 @@ const getPrinterStatusIndicator = () => {
   {/* KOT Modal */}
   {showKOTModal && selectedKOTOrder && (
     <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+      <div className="bg-card rounded-lg shadow-elevated p-6 w-full max-w-md">
         <h2 className="text-xl font-bold mb-4">Send Order to Kitchen</h2>
         <div className="mb-4">
           <div className="mb-2"><b>Room:</b> {selectedKOTOrder.roomNumber}</div>
@@ -1457,19 +1537,19 @@ const getPrinterStatusIndicator = () => {
           <textarea
             value={specialInstructions}
             onChange={(e) => setSpecialInstructions(e.target.value)}
-            className="w-full border border-gray-300 rounded px-3 py-2"
+            className="w-full border border-input rounded px-3 py-2"
             rows={3}
             placeholder="e.g., extra spicy, no onions, etc."
           />
         </div>
         {printerStatus && (
-          <div className="mb-4 p-2 bg-gray-50 rounded text-sm">
+          <div className="mb-4 p-2 bg-muted/50 rounded text-sm">
             <span className="font-medium">Printer: </span>
             {getPrinterStatusIndicator()}
-            {printerStatus.type && <span className="ml-2 text-gray-600">({printerStatus.type})</span>}
+            {printerStatus.type && <span className="ml-2 text-muted-foreground">({printerStatus.type})</span>}
           </div>
         )}
-        {kotError && <div className="text-red-600 mb-2">{kotError}</div>}
+        {kotError && <div className="text-destructive mb-2">{kotError}</div>}
         <div className="flex justify-end space-x-2">
           <button
             className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
@@ -1496,15 +1576,15 @@ const getPrinterStatusIndicator = () => {
   
   {orders.length === 0 && !loading && (
     <div className="text-center py-12">
-      <div className="text-gray-500">
+      <div className="text-muted-foreground">
         {hasActiveFilters() 
           ? "No orders found matching your filters." 
           : "No orders found."}
       </div>
       {hasActiveFilters() && (
-        <button 
+        <button
           onClick={clearFilters}
-          className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+          className="mt-2 text-primary hover:text-primary/80 text-sm"
         >
           Clear all filters
         </button>
@@ -1514,31 +1594,53 @@ const getPrinterStatusIndicator = () => {
 </div>
 
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{totalCount}</div>
-            <div className="text-sm text-gray-600">Total Orders</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">
-              {orders.filter((o: any) => o.status === "completed").length}
+        <div className={`mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ${showMobileStats ? '' : 'hidden'} md:grid`}>
+          <div className="bg-card rounded-xl shadow-sm border border-border p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">Total Orders</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{totalCount}</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-elevated">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+              </div>
             </div>
-            <div className="text-sm text-gray-600">Completed</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-yellow-600">
-              {orders.filter((o: any) => o.status === "pending").length}
+          <div className="bg-card rounded-xl shadow-sm border border-border p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">Completed</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{orders.filter((o: any) => o.status === "completed").length}</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-elevated">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
             </div>
-            <div className="text-sm text-gray-600">Pending</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-orange-600">
-              {orders.filter((o: any) => o.kotStatus === 'preparing' || o.kotStatus === 'ready').length}
+          <div className="bg-card rounded-xl shadow-sm border border-border p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">Pending</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{orders.filter((o: any) => o.status === "pending").length}</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 flex items-center justify-center shadow-elevated">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
             </div>
-            <div className="text-sm text-gray-600">In Kitchen</div>
+          </div>
+          <div className="bg-card rounded-xl shadow-sm border border-border p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground font-medium">In Kitchen</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{orders.filter((o: any) => o.kotStatus === 'preparing' || o.kotStatus === 'ready').length}</p>
+              </div>
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center shadow-elevated">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" /></svg>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

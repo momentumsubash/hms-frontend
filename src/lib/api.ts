@@ -392,7 +392,7 @@ export async function getGuests(params: Record<string, any> = {}) {
     });
     
     // Build the final URL
-    const url = `${API_URL}/guests/stats/count?${hotelId}`;
+    const url = `${API_URL}/guests/stats/count?${queryParams.toString()}`;
     
     const res = await fetch(url, {
       headers: mergeHeaders({}, getAuthHeaders()),
@@ -536,6 +536,23 @@ export const uploadHotelLogo = async (hotelId: string, formData: FormData): Prom
   
   if (!response.ok) {
     throw new Error('Failed to upload logo');
+  }
+  
+  return response.json();
+};
+
+export const uploadHotelVideos = async (hotelId: string, formData: FormData): Promise<{ urls: string[] }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/videos`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to upload videos');
   }
   
   return response.json();

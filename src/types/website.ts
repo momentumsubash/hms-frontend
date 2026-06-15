@@ -38,6 +38,7 @@ export interface WebsiteContent {
   heroTitle: string;
   heroSubtitle: string;
   heroImage: string;
+  heroVideo: string;
   aboutDescription: string;
   amenitiesDescription: string;
   experiencesDescription: string;
@@ -45,8 +46,11 @@ export interface WebsiteContent {
   footerDescription: string;
   rooms: RoomItem[];
   amenities: { name: string; icon: string; }[];
+  amenitiesDetailed: AmenityDetailed[];
+  experiences: { title: string; description: string; image?: string; isActive?: boolean }[];
   testimonials: TestimonialItem[];
   contactInfo: ContactInfo;
+  galleryImages?: string[];
 }
 
 export interface SEOData {

@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Save, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, Image as ImageIcon, Loader2, X } from 'lucide-react';
 import { IconSelector } from "@/components/ui/icon-selector";
 import { Hotel } from "@/types/hotel";
 import { WebsiteContent, SEOData, RoomItem, TestimonialItem, AmenityDetailed } from "@/types/website";
@@ -145,6 +145,7 @@ const ICON_MAPPING: Record<string, string> = {
       heroTitle: website?.heroTitle || "",
       heroSubtitle: website?.heroSubtitle || "",
       heroImage: website?.heroImage || "",
+      heroVideo: website?.heroVideo || "",
       aboutDescription: website?.aboutDescription || "",
       amenitiesDescription: website?.amenitiesDescription || "",
       experiencesDescription: website?.experiencesDescription || "",
@@ -157,6 +158,8 @@ const ICON_MAPPING: Record<string, string> = {
           })) 
         : [],
       amenities: processedAmenities,
+      amenitiesDetailed: Array.isArray(website?.amenitiesDetailed) ? website.amenitiesDetailed : [],
+      experiences: Array.isArray(website?.experiences) ? website.experiences : [],
       testimonials: Array.isArray(website?.testimonials) 
         ? website.testimonials.map(t => ({
             name: t.name || "",
@@ -173,7 +176,8 @@ const ICON_MAPPING: Record<string, string> = {
         address: website?.contactInfo?.address || "",
         reception: website?.contactInfo?.reception || "",
         website: website?.contactInfo?.website || ""
-      }
+      },
+      galleryImages: Array.isArray(website?.galleryImages) ? website.galleryImages : []
     };
     
     console.log('✅ ensureWebsiteDefaults output contactInfo:', websiteDefaults.contactInfo);
@@ -199,8 +203,11 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
           icon: a.icon || 'Star'
         })),
         rooms: ensureArray<RoomItem>(content.rooms, []),
+        amenitiesDetailed: Array.isArray(content.amenitiesDetailed) ? content.amenitiesDetailed : [],
+        experiences: Array.isArray(content.experiences) ? content.experiences : [],
         testimonials: ensureArray<TestimonialItem>(content.testimonials, []),
-        contactInfo: content.contactInfo || { phone: '', email: '', address: '' }
+        contactInfo: content.contactInfo || { phone: '', email: '', address: '' },
+        galleryImages: Array.isArray(content.galleryImages) ? content.galleryImages : []
       };
       
       console.log('Initial websiteContent:', safeContent);
@@ -208,10 +215,11 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
     } catch (error) {
       console.error('Error initializing website content:', error);
       // Return a safe default state
-      const fallbackState = {
+      const fallbackState: WebsiteContent = {
         heroTitle: '',
         heroSubtitle: '',
         heroImage: '',
+        heroVideo: '',
         aboutDescription: '',
         amenitiesDescription: '',
         experiencesDescription: '',
@@ -219,8 +227,11 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
         footerDescription: '',
         rooms: [],
         amenities: [...DEFAULT_AMENITIES],
+        amenitiesDetailed: [],
+        experiences: [],
         testimonials: [],
-        contactInfo: { phone: '', email: '', address: '', reception: '', website: '' }
+        contactInfo: { phone: '', email: '', address: '', reception: '', website: '' },
+        galleryImages: []
       };
       console.log('Using fallback state:', fallbackState);
       return fallbackState;
@@ -643,11 +654,28 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
               <div className="space-y-2 md:col-span-2">
                 <Label>Hero Image</Label>
                 <ImageSelectWithPreview
-  value={websiteContent.heroImage || ''}
-  onValueChange={(val) => updateField('heroImage', val)}
-  availableImages={availableImages}
-  label="Select Hero Image"
-/>
+                  value={websiteContent.heroImage || ''}
+                  onValueChange={(val) => updateField('heroImage', val)}
+                  availableImages={availableImages}
+                  label="Select Hero Image"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Hero Video (background video, auto-plays in loop)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={websiteContent.heroVideo || ''}
+                    onChange={(e) => updateField('heroVideo', e.target.value)}
+                    placeholder="https://example.com/hero-video.mp4"
+                    className="flex-1"
+                  />
+                </div>
+                {websiteContent.heroVideo && (
+                  <div className="relative w-full aspect-video rounded-lg overflow-hidden border mt-2">
+                    <video src={websiteContent.heroVideo} className="w-full h-full object-cover" muted controls />
+                    <button onClick={() => updateField('heroVideo', '')} className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1"><X size={14} /></button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

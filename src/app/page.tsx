@@ -1,21 +1,5 @@
-"use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/components/ui/auth-provider";
-import { HotelDashboard } from "@/components/hotel-dashboard";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace("/home");
-    }
-  }, [user, loading, router]);
-
-  if (loading) return <div>Loading...</div>;
-  if (!user) return null;
-  
-  return <HotelDashboard nepaliFlag={false} />;
+export default function RootPage() {
+  redirect("/home");
 }

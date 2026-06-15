@@ -40,7 +40,7 @@ export const createExpenditure = async (data: CreateExpenditurePayload) => {
         date: data.date,
         notes: data.notes,
         isInventoryAddition: data.isInventoryAddition,
-        inventoryItems: data.inventoryItems
+        ...(data.isInventoryAddition && data.inventoryItems?.length ? { inventoryItems: data.inventoryItems } : {}),
       }),
     });
 

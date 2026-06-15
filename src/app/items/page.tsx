@@ -1,7 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useAuth } from "@/components/ui/auth-provider";
-import { NavBar } from "@/components/ui/NavBar";
+import React, { useEffect, useState } from "react";
+import { DashboardLayout } from "@/components/dashboard-layout";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search, X, Eye, Edit, Trash2, Package } from "lucide-react";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface CategoryObj {
   _id: string;
@@ -37,16 +40,10 @@ interface PaginationInfo {
   pages: number;
 }
 
-interface SortInfo {
-  by: string;
-  order: string;
-}
-
 interface ApiResponse {
   success: boolean;
   data: Item[];
   pagination: PaginationInfo;
-  sort?: SortInfo;
 }
 
 function getToken() {
@@ -55,15 +52,13 @@ function getToken() {
 }
 
 export default function ItemsPage() {
-  // Load hotel from localStorage
-  const [hotel, setHotel] = useState(() => {
+  const [hotel, setHotel] = useState<any>(null);
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('hotel');
-      return stored ? JSON.parse(stored) : null;
+      if (stored) setHotel(JSON.parse(stored));
     }
-    return null;
-  });
-  // Listen for localStorage changes (e.g., nepaliLanguage toggle)
+  }, []);
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
       if (event.key === 'hotel') {
@@ -73,7 +68,7 @@ export default function ItemsPage() {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
-  // Pagination state
+  
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [pagination, setPagination] = useState<PaginationInfo>({
@@ -83,26 +78,6 @@ export default function ItemsPage() {
     pages: 1,
   });
 
-  const navLinks = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Checkouts", href: "/checkouts" },
-    { label: "Guests", href: "/guests" },
-    { label: "Hotels", href: "/hotels" },
-    { label: "Items", href: "/items" },
-    { label: "Orders", href: "/orders" },
-    { label: "Rooms", href: "/rooms" },
-    { label: "Stats", href: "/stats" },
-    { label: "Users", href: "/users" },
-  ];
-  const [user, setUser] = useState<any>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('user');
-      return stored ? JSON.parse(stored) : null;
-    }
-    return null;
-  });
-  const { logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -113,14 +88,12 @@ export default function ItemsPage() {
     isAvailable: ""
   });
 
-  // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
-  // Form state
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -132,50 +105,27 @@ export default function ItemsPage() {
     comment: ""
   });
 
-  // Categories state
   const [categories, setCategories] = useState<CategoryObj[]>([]);
-
-  // Debounce timer for search
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Function to fetch items with pagination and filters
   const fetchItems = async (pageNum: number = page, filterParams = filters) => {
     const token = getToken();
     if (!token) return;
-
     try {
       setLoading(true);
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const params = new URLSearchParams({
-        page: pageNum.toString(),
-        limit: limit.toString()
-      });
-      
-      // Add filters to query params
+      const params = new URLSearchParams({ page: pageNum.toString(), limit: limit.toString() });
       if (filterParams.isAvailable) params.append("isAvailable", filterParams.isAvailable);
       if (filterParams.category) params.append("category", filterParams.category);
       if (filterParams.search) params.append("search", filterParams.search);
-
       const itemsRes = await fetch(`${apiBase}/items?${params.toString()}`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Accept: "application/json", Authorization: `Bearer ${token}` }
       });
-
-      if (!itemsRes.ok) {
-        throw new Error("Failed to fetch items");
-      }
-
+      if (!itemsRes.ok) throw new Error("Failed to fetch items");
       const data: ApiResponse = await itemsRes.json();
-      
       if (data.success && Array.isArray(data.data)) {
         setItems(data.data);
-        
-        // Set pagination info from API response
-        if (data.pagination) {
-          setPagination(data.pagination);
-        }
+        if (data.pagination) setPagination(data.pagination);
       } else {
         throw new Error("Invalid response format");
       }
@@ -186,34 +136,13 @@ export default function ItemsPage() {
     }
   };
 
-  // Fetch initial data
   useEffect(() => {
     const fetchInitialData = async () => {
       const token = getToken();
-      if (!token) {
-        setError("No authentication token");
-        setLoading(false);
-        return;
-      }
-
+      if (!token) { setError("No authentication token"); setLoading(false); return; }
       try {
-        // 1. Fetch /auth/me
-        // const meRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/me`, {
-        //   headers: {
-        //     Authorization: `Bearer ${token}`,
-        //     Accept: "application/json",
-        //   },
-        // });
-        // if (!meRes.ok) throw new Error("Not authenticated");
-        // const meData = await meRes.json();
-        // localStorage.setItem("user", JSON.stringify(meData.data || null));
-
-        // 2. Fetch /hotels/me
         const hotelRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/hotels/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
         });
         let hotelId = "";
         if (hotelRes.ok) {
@@ -221,22 +150,15 @@ export default function ItemsPage() {
           localStorage.setItem("hotel", JSON.stringify(hotelData.data || null));
           hotelId = hotelData.data?._id;
         }
-
-        // 3. Fetch categories for this hotel
         if (hotelId) {
           const catRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/categories?hotelId=${hotelId}`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json"
-            }
+            headers: { Authorization: `Bearer ${token}`, Accept: "application/json" }
           });
           if (catRes.ok) {
             const catData = await catRes.json();
             setCategories(catData.data || []);
           }
         }
-
-        // 4. Fetch items with pagination
         await fetchItems(1, filters);
       } catch (e: any) {
         setError(e.message);
@@ -244,189 +166,102 @@ export default function ItemsPage() {
         setLoading(false);
       }
     };
-
     fetchInitialData();
   }, []);
 
-  // Refetch items when page changes
-  useEffect(() => {
-    fetchItems(page, filters);
-  }, [page, filters]);
+  useEffect(() => { fetchItems(page, filters); }, [page, filters]);
 
-  // Handle filter changes with debouncing for search
   const handleFilterChange = (filterKey: string, value: string) => {
     const newFilters = { ...filters, [filterKey]: value };
     setFilters(newFilters);
-
-    // Clear existing timeout
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-
-    // Set a new timeout to debounce the API call for search
+    if (searchTimeout) clearTimeout(searchTimeout);
     if (filterKey === 'search') {
-      setSearchTimeout(setTimeout(() => {
-        setPage(1);
-        fetchItems(1, newFilters);
-      }, 500));
+      setSearchTimeout(setTimeout(() => { setPage(1); fetchItems(1, newFilters); }, 500));
     } else {
-      // For other filters, apply immediately
       setPage(1);
       fetchItems(1, newFilters);
     }
   };
 
-  // Clear all filters
   const clearFilters = () => {
-    const clearedFilters = {
-      category: "",
-      search: "",
-      isAvailable: ""
-    };
+    const clearedFilters = { category: "", search: "", isAvailable: "" };
     setFilters(clearedFilters);
     setPage(1);
     fetchItems(1, clearedFilters);
   };
 
-  // Pagination handlers
   const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= pagination.pages && newPage !== page) {
-      setPage(newPage);
-    }
+    if (newPage >= 1 && newPage <= pagination.pages && newPage !== page) setPage(newPage);
   };
 
   const createItem = async () => {
-    if (!validateForm()) {
-      setError('Please fix validation errors');
-      return;
-    }
-
+    if (!validateForm()) { setError('Please fix validation errors'); return; }
     try {
       const token = getToken();
       const hotel = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('hotel') || '{}') : {};
       const hotelId = hotel?._id;
-
       const payload: any = {
-        name: formData.name,
-        price: parseFloat(formData.price),
-        category: formData.category,
-        isAvailable: formData.isAvailable,
-        hotel: hotelId,
-        inventory: formData.inventory,
+        name: formData.name, price: parseFloat(formData.price), category: formData.category,
+        isAvailable: formData.isAvailable, hotel: hotelId, inventory: formData.inventory,
         stock: formData.inventory ? formData.stock : 0
       };
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
-
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload)
       });
-
-      if (res.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = "/login";
-        return;
-      }
-
+      if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/login"; return; }
       const responseData = await res.json();
-
       if (!res.ok) {
-        // Handle API validation errors
         if (responseData.details) {
-          const errorDetails = responseData.details;
-          const fieldMatch = errorDetails.match(/"(\w+)"/);
-          if (fieldMatch) {
-            const fieldName = fieldMatch[1];
-            setFormErrors({ [fieldName]: errorDetails });
-          }
+          const fieldMatch = responseData.details.match(/"(\w+)"/);
+          if (fieldMatch) setFormErrors({ [fieldMatch[1]]: responseData.details });
           setError(responseData.message || 'Validation error');
-        } else {
-          setError(responseData.message || "Failed to create item");
-        }
+        } else { setError(responseData.message || "Failed to create item"); }
         return;
       }
-
       setSuccess("Item created successfully!");
       setShowCreateModal(false);
       resetForm();
-      // Refresh current page
       await fetchItems(page, filters);
-    } catch (e: any) {
-      setError(e.message);
-    }
+    } catch (e: any) { setError(e.message); }
   };
 
   const updateItem = async () => {
     if (!selectedItem) return;
-    if (!validateForm()) {
-      setError('Please fix validation errors');
-      return;
-    }
-
+    if (!validateForm()) { setError('Please fix validation errors'); return; }
     try {
       const token = getToken();
       const hotel = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('hotel') || '{}') : {};
       const hotelId = hotel?._id;
-
       const payload: any = {
-        name: formData.name,
-        price: parseFloat(formData.price),
-        category: formData.category,
-        isAvailable: formData.isAvailable,
-        hotel: hotelId,
-        inventory: formData.inventory,
+        name: formData.name, price: parseFloat(formData.price), category: formData.category,
+        isAvailable: formData.isAvailable, hotel: hotelId, inventory: formData.inventory,
         stock: formData.inventory ? formData.stock : 0
       };
       if (formData.profitMarginBand) payload.profitMarginBand = formData.profitMarginBand;
       if (formData.comment) payload.comment = formData.comment;
-
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items/${selectedItem._id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
+        method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload)
       });
-
-      if (res.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = ("/login");
-        return;
-      }
-
+      if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/login"; return; }
       const responseData = await res.json();
-
       if (!res.ok) {
-        // Handle API validation errors
         if (responseData.details) {
-          const errorDetails = responseData.details;
-          const fieldMatch = errorDetails.match(/"(\w+)"/);
-          if (fieldMatch) {
-            const fieldName = fieldMatch[1];
-            setFormErrors({ [fieldName]: errorDetails });
-          }
+          const fieldMatch = responseData.details.match(/"(\w+)"/);
+          if (fieldMatch) setFormErrors({ [fieldMatch[1]]: responseData.details });
           setError(responseData.message || 'Validation error');
-        } else {
-          setError(responseData.message || "Failed to update item");
-        }
+        } else { setError(responseData.message || "Failed to update item"); }
         return;
       }
-
       setSuccess("Item updated successfully!");
       setShowEditModal(false);
       setSelectedItem(null);
       resetForm();
-      // Refresh current page
       await fetchItems(page, filters);
-    } catch (e: any) {
-      setError(e.message);
-    }
+    } catch (e: any) { setError(e.message); }
   };
 
   const deleteItem = async () => {
@@ -434,72 +269,30 @@ export default function ItemsPage() {
     try {
       const token = getToken();
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items/${selectedItem._id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+        method: "DELETE", headers: { Authorization: `Bearer ${token}` }
       });
-
-      if (res.status === 401) {
-        localStorage.removeItem("token");
-        window.location.href = ("/login");
-        return;
-      }
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to delete item");
-      }
-
+      if (res.status === 401) { localStorage.removeItem("token"); window.location.href = "/login"; return; }
+      if (!res.ok) { const errorData = await res.json(); throw new Error(errorData.message || "Failed to delete item"); }
       setSuccess("Item deleted successfully!");
       setShowDeleteModal(false);
       setSelectedItem(null);
-      
-      // If we're on the last page and it becomes empty, go back one page
-      if (items.length === 1 && page > 1) {
-        setPage(page - 1);
-      } else {
-        // Refresh current page
-        await fetchItems(page, filters);
-      }
-    } catch (e: any) {
-      setError(e.message);
-    }
+      if (items.length === 1 && page > 1) { setPage(page - 1); }
+      else { await fetchItems(page, filters); }
+    } catch (e: any) { setError(e.message); }
   };
 
   const resetForm = () => {
-    setFormData({
-      name: "",
-      price: "",
-      category: "",
-      isAvailable: true,
-      profitMarginBand: "",
-      comment: "",
-      inventory: false,
-      stock: "0"
-    });
+    setFormData({ name: "", price: "", category: "", isAvailable: true, profitMarginBand: "", comment: "", inventory: false, stock: "0" });
     setFormErrors({});
   };
 
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
-
-    if (!formData.name.trim()) {
-      errors.name = "Item name is required";
-    } else if (formData.name.trim().length < 2) {
-      errors.name = "Item name must be at least 2 characters long";
-    }
-
-    if (!formData.price) {
-      errors.price = "Price is required";
-    } else if (parseFloat(formData.price) <= 0) {
-      errors.price = "Price must be greater than 0";
-    }
-
-    if (!formData.category) {
-      errors.category = "Category must be selected";
-    }
-
+    if (!formData.name.trim()) errors.name = "Item name is required";
+    else if (formData.name.trim().length < 2) errors.name = "Item name must be at least 2 characters";
+    if (!formData.price) errors.price = "Price is required";
+    else if (parseFloat(formData.price) <= 0) errors.price = "Price must be greater than 0";
+    if (!formData.category) errors.category = "Category must be selected";
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -509,335 +302,179 @@ export default function ItemsPage() {
     const token = getToken();
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/items/${item._id}`, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`
-        }
+        headers: { Accept: "application/json", Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error("Failed to fetch item details");
       const data = await res.json();
       const details = data.data || data;
       setFormData({
-        name: details.name || "",
-        price: details.price?.toString() || "",
+        name: details.name || "", price: details.price?.toString() || "",
         category: typeof details.category === 'object' && details.category !== null ? details.category._id : details.category || "",
-        isAvailable: details.isAvailable ?? true,
-        profitMarginBand: details.profitMarginBand || "",
-        comment: details.comment || "",
-        inventory: details.inventory ?? false,
-        stock: (details.stock ?? 0).toString()
+        isAvailable: details.isAvailable ?? true, profitMarginBand: details.profitMarginBand || "",
+        comment: details.comment || "", inventory: details.inventory ?? false, stock: (details.stock ?? 0).toString()
       });
       setShowEditModal(true);
     } catch (e: any) {
       setFormData({
-        name: item.name,
-        price: item.price.toString(),
+        name: item.name, price: item.price.toString(),
         category: typeof item.category === 'object' && item.category !== null ? item.category._id : item.category,
-        isAvailable: item.isAvailable,
-        profitMarginBand: item.profitMarginBand || "",
-        comment: item.comment || "",
-        inventory: item.inventory ?? false,
-        stock: (item.stock ?? 0).toString()
+        isAvailable: item.isAvailable, profitMarginBand: item.profitMarginBand || "",
+        comment: item.comment || "", inventory: item.inventory ?? false, stock: (item.stock ?? 0).toString()
       });
       setShowEditModal(true);
     }
   };
 
-  const openDeleteModal = (item: Item) => {
-    setSelectedItem(item);
-    setShowDeleteModal(true);
-  };
+  const openDeleteModal = (item: Item) => { setSelectedItem(item); setShowDeleteModal(true); };
 
-  // Clear messages after 5 seconds
   useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(""), 5000);
-      return () => clearTimeout(timer);
-    }
+    if (error) { const timer = setTimeout(() => setError(""), 5000); return () => clearTimeout(timer); }
   }, [error]);
-
   useEffect(() => {
-    if (success) {
-      const timer = setTimeout(() => setSuccess(""), 5000);
-      return () => clearTimeout(timer);
-    }
+    if (success) { const timer = setTimeout(() => setSuccess(""), 5000); return () => clearTimeout(timer); }
   }, [success]);
-
-  // Clean up timeout on unmount
   useEffect(() => {
-    return () => {
-      if (searchTimeout) {
-        clearTimeout(searchTimeout);
-      }
-    };
+    return () => { if (searchTimeout) clearTimeout(searchTimeout); };
   }, [searchTimeout]);
 
-  // Generate pagination buttons
-  const generatePaginationButtons = () => {
-    const buttons = [];
-    const maxVisiblePages = 5;
-    
-    let startPage = Math.max(1, pagination.page - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(pagination.pages, startPage + maxVisiblePages - 1);
-    
-    // Adjust if we're near the end
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-    
-    // First and previous buttons
-    if (startPage > 1) {
-      buttons.push(
-        <button
-          key="first"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => handlePageChange(1)}
-          disabled={pagination.page === 1 || loading}
-        >
-          «
-        </button>
-      );
-      
-      buttons.push(
-        <button
-          key="prev"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => handlePageChange(pagination.page - 1)}
-          disabled={pagination.page === 1 || loading}
-        >
-          ‹
-        </button>
-      );
-    }
-    
-    // Page number buttons
-    for (let i = startPage; i <= endPage; i++) {
-      buttons.push(
-        <button
-          key={i}
-          className={`px-3 py-2 text-sm font-medium rounded-md ${
-            pagination.page === i
-              ? 'text-white bg-blue-600 border border-blue-600'
-              : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-          } disabled:opacity-50`}
-          onClick={() => handlePageChange(i)}
-          disabled={loading}
-        >
-          {i}
-        </button>
-      );
-    }
-    
-    // Next and last buttons
-    if (endPage < pagination.pages) {
-      buttons.push(
-        <button
-          key="next"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => handlePageChange(pagination.page + 1)}
-          disabled={pagination.page === pagination.pages || loading}
-        >
-          ›
-        </button>
-      );
-      
-      buttons.push(
-        <button
-          key="last"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => handlePageChange(pagination.pages)}
-          disabled={pagination.page === pagination.pages || loading}
-        >
-          »
-        </button>
-      );
-    }
-    
-    return buttons;
-  };
-
-  if (loading && items.length === 0) return <div className="flex justify-center items-center h-64">Loading...</div>;
-
-  return (
-    <div className="min-h-screen bg-slate-50">
-      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        nepaliFlag={hotel?.nepaliFlag}
-      />
-      <div className="max-w-9xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Items Management</h1>
-          <button
-            onClick={() => {
-              resetForm();
-              setShowCreateModal(true);
-            }}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Add New Item
+  const Modal = ({ show, onClose, title, children }: { show: boolean; onClose: () => void; title: string; children: React.ReactNode }) => show ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-card rounded-xl shadow-elevated animate-scale-in overflow-hidden border border-border">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <h2 className="text-base font-semibold text-foreground">{title}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
           </button>
         </div>
+        {children}
+      </div>
+    </div>
+  ) : null;
+
+  if (loading && items.length === 0) return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading items...</span>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+
+  return (
+    <DashboardLayout>
+      <div className="p-6 max-w-[1600px] mx-auto space-y-5">
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-            <button 
-              onClick={() => setError("")} 
-              className="float-right text-red-700 hover:text-red-900"
-            >
-              ×
-            </button>
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
-
         {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            {success}
-            <button 
-              onClick={() => setSuccess("")} 
-              className="float-right text-green-700 hover:text-green-900"
-            >
-              ×
-            </button>
+          <div className="bg-emerald-100 border border-emerald-200 text-emerald-700 text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+            <span>{success}</span>
+            <button onClick={() => setSuccess("")} className="p-1 hover:bg-emerald-200 rounded transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-semibold">Filters</h3>
-            <button
-              onClick={clearFilters}
-              className="text-sm text-blue-600 hover:text-blue-800 underline"
-            >
-              Clear All Filters
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Search (Name)</label>
-              <input
-                type="text"
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Search items..."
-              />
+        <div className="bg-card rounded-xl border border-border p-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[160px] max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input data-cy="items-search" type="text" value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
+                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all" placeholder="Search items..." />
+              {filters.search && (
+                <button onClick={() => handleFilterChange('search', '')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Category</label>
-              <select
-                value={filters.category}
-                onChange={(e) => handleFilterChange('category', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              >
-                <option value="">All Categories</option>
-                {categories.length === 0 ? (
-                  <option disabled>Loading...</option>
-                ) : (
-                  categories.map((cat) => (
-                    <option key={cat._id} value={cat._id}>{cat.name}</option>
-                  ))
-                )}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Availability</label>
-              <select
-                value={filters.isAvailable}
-                onChange={(e) => handleFilterChange('isAvailable', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-              >
-                <option value="">All Items</option>
-                <option value="true">Available</option>
-                <option value="false">Unavailable</option>
-              </select>
-            </div>
+            <select data-cy="items-category-filter" value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)}
+              className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[130px]">
+              <option value="">All Categories</option>
+              {categories.length === 0 ? <option disabled>Loading...</option> : categories.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
+            </select>
+            <select data-cy="items-availability-filter" value={filters.isAvailable} onChange={(e) => handleFilterChange('isAvailable', e.target.value)}
+              className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px]">
+              <option value="">All Items</option>
+              <option value="true">Available</option>
+              <option value="false">Unavailable</option>
+            </select>
+            {(filters.search || filters.category || filters.isAvailable) && (
+              <button data-cy="items-clear-filters" onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0">
+                Clear
+              </button>
+            )}
+            <Button data-cy="items-add-new" onClick={() => { resetForm(); setShowCreateModal(true); }} className="ml-auto shrink-0">
+              <Plus className="w-4 h-4" />
+              Add New
+            </Button>
           </div>
         </div>
 
-        {/* Loading indicator for filter changes */}
         {loading && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4 flex items-center">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
-            Loading items...
+          <div className="bg-primary/5 border border-primary/10 rounded-lg px-5 py-3 flex items-center gap-2.5">
+            <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <span className="text-sm text-muted-foreground">Loading items...</span>
           </div>
         )}
 
-        {/* Items Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {/* Pagination Info */}
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-gray-700">
-                Showing {items.length} of {pagination.total} items (Page {pagination.page} of {pagination.pages})
-              </div>
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="px-5 py-3 border-b border-border bg-muted/50 flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              Showing {items.length} of {pagination.total} items (Page {pagination.page} of {pagination.pages})
             </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Available</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hotel</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            <table data-cy="items-table" className="w-full">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stock</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Available</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {Array.isArray(items) && items.length > 0 ? (
                   items.map((item: Item) => (
-                    <tr key={item._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap font-medium">{item.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                    <tr key={item._id} data-cy={`items-row-${item._id}`} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">{item.name}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <Badge variant="secondary" className="text-xs rounded px-2 py-0.5 font-normal">
                           {typeof item.category === 'object' && item.category !== null ? item.category.name : item.category}
-                        </span>
+                        </Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">रु{item.price}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">रु{item.price}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {item.inventory ? (
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            (item.stock ?? 0) <= 5 ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'
-                          }`}>
+                          <Badge variant={((item.stock ?? 0) <= 5) ? "destructive" : "default"} className="text-xs rounded px-2 py-0.5 font-normal">
                             {item.stock ?? 0} in stock
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
-                            N/A
-                          </span>
+                          <Badge variant="secondary" className="text-xs rounded px-2 py-0.5 font-normal">N/A</Badge>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          item.isAvailable 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {item.isAvailable ? "Available" : "Unavailable"}
-                        </span>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {item.isAvailable ? (
+                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">Available</span>
+                        ) : (
+                          <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-destructive/10 text-destructive border border-destructive/20">Unavailable</span>
+                        )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{item.hotel?.name || "-"}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => openEditModal(item)}
-                            className="text-blue-600 hover:text-blue-800 text-sm"
-                          >
-                            Edit
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <button data-cy={`items-edit-btn-${item._id}`} onClick={() => openEditModal(item)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all">
+                            <Edit className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => openDeleteModal(item)}
-                            className="text-red-600 hover:text-red-800 text-sm"
-                          >
-                            Delete
+                          <button data-cy={`items-delete-btn-${item._id}`} onClick={() => openDeleteModal(item)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -845,8 +482,11 @@ export default function ItemsPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-gray-500">
-                      {loading ? 'Loading items...' : 'No items found matching your criteria.'}
+                    <td colSpan={6} className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <Package className="w-8 h-8 text-muted-foreground/40" />
+                        <p className="text-muted-foreground">{loading ? 'Loading items...' : 'No items found matching your criteria.'}</p>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -854,324 +494,147 @@ export default function ItemsPage() {
             </table>
           </div>
 
-          {/* Pagination Controls */}
-          {pagination.pages > 1 && (
-            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 bg-gray-50 border-t gap-4">
-              <div className="text-sm text-gray-700">
-                Showing {items.length} items (Page {pagination.page} of {pagination.pages}, Total: {pagination.total})
-              </div>
-              <div className="flex items-center space-x-1">
-                {generatePaginationButtons()}
-              </div>
-              <div className="flex items-center space-x-2 text-sm">
-                <span>Go to page:</span>
-                <input
-                  type="number"
-                  min="1"
-                  max={pagination.pages}
-                  value={page}
-                  onChange={(e) => {
-                    const newPage = Math.max(1, Math.min(pagination.pages, parseInt(e.target.value) || 1));
-                    setPage(newPage);
-                  }}
-                  className="w-16 border border-gray-300 rounded px-2 py-1 text-center"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-          )}
+          <PaginationControls
+            currentPage={page}
+            totalPages={pagination.pages}
+            onPageChange={handlePageChange}
+            disabled={loading}
+          />
         </div>
 
-        {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{pagination.total}</div>
-            <div className="text-sm text-gray-600">Total Items</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">{items.filter((i: Item) => i.isAvailable).length}</div>
-            <div className="text-sm text-gray-600">Available (Current Page)</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-red-600">{items.filter((i: Item) => !i.isAvailable).length}</div>
-            <div className="text-sm text-gray-600">Unavailable (Current Page)</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-gray-600">{pagination.pages}</div>
-            <div className="text-sm text-gray-600">Total Pages</div>
-          </div>
-        </div>
+
       </div>
 
-      {/* Create Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Add New Item</h2>
-            <form onSubmit={(e) => { e.preventDefault(); createItem(); }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                  />
-                  {formErrors.name && <p className="text-red-600 text-sm mt-1">{formErrors.name}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Price (रु)</label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.price ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                  />
-                  {formErrors.price && <p className="text-red-600 text-sm mt-1">{formErrors.price}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Category</label>
-                  <select
-                    required
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.category ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((cat) => (
-                      <option key={cat._id} value={cat._id}>{cat.name}</option>
-                    ))}
-                  </select>
-                  {formErrors.category && <p className="text-red-600 text-sm mt-1">{formErrors.category}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Profit Margin Band</label>
-                  <input
-                    type="text"
-                    value={formData.profitMarginBand}
-                    onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="e.g. High, Medium, Low"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Comment</label>
-                  <input
-                    type="text"
-                    value={formData.comment}
-                    onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="Optional comment"
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.inventory}
-                      onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    Enable Inventory Tracking
-                  </label>
-                </div>
-                {formData.inventory && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Initial Stock</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.stock}
-                      onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="Enter initial stock quantity"
-                    />
-                  </div>
-                )}
-                <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.isAvailable}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    Available
-                  </label>
-                </div>
-              </div>
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Create Item
-                </button>
-              </div>
-            </form>
+      <Modal show={showCreateModal} onClose={() => setShowCreateModal(false)} title="Add New Item">
+        <form data-cy="items-create-form" onSubmit={(e) => { e.preventDefault(); createItem(); }} className="p-5 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Name</label>
+            <input data-cy="items-create-name" type="text" required value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.name ? 'border-destructive bg-destructive/5' : 'border-input'}`} />
+            {formErrors.name && <p className="text-destructive text-xs mt-1">{formErrors.name}</p>}
           </div>
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Edit Item</h2>
-            <form onSubmit={(e) => { e.preventDefault(); updateItem(); }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.name ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                  />
-                  {formErrors.name && <p className="text-red-600 text-sm mt-1">{formErrors.name}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Price (रु)</label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.price ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                  />
-                  {formErrors.price && <p className="text-red-600 text-sm mt-1">{formErrors.price}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Category</label>
-                  <select
-                    required
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    className={`w-full border rounded px-3 py-2 ${formErrors.category ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((cat) => (
-                      <option key={cat._id} value={cat._id}>{cat.name}</option>
-                    ))}
-                  </select>
-                  {formErrors.category && <p className="text-red-600 text-sm mt-1">{formErrors.category}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Profit Margin Band</label>
-                  <input
-                    type="text"
-                    value={formData.profitMarginBand}
-                    onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="e.g. High, Medium, Low"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Comment</label>
-                  <input
-                    type="text"
-                    value={formData.comment}
-                    onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                    placeholder="Optional comment"
-                  />
-                </div>
-                <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.inventory}
-                      onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    Enable Inventory Tracking
-                  </label>
-                </div>
-                {formData.inventory && (
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Current Stock</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.stock}
-                      onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2"
-                      placeholder="Update stock quantity"
-                    />
-                  </div>
-                )}
-                <div>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.isAvailable}
-                      onChange={(e) => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
-                      className="mr-2"
-                    />
-                    Available
-                  </label>
-                </div>
-              </div>
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Update Item
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Modal */}
-      {showDeleteModal && selectedItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Delete Item</h2>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete "{selectedItem.name}"? This action cannot be undone.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={deleteItem}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Delete
-              </button>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Price (रु)</label>
+              <input data-cy="items-create-price" type="number" required min="0" step="0.01" value={formData.price} onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.price ? 'border-destructive bg-destructive/5' : 'border-input'}`} />
+              {formErrors.price && <p className="text-destructive text-xs mt-1">{formErrors.price}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Category</label>
+              <select data-cy="items-create-category" required value={formData.category} onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.category ? 'border-destructive bg-destructive/5' : 'border-input'}`}>
+                <option value="">Select</option>
+                {categories.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
+              </select>
+              {formErrors.category && <p className="text-destructive text-xs mt-1">{formErrors.category}</p>}
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Profit Margin</label>
+            <input data-cy="items-create-profit-margin" type="text" value={formData.profitMarginBand} onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
+              className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" placeholder="e.g. High, Medium, Low" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Comment</label>
+            <input data-cy="items-create-comment" type="text" value={formData.comment} onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
+              className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" placeholder="Optional comment" />
+          </div>
+          <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+            <input data-cy="items-create-inventory" type="checkbox" checked={formData.inventory} onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
+              className="w-4 h-4 rounded border-input text-primary focus:ring-ring/30" />
+            <span>Enable Inventory Tracking</span>
+          </label>
+          {formData.inventory && (
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Initial Stock</label>
+              <input data-cy="items-create-stock" type="number" min="0" value={formData.stock} onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" />
+            </div>
+          )}
+          <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+            <input data-cy="items-create-available" type="checkbox" checked={formData.isAvailable} onChange={(e) => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
+              className="w-4 h-4 rounded border-input text-primary focus:ring-ring/30" />
+            <span>Available</span>
+          </label>
+          <div className="flex justify-end gap-3 pt-2 border-t border-border">
+            <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+            <Button data-cy="items-create-submit" type="submit">Create Item</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal show={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Item">
+        <form data-cy="items-edit-form" onSubmit={(e) => { e.preventDefault(); updateItem(); }} className="p-5 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Name</label>
+            <input data-cy="items-edit-name" type="text" required value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.name ? 'border-destructive bg-destructive/5' : 'border-input'}`} />
+            {formErrors.name && <p className="text-destructive text-xs mt-1">{formErrors.name}</p>}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Price (रु)</label>
+              <input data-cy="items-edit-price" type="number" required min="0" step="0.01" value={formData.price} onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.price ? 'border-destructive bg-destructive/5' : 'border-input'}`} />
+              {formErrors.price && <p className="text-destructive text-xs mt-1">{formErrors.price}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Category</label>
+              <select data-cy="items-edit-category" required value={formData.category} onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.category ? 'border-destructive bg-destructive/5' : 'border-input'}`}>
+                <option value="">Select</option>
+                {categories.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
+              </select>
+              {formErrors.category && <p className="text-destructive text-xs mt-1">{formErrors.category}</p>}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Profit Margin</label>
+            <input data-cy="items-edit-profit-margin" type="text" value={formData.profitMarginBand} onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
+              className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Comment</label>
+            <input data-cy="items-edit-comment" type="text" value={formData.comment} onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
+              className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" />
+          </div>
+          <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+            <input data-cy="items-edit-inventory" type="checkbox" checked={formData.inventory} onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
+              className="w-4 h-4 rounded border-input text-primary focus:ring-ring/30" />
+            <span>Enable Inventory Tracking</span>
+          </label>
+          {formData.inventory && (
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Current Stock</label>
+              <input data-cy="items-edit-stock" type="number" min="0" value={formData.stock} onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" />
+            </div>
+          )}
+          <label className="flex items-center gap-2.5 text-sm cursor-pointer">
+            <input data-cy="items-edit-available" type="checkbox" checked={formData.isAvailable} onChange={(e) => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
+              className="w-4 h-4 rounded border-input text-primary focus:ring-ring/30" />
+            <span>Available</span>
+          </label>
+          <div className="flex justify-end gap-3 pt-2 border-t border-border">
+            <Button data-cy="items-edit-cancel" type="button" variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+            <Button data-cy="items-edit-submit" type="submit">Update Item</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Item">
+        <div data-cy="items-delete-modal" className="p-5">
+          <div className="flex items-start gap-3 mb-6 p-3 bg-destructive/5 border border-destructive/20 rounded-lg">
+            <Trash2 className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+            <p className="text-sm text-foreground/80">Are you sure you want to delete <strong>{selectedItem?.name}</strong>? This cannot be undone.</p>
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+            <Button data-cy="items-delete-confirm" variant="destructive" onClick={deleteItem}>Delete Item</Button>
+          </div>
         </div>
-      )}
-    </div>
+      </Modal>
+    </DashboardLayout>
   );
 }

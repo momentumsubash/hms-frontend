@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useAuth } from "@/components/ui/auth-provider";
-import { NavBar } from "@/components/ui/NavBar";
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { 
   getHotels, addHotel, updateHotel, updateHotelBalance,
-  uploadHotelLogo, uploadHotelImages, uploadHotelGallery,
+  uploadHotelLogo, uploadHotelImages, uploadHotelGallery, uploadHotelVideos,
   getHotelLicense, updateHotelLicense,
   getNotificationSettings, updateNotificationSettings,
   addNotificationRecipient, removeNotificationRecipient,
@@ -22,11 +21,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { format } from "date-fns";
 import Image from "next/image";
 import { 
-  PhotoIcon, PlusIcon, XMarkIcon, BellIcon, ClockIcon, 
-  DocumentTextIcon, EnvelopeIcon, GlobeAltIcon, MagnifyingGlassIcon,
-  PrinterIcon, ComputerDesktopIcon, ServerIcon, WifiIcon,
-  CheckCircleIcon, XCircleIcon, BeakerIcon, Cog6ToothIcon
-} from "@heroicons/react/24/outline";
+  Image as ImageIcon, Plus, X, Bell, Clock, 
+  FileText, Mail, Globe, Search,
+  Printer, Monitor, Server, Wifi,
+  CheckCircle, XCircle, FlaskConical, Settings,
+  Eye, Edit, Trash2, ChevronLeft, ChevronRight, Check,
+  Star, Coffee, Dumbbell, Car, Shield, UtensilsCrossed,
+  BedDouble, Bath, Tv, Snowflake, Waves, Wind, Mountain,
+  TreePine, Users, ShoppingBag, Heart, Sparkles, MapPin,
+  Phone, Compass, Palette, Zap, Droplets, Sun, Music, Camera
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +42,51 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from 'sonner';
 import WebsiteContentManager from "@/components/WebsiteContentManager";
 import { Hotel } from "@/types/hotel";
+
+// ==================== IMAGE PICKER COMPONENT ====================
+function ImagePicker({ images, value, onChange, label }: { images: string[]; value: string; onChange: (url: string) => void; label?: string }) {
+  const validImages = (images || []).filter(url => url && (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:')));
+  const [showPicker, setShowPicker] = useState(false);
+  const hasValue = value && value.trim().length > 0;
+  return (
+    <div className="space-y-2">
+      {label && <Label>{label}</Label>}
+      {hasValue && (
+        <div className="relative w-full h-32 rounded-lg overflow-hidden border mb-2 group">
+          <img src={value} alt="Selected" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          <button onClick={() => onChange('')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setShowPicker(!showPicker)} className="text-xs">
+          <ImageIcon className="w-3 h-3 mr-1" />{showPicker ? 'Close' : hasValue ? 'Change' : 'Select from Uploads'}
+        </Button>
+        {hasValue && (
+          <Input value={value} onChange={e => onChange(e.target.value)} placeholder="Or paste image URL..." className="text-xs h-8 flex-1" />
+        )}
+      </div>
+      {showPicker && (
+        <div className="border rounded-lg p-2 bg-muted/30">
+          {validImages.length === 0 ? (
+            <p className="text-xs text-muted-foreground p-3 text-center">No uploaded images. Upload in the Images tab first.</p>
+          ) : (
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 max-h-48 overflow-y-auto">
+              {validImages.map((url, idx) => (
+                <div key={idx}
+                  className={`relative aspect-square rounded-md overflow-hidden cursor-pointer border-2 transition-all ${value === url ? 'border-primary ring-2 ring-primary/30 scale-105' : 'border-transparent hover:border-muted-foreground/30'}`}
+                  onClick={() => { onChange(value === url ? '' : url); setShowPicker(false); }}
+                >
+                  <img src={url} alt={`Option ${idx}`} className="w-full h-full object-cover" />
+                  {value === url && <div className="absolute inset-0 bg-primary/20 flex items-center justify-center"><Check className="w-5 h-5 text-primary" /></div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ==================== PRINTER MANAGEMENT COMPONENT ====================
 
@@ -303,12 +352,12 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
     await updatePrinter(printerId, { isDefault: true });
   };
 
-  const getPrinterIcon = (type: string) => {
+  const getPrinter = (type: string) => {
     switch(type) {
-      case 'network': return <WifiIcon className="w-4 h-4" />;
-      case 'system': return <ComputerDesktopIcon className="w-4 h-4" />;
-      case 'usb': return <ServerIcon className="w-4 h-4" />;
-      default: return <PrinterIcon className="w-4 h-4" />;
+      case 'network': return <Wifi className="w-4 h-4" />;
+      case 'system': return <Monitor className="w-4 h-4" />;
+      case 'usb': return <Server className="w-4 h-4" />;
+      default: return <Printer className="w-4 h-4" />;
     }
   };
 
@@ -324,7 +373,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl">
-            <PrinterIcon className="w-6 h-6" />
+            <Printer className="w-6 h-6" />
             Printer Management - {hotelName}
           </DialogTitle>
           <DialogDescription>
@@ -335,8 +384,8 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
         <div className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">Configured Printers</h3>
-            <Button onClick={() => { setShowAddPrinter(true); fetchSystemPrinters(); }} className="bg-blue-600 hover:bg-blue-700">
-              <PlusIcon className="w-4 h-4 mr-2" />
+            <Button onClick={() => { setShowAddPrinter(true); fetchSystemPrinters(); }} className="bg-primary hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />
               Add Printer
             </Button>
           </div>
@@ -346,7 +395,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
           ) : printers.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
-                <PrinterIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <Printer className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-600 text-lg">No printers configured yet</p>
                 <p className="text-sm text-gray-400 mt-2">Click "Add Printer" to set up your first printer</p>
                 <Button 
@@ -376,7 +425,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-3 flex-wrap">
                           <div className={`p-2 rounded-lg ${printer.status?.connected ? 'bg-green-100' : 'bg-gray-100'}`}>
-                            {getPrinterIcon(printer.printerType)}
+                            {getPrinter(printer.printerType)}
                           </div>
                           <h4 className="font-semibold text-lg">{printer.name}</h4>
                           <div className="flex gap-2 flex-wrap">
@@ -385,11 +434,11 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
                             )}
                             {printer.status?.connected ? (
                               <Badge className="bg-green-100 text-green-800 border-green-200 flex items-center gap-1">
-                                <CheckCircleIcon className="w-3 h-3" /> Online
+                                <CheckCircle className="w-3 h-3" /> Online
                               </Badge>
                             ) : (
                               <Badge variant="destructive" className="flex items-center gap-1">
-                                <XCircleIcon className="w-3 h-3" /> Offline
+                                <XCircle className="w-3 h-3" /> Offline
                               </Badge>
                             )}
                             {printer.testMode && (
@@ -471,7 +520,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
                           disabled={testingPrinter === printer._id}
                           className="flex items-center justify-center gap-1"
                         >
-                          <BeakerIcon className="w-4 h-4" />
+                          <FlaskConical className="w-4 h-4" />
                           {testingPrinter === printer._id ? 'Testing...' : 'Test'}
                         </Button>
                         
@@ -509,7 +558,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
                               }}
                               className="flex items-center justify-center gap-1"
                             >
-                              <XMarkIcon className="w-4 h-4" />
+                              <X className="w-4 h-4" />
                               Delete
                             </Button>
                           </>
@@ -581,7 +630,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
 {newPrinter.printerType === 'network' && (
   <div className="bg-gray-50 p-4 rounded-lg space-y-4">
     <h4 className="font-medium flex items-center gap-2">
-      <WifiIcon className="w-4 h-4" />
+      <Wifi className="w-4 h-4" />
       Network Printer Configuration
     </h4>
     
@@ -670,7 +719,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
 {newPrinter.printerType === 'system' && (
   <div className="bg-gray-50 p-4 rounded-lg space-y-4">
     <h4 className="font-medium flex items-center gap-2">
-      <ComputerDesktopIcon className="w-4 h-4" />
+      <Monitor className="w-4 h-4" />
       System Printer Configuration
     </h4>
     
@@ -734,7 +783,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
 
               <div className="bg-gray-50 p-4 rounded-lg space-y-4">
                 <h4 className="font-medium flex items-center gap-2">
-                  <Cog6ToothIcon className="w-4 h-4" />
+                  <Settings className="w-4 h-4" />
                   Printer Settings
                 </h4>
                 
@@ -819,7 +868,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
 
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setShowAddPrinter(false)}>Cancel</Button>
-              <Button onClick={addPrinter} className="bg-blue-600 hover:bg-blue-700">Add Printer</Button>
+              <Button onClick={addPrinter} className="bg-primary hover:bg-primary/90">Add Printer</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -931,19 +980,17 @@ export default function HotelsPage() {
     return null;
   });
   
-  const { logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({ name: "", city: "", search: "" });
 
-  const [hotel, setHotel] = useState(() => {
+  const [hotel, setHotel] = useState<any>(null);
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('hotel');
-      return stored ? JSON.parse(stored) : null;
+      if (stored) setHotel(JSON.parse(stored));
     }
-    return null;
-  });
+  }, []);
 
   const [newHotel, setNewHotel] = useState<Hotel>({
     name: "",
@@ -974,6 +1021,7 @@ export default function HotelsPage() {
       heroTitle: "",
       heroSubtitle: "",
       heroImage: "",
+      heroVideo: "", // Add this line
       aboutDescription: "",
       amenitiesDescription: "",
       experiencesDescription: "",
@@ -981,8 +1029,11 @@ export default function HotelsPage() {
       footerDescription: "",
       rooms: [],
       amenities: [],
+      amenitiesDetailed: [],
+      experiences: [],
       testimonials: [],
-      contactInfo: { phone: "", email: "", address: "" }
+      contactInfo: { phone: "", email: "", address: "" },
+      galleryImages: []
     },
     seo: { title: "", description: "", keywords: [] },
     nepaliLanguage: false
@@ -1287,6 +1338,33 @@ export default function HotelsPage() {
     }
   };
 
+  const handleUploadVideos = async (e: React.ChangeEvent<HTMLInputElement>, hotelId: string) => {
+    if (!e.target.files?.length) return;
+    try {
+      setUploading(true);
+      setUploadProgress(0);
+      const files = Array.from(e.target.files);
+      const interval = setInterval(() => {
+        setUploadProgress(prev => prev >= 90 ? 90 : prev + 10);
+      }, 200);
+      const formData = new FormData();
+      files.forEach(file => formData.append('videos', file));
+      const response = await uploadHotelVideos(hotelId, formData);
+      setUploadProgress(100);
+      setHotels(prev => prev.map(h => h._id === hotelId ? { ...h, videos: [...(h.videos || []), ...response.urls] } : h));
+      if (selectedHotel?._id === hotelId) {
+        setSelectedHotel(prev => prev ? { ...prev, videos: [...(prev.videos || []), ...response.urls] } : null);
+      }
+      setTimeout(() => { setUploading(false); setUploadProgress(0); }, 500);
+      toast.success(`${files.length} videos uploaded successfully`);
+    } catch (e: any) {
+      setError(e.message);
+      setUploading(false);
+      setUploadProgress(0);
+      toast.error('Failed to upload videos');
+    }
+  };
+
   const handleRemoveImage = async (hotelId: string, imageUrl: string, type: 'logo' | 'images' | 'gallery') => {
     try {
       setHotels(prev => prev.map(h => {
@@ -1324,25 +1402,28 @@ export default function HotelsPage() {
     return matchesName && matchesCity && matchesSearch;
   });
 
-  if (loading) return <div className="flex justify-center items-center h-64">Loading...</div>;
+  if (loading) return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center gap-3">
+          <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading...</span>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        nepaliFlag={hotel?.nepaliFlag}
-      />
-      <div className="max-w-9xl mx-auto p-4 md:p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold">Hotels Management</h1>
-          {user?.role === 'super_admin' && (
-            <Button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
-              Add New Hotel
-            </Button>
-          )}
+    <DashboardLayout>
+      <div className="p-4 md:p-6">
+        <div className="bg-card rounded-xl border border-border p-3 mb-5">
+          <div className="flex items-center gap-3 flex-wrap">
+            {user?.role === 'super_admin' && (
+              <Button onClick={() => setShowCreateModal(true)} size="sm" className="ml-auto shrink-0">
+                Add New Hotel
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Create Hotel Modal */}
@@ -1365,9 +1446,9 @@ export default function HotelsPage() {
                     address: { street: "", area: "", city: "", state: "", zip: "" },
                     locationMap: "", nearby: [], notes: [], initialAmount: 0, currentBalance: 0, createdAt: new Date().toISOString(),
                     whitelistedDomains: [], customDomains: [],
-                    website: { heroTitle: "", heroSubtitle: "", heroImage: "", aboutDescription: "", amenitiesDescription: "",
-                      experiencesDescription: "", testimonialsDescription: "", footerDescription: "", rooms: [], amenities: [], testimonials: [],
-                      contactInfo: { phone: "", email: "", address: "" } },
+                    website: { heroTitle: "", heroSubtitle: "", heroImage: "", heroVideo: "",aboutDescription: "", amenitiesDescription: "",
+                      experiencesDescription: "", testimonialsDescription: "", footerDescription: "", rooms: [], amenities: [], amenitiesDetailed: [], experiences: [], testimonials: [],
+                      contactInfo: { phone: "", email: "", address: "" }, galleryImages: [] },
                     seo: { title: "", description: "", keywords: [] },
                     nepaliLanguage: false
                   });
@@ -1422,7 +1503,7 @@ export default function HotelsPage() {
                 
                 <div>
                   <label className="block text-sm font-medium mb-1">Description</label>
-                  <textarea value={newHotel.description || ''} onChange={(e) => setNewHotel({...newHotel, description: e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2" rows={3} />
+                  <textarea value={newHotel.description || ''} onChange={(e) => setNewHotel({...newHotel, description: e.target.value})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={3} />
                 </div>
 
                 <div>
@@ -1463,7 +1544,7 @@ export default function HotelsPage() {
 
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setShowCreateModal(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Create Hotel</Button>
+                  <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">Create Hotel</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -1471,19 +1552,34 @@ export default function HotelsPage() {
         )}
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-            <button onClick={() => setError("")} className="float-right text-red-700 hover:text-red-900">×</button>
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
 
         {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-semibold mb-3">Filters</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input type="text" value={filters.search} onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))} placeholder="Search hotels..." />
-            <Input type="text" value={filters.name} onChange={(e) => setFilters(prev => ({ ...prev, name: e.target.value }))} placeholder="Filter by name..." />
-            <Input type="text" value={filters.city} onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))} placeholder="Filter by city..." />
+        <div className="bg-card rounded-xl border border-border p-4 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-foreground">Filters</h3>
+            </div>
+            <button onClick={() => setFilters({ name: "", city: "", search: "" })} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">Clear all</button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Search</label>
+              <Input type="text" value={filters.search} onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))} placeholder="Search hotels..." className="h-10 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Name</label>
+              <Input type="text" value={filters.name} onChange={(e) => setFilters(prev => ({ ...prev, name: e.target.value }))} placeholder="Filter by name..." className="h-10 text-sm" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">City</label>
+              <Input type="text" value={filters.city} onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))} placeholder="Filter by city..." className="h-10 text-sm" />
+            </div>
           </div>
         </div>
 
@@ -1491,36 +1587,36 @@ export default function HotelsPage() {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statistics</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">License</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Location</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Contact</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Statistics</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Dates</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">License</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredHotels.map((hotel: Hotel) => (
-                  <tr key={hotel._id} className="hover:bg-gray-50">
+                  <tr key={hotel._id} className="hover:bg-muted/30">
                     <td className="px-4 py-4">
                       <div className="font-medium">{hotel.name || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{hotel.description || ''}</div>
+                      <div className="text-sm text-muted-foreground">{hotel.description || ''}</div>
                     </td>
                     <td className="px-4 py-4">
                       <div>{hotel.address?.city || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{hotel.address?.street || ''}</div>
+                      <div className="text-sm text-muted-foreground">{hotel.address?.street || ''}</div>
                     </td>
                     <td className="px-4 py-4">
                       <div>{hotel.contact?.phone || hotel.phone || 'N/A'}</div>
-                      <div className="text-sm text-gray-500">{hotel.contact?.email || ''}</div>
+                      <div className="text-sm text-muted-foreground">{hotel.contact?.email || ''}</div>
                     </td>
                     <td className="px-4 py-4">
                       <div>{safeNumber(hotel.roomCount)} Total Rooms</div>
-                      <div className="text-sm text-gray-500">{safeArray(hotel.amenities).length} Amenities</div>
-                      <div className="text-sm text-gray-500">{hotel.type || 'N/A'} Type</div>
+                      <div className="text-sm text-muted-foreground">{safeArray(hotel.amenities).length} Amenities</div>
+                      <div className="text-sm text-muted-foreground">{hotel.type || 'N/A'} Type</div>
                       {hotel.currentBalance !== undefined && (
                         <div className="text-sm text-green-600 font-medium">Balance: रु{hotel.currentBalance.toFixed(2)}</div>
                       )}
@@ -1538,18 +1634,20 @@ export default function HotelsPage() {
                         <Badge variant="outline">No License</Badge>
                       )}
                     </td>
-                    <td className="px-4 py-4 space-y-2 min-w-[140px]">
-                      <Button onClick={() => { setSelectedHotel(hotel); setShowEditModal(true); }} variant="outline" size="sm" className="w-full">Edit</Button>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => { setSelectedHotel(hotel); setShowEditModal(true); }} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit"><Edit className="w-4 h-4" /></button>
+                      </div>
                       {(user?.role === 'manager' || user?.role === 'super_admin') && (
                         <Button onClick={() => { setSelectedHotel(hotel); setBalanceAmount(hotel.initialAmount || 0); setShowBalanceModal(true); }} variant="outline" size="sm" className="w-full bg-green-100 text-green-800 hover:bg-green-200">Update Balance</Button>
                       )}
                       {user?.role === 'super_admin' && (
                         <>
-                          <Button onClick={() => handleOpenNotificationSettings(hotel)} variant="outline" size="sm" className="w-full bg-blue-100 text-blue-800 hover:bg-blue-200"><BellIcon className="w-4 h-4 mr-1" />Notifications</Button>
-                          <Button onClick={() => handleOpenLicenseModal(hotel)} variant="outline" size="sm" className="w-full bg-purple-100 text-purple-800 hover:bg-purple-200"><DocumentTextIcon className="w-4 h-4 mr-1" />License</Button>
-                          <Button onClick={async () => { try { const res = await getHotel(hotel._id!); setSelectedHotel(res?.data || hotel); } catch { setSelectedHotel(hotel); } finally { setShowWebsiteModal(true); } }} variant="outline" size="sm" className="w-full bg-teal-100 text-teal-800 hover:bg-teal-200"><GlobeAltIcon className="w-4 h-4 mr-1" />Website</Button>
-                          <Button onClick={() => { setSelectedHotel(hotel); setShowDomainModal(true); }} variant="outline" size="sm" className="w-full bg-orange-100 text-orange-800 hover:bg-orange-200"><GlobeAltIcon className="w-4 h-4 mr-1" />Domains</Button>
-                          <Button onClick={() => { setSelectedHotel(hotel); setShowPrinterModal(true); }} variant="outline" size="sm" className="w-full bg-indigo-100 text-indigo-800 hover:bg-indigo-200"><PrinterIcon className="w-4 h-4 mr-1" />Printers</Button>
+                          <Button onClick={() => handleOpenNotificationSettings(hotel)} variant="outline" size="sm" className="w-full bg-blue-100 text-blue-800 hover:bg-blue-200"><Bell className="w-4 h-4 mr-1" />Notifications</Button>
+                          <Button onClick={() => handleOpenLicenseModal(hotel)} variant="outline" size="sm" className="w-full bg-purple-100 text-purple-800 hover:bg-purple-200"><FileText className="w-4 h-4 mr-1" />License</Button>
+                          <Button onClick={async () => { try { const res = await getHotel(hotel._id!); setSelectedHotel(res?.data || hotel); } catch { setSelectedHotel(hotel); } finally { setShowWebsiteModal(true); } }} variant="outline" size="sm" className="w-full bg-teal-100 text-teal-800 hover:bg-teal-200"><Globe className="w-4 h-4 mr-1" />Website</Button>
+                          <Button onClick={() => { setSelectedHotel(hotel); setShowDomainModal(true); }} variant="outline" size="sm" className="w-full bg-orange-100 text-orange-800 hover:bg-orange-200"><Globe className="w-4 h-4 mr-1" />Domains</Button>
+                          <Button onClick={() => { setSelectedHotel(hotel); setShowPrinterModal(true); }} variant="outline" size="sm" className="w-full bg-indigo-100 text-indigo-800 hover:bg-indigo-200"><Printer className="w-4 h-4 mr-1" />Printers</Button>
                         </>
                       )}
                     </td>
@@ -1558,7 +1656,7 @@ export default function HotelsPage() {
               </tbody>
             </table>
           </div>
-          {filteredHotels.length === 0 && <div className="text-center py-12 text-gray-500">No hotels found matching your criteria.</div>}
+          {filteredHotels.length === 0 && <div className="text-center py-12 text-muted-foreground">No hotels found matching your criteria.</div>}
         </div>
 
         {/* Edit Hotel Modal */}
@@ -1568,19 +1666,490 @@ export default function HotelsPage() {
               <DialogTitle>Edit Hotel - {selectedHotel?.name}</DialogTitle>
             </DialogHeader>
             {selectedHotel && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
+              <Tabs defaultValue="basic" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                  <TabsTrigger value="images">Images</TabsTrigger>
+                  <TabsTrigger value="website">Website Content</TabsTrigger>
+                </TabsList>
+
+                {/* === TAB 1: BASIC INFO === */}
+                <TabsContent value="basic" className="space-y-4 mt-4">
                   <div className="flex items-center gap-3">
                     <input type="checkbox" checked={!!selectedHotel.nepaliLanguage} onChange={e => setSelectedHotel({ ...selectedHotel, nepaliLanguage: e.target.checked })} className="accent-blue-600" />
                     <span>Enable Nepali Language</span>
                   </div>
                   <h3 className="text-lg font-semibold">Hotel Details</h3>
-                  <form onSubmit={async (e) => {
-                    e.preventDefault();
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-name">Hotel Name *</Label>
+                      <Input id="edit-name" value={selectedHotel.name || ''} onChange={e => setSelectedHotel({...selectedHotel, name: e.target.value})} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="edit-type">Type</Label>
+                      <Input id="edit-type" value={selectedHotel.type || ''} onChange={e => setSelectedHotel({...selectedHotel, type: e.target.value})} placeholder="e.g., 5-Star Luxury Hotel" />
+                    </div>
+                    <div>
+                      <Label>Phone</Label>
+                      <Input value={selectedHotel.contact?.phone || selectedHotel.phone || ''} onChange={e => setSelectedHotel({...selectedHotel, contact: {...selectedHotel.contact, phone: e.target.value}})} />
+                    </div>
+                    <div>
+                      <Label>Room Count</Label>
+                      <Input type="number" value={selectedHotel.roomCount || 0} onChange={e => setSelectedHotel({...selectedHotel, roomCount: parseInt(e.target.value) || 0})} />
+                    </div>
+                    <div>
+                      <Label>Floors</Label>
+                      <Input type="number" value={selectedHotel.floors || 0} onChange={e => setSelectedHotel({...selectedHotel, floors: parseInt(e.target.value) || 0})} />
+                    </div>
+                    <div>
+                      <Label>Established Year</Label>
+                      <Input type="number" value={selectedHotel.established || new Date().getFullYear()} onChange={e => setSelectedHotel({...selectedHotel, established: parseInt(e.target.value) || new Date().getFullYear()})} />
+                    </div>
+                    <div>
+                      <Label>VAT Number</Label>
+                      <Input value={selectedHotel.vatNumber || ''} onChange={e => setSelectedHotel({...selectedHotel, vatNumber: e.target.value})} />
+                    </div>
+                    <div>
+                      <Label>Company Name</Label>
+                      <Input value={selectedHotel.companyName || ''} onChange={e => setSelectedHotel({...selectedHotel, companyName: e.target.value})} />
+                    </div>
+                    <div>
+                      <Label>VAT Address</Label>
+                      <Input value={selectedHotel.vatAddress || ''} onChange={e => setSelectedHotel({...selectedHotel, vatAddress: e.target.value})} />
+                    </div>
+                  </div>
+
+                  <div><Label>Description</Label>
+                    <textarea value={selectedHotel.description || ''} onChange={e => setSelectedHotel({...selectedHotel, description: e.target.value})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={3} />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input value={selectedHotel.address?.street || ''} onChange={e => setSelectedHotel({...selectedHotel, address: {...selectedHotel.address, street: e.target.value}})} placeholder="Street" />
+                    <Input value={selectedHotel.address?.area || ''} onChange={e => setSelectedHotel({...selectedHotel, address: {...selectedHotel.address, area: e.target.value}})} placeholder="Area" />
+                    <Input value={selectedHotel.address?.city || ''} onChange={e => setSelectedHotel({...selectedHotel, address: {...selectedHotel.address, city: e.target.value}})} placeholder="City" />
+                    <Input value={selectedHotel.address?.state || ''} onChange={e => setSelectedHotel({...selectedHotel, address: {...selectedHotel.address, state: e.target.value}})} placeholder="State" />
+                    <Input value={selectedHotel.address?.zip || ''} onChange={e => setSelectedHotel({...selectedHotel, address: {...selectedHotel.address, zip: e.target.value}})} placeholder="ZIP Code" />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input value={selectedHotel.contact?.reception || ''} onChange={e => setSelectedHotel({...selectedHotel, contact: {...selectedHotel.contact, reception: e.target.value}})} placeholder="Reception" />
+                    <Input value={selectedHotel.nearby?.join(", ") || ''} onChange={e => setSelectedHotel({...selectedHotel, nearby: e.target.value.split(",").map(s => s.trim()).filter(Boolean)})} placeholder="Nearby (comma-separated)" />
+                    <Input value={selectedHotel.locationMap || ''} onChange={e => setSelectedHotel({...selectedHotel, locationMap: e.target.value})} placeholder="Location Map URL" />
+                  </div>
+                </TabsContent>
+
+                {/* === TAB 2: IMAGES === */}
+                <TabsContent value="images" className="space-y-6 mt-4">
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Hotel Logo</h4>
+                    {selectedHotel.logo && isValidUrl(selectedHotel.logo) ? (
+                      <div className="relative w-32 h-32">
+                        <img src={selectedHotel.logo} alt="Hotel Logo" className="w-full h-full object-cover rounded-lg" />
+                        <button onClick={() => handleRemoveImage(selectedHotel._id!, selectedHotel.logo!, 'logo')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500 mb-2">No logo uploaded</p>
+                        <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">Upload Logo<input type="file" accept="image/*" className="hidden" onChange={e => handleUploadLogo(e, selectedHotel._id!)} /></label>
+                      </div>
+                    )}
+                  </div>
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Main Images</h4>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {selectedHotel.images?.filter(url => isValidUrl(url)).map((image, index) => (
+                        <div key={index} className="relative w-full h-24">
+                          <img src={image} alt={`Hotel ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
+                          <button onClick={() => handleRemoveImage(selectedHotel._id!, image, 'images')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>
+                        </div>
+                      ))}
+                    </div>
+                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block"><Plus className="w-4 h-4 inline mr-1" />Add Images<input type="file" accept="image/*" multiple className="hidden" onChange={e => handleUploadImages(e, selectedHotel._id!, 'images')} /></label>
+                  </div>
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Gallery Images</h4>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {selectedHotel.gallery?.filter(url => isValidUrl(url)).map((image, index) => (
+                        <div key={index} className="relative w-full h-24">
+                          <img src={image} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
+                          <button onClick={() => handleRemoveImage(selectedHotel._id!, image, 'gallery')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>
+                        </div>
+                      ))}
+                    </div>
+                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block"><Plus className="w-4 h-4 inline mr-1" />Add Gallery Images<input type="file" accept="image/*" multiple className="hidden" onChange={e => handleUploadImages(e, selectedHotel._id!, 'gallery')} /></label>
+                  </div>
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Hero Videos</h4>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {selectedHotel.videos?.filter(url => isValidUrl(url)).map((video, index) => (
+                        <div key={index} className="relative w-full h-28">
+                          <video src={video} className="w-full h-full object-cover rounded-lg" muted />
+                          <button onClick={() => handleRemoveImage(selectedHotel._id!, video, 'images')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>
+                        </div>
+                      ))}
+                    </div>
+                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block"><Plus className="w-4 h-4 inline mr-1" />Add Videos<input type="file" accept="video/*" multiple className="hidden" onChange={e => handleUploadVideos(e, selectedHotel._id!)} /></label>
+                  </div>
+                  {uploading && (
+                    <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+                        <div><p className="text-sm font-medium">Uploading... {uploadProgress}%</p><div className="w-32 h-2 bg-gray-200 rounded-full mt-1"><div className="h-full bg-blue-600 rounded-full transition-all" style={{width: `${uploadProgress}%`}} /></div></div>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* === TAB 3: WEBSITE CONTENT === */}
+                <TabsContent value="website" className="space-y-6 mt-4">
+                  <Card>
+                    <CardHeader><CardTitle>Hero Section</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <div><Label>Hero Title</Label><Input value={selectedHotel.website?.heroTitle || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), heroTitle: e.target.value}})} placeholder="Welcome to Our Hotel" /></div>
+                      <div><Label>Hero Subtitle</Label><Input value={selectedHotel.website?.heroSubtitle || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), heroSubtitle: e.target.value}})} placeholder="Experience Comfort" /></div>
+                      <ImagePicker images={selectedHotel.images || []} value={selectedHotel.website?.heroImage || ''} onChange={v => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), heroImage: v}})} label="Hero Image" />
+                      <div className="space-y-2">
+                        <Label>Hero Video (background video)</Label>
+                        <div className="flex gap-2">
+                          <Input value={selectedHotel.website?.heroVideo || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), heroVideo: e.target.value}})} placeholder="Paste video URL or select from uploaded videos" className="flex-1" />
+                        </div>
+                        {(selectedHotel.videos || []).filter(v => v).length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {(selectedHotel.videos || []).filter(v => v).map((video, idx) => (
+                              <div key={idx} className={`relative w-24 h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${selectedHotel.website?.heroVideo === video ? 'border-primary ring-2 ring-primary/30' : 'border-transparent hover:border-muted-foreground/30'}`} onClick={() => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), heroVideo: selectedHotel.website?.heroVideo === video ? '' : video}})}>
+                                <video src={video} className="w-full h-full object-cover" muted />
+                                {selectedHotel.website?.heroVideo === video && <div className="absolute inset-0 bg-primary/20 flex items-center justify-center"><Check className="w-5 h-5 text-primary" /></div>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Section Descriptions</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <div><Label>About Description</Label><textarea value={selectedHotel.website?.aboutDescription || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), aboutDescription: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} /></div>
+                      <div><Label>Amenities Description</Label><textarea value={selectedHotel.website?.amenitiesDescription || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDescription: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} /></div>
+                      <div><Label>Experiences Description</Label><textarea value={selectedHotel.website?.experiencesDescription || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiencesDescription: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} /></div>
+                      <div><Label>Testimonials Description</Label><textarea value={selectedHotel.website?.testimonialsDescription || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonialsDescription: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} /></div>
+                      <div><Label>Footer Description</Label><textarea value={selectedHotel.website?.footerDescription || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), footerDescription: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} /></div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Rooms</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      {(selectedHotel.website?.rooms || []).map((room, idx) => (
+                        <div key={idx} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Room {idx + 1}</span>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              const rooms = [...(selectedHotel.website?.rooms || [])];
+                              rooms.splice(idx, 1);
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                            }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input value={room.title || ''} onChange={e => {
+                              const rooms = [...(selectedHotel.website?.rooms || [])];
+                              rooms[idx] = {...rooms[idx], title: e.target.value};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                            }} placeholder="Room title" />
+                            <Input type="number" value={room.price || ''} onChange={e => {
+                              const rooms = [...(selectedHotel.website?.rooms || [])];
+                              rooms[idx] = {...rooms[idx], price: parseFloat(e.target.value) || 0};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                            }} placeholder="Price" />
+                          </div>
+                          <textarea value={room.description || ''} onChange={e => {
+                            const rooms = [...(selectedHotel.website?.rooms || [])];
+                            rooms[idx] = {...rooms[idx], description: e.target.value};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                          }} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} placeholder="Room description" />
+                          <ImagePicker images={selectedHotel.images || []} value={room.image || ''} onChange={v => {
+                            const rooms = [...(selectedHotel.website?.rooms || [])];
+                            rooms[idx] = {...rooms[idx], image: v};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                          }} label="Room Image" />
+                          <div className="flex items-center gap-2">
+                            <Switch checked={room.isActive ?? true} onCheckedChange={v => {
+                              const rooms = [...(selectedHotel.website?.rooms || [])];
+                              rooms[idx] = {...rooms[idx], isActive: v};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                            }} />
+                            <span className="text-xs">Active</span>
+                          </div>
+                          <Input value={(room.features || []).join(", ")} onChange={e => {
+                            const rooms = [...(selectedHotel.website?.rooms || [])];
+                            rooms[idx] = {...rooms[idx], features: e.target.value.split(",").map(s => s.trim()).filter(Boolean)};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                          }} placeholder="Features (comma-separated)" />
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={() => {
+                        const rooms = [...(selectedHotel.website?.rooms || []), {title: "", description: "", price: 0, features: [], image: "", isActive: true}];
+                        setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                      }}><Plus className="w-4 h-4 mr-1" />Add Room</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Detailed Amenities</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      {(selectedHotel.website?.amenitiesDetailed || []).map((amenity, idx) => (
+                        <div key={idx} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Amenity {idx + 1}</span>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
+                              arr.splice(idx, 1);
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                            }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input value={amenity.name || ''} onChange={e => {
+                              const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
+                              arr[idx] = {...arr[idx], name: e.target.value};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                            }} placeholder="Name (e.g. Free WiFi)" />
+                            <Select value={amenity.icon || 'Star'} onValueChange={v => {
+                              const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
+                              arr[idx] = {...arr[idx], icon: v};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                            }}>
+                              <SelectTrigger><SelectValue placeholder="Select icon" /></SelectTrigger>
+                              <SelectContent className="max-h-64">
+                                <SelectItem value="Star"><span className="flex items-center gap-2"><Star className="w-4 h-4" /> Star</span></SelectItem>
+                                <SelectItem value="Wifi"><span className="flex items-center gap-2"><Wifi className="w-4 h-4" /> WiFi</span></SelectItem>
+                                <SelectItem value="Coffee"><span className="flex items-center gap-2"><Coffee className="w-4 h-4" /> Coffee</span></SelectItem>
+                                <SelectItem value="Dumbbell"><span className="flex items-center gap-2"><Dumbbell className="w-4 h-4" /> Gym</span></SelectItem>
+                                <SelectItem value="Car"><span className="flex items-center gap-2"><Car className="w-4 h-4" /> Parking</span></SelectItem>
+                                <SelectItem value="Shield"><span className="flex items-center gap-2"><Shield className="w-4 h-4" /> Security</span></SelectItem>
+                                <SelectItem value="Clock"><span className="flex items-center gap-2"><Clock className="w-4 h-4" /> 24/7 Service</span></SelectItem>
+                                <SelectItem value="UtensilsCrossed"><span className="flex items-center gap-2"><UtensilsCrossed className="w-4 h-4" /> Restaurant</span></SelectItem>
+                                <SelectItem value="BedDouble"><span className="flex items-center gap-2"><BedDouble className="w-4 h-4" /> Bed</span></SelectItem>
+                                <SelectItem value="Bath"><span className="flex items-center gap-2"><Bath className="w-4 h-4" /> Bath</span></SelectItem>
+                                <SelectItem value="Tv"><span className="flex items-center gap-2"><Tv className="w-4 h-4" /> TV</span></SelectItem>
+                                <SelectItem value="Snowflake"><span className="flex items-center gap-2"><Snowflake className="w-4 h-4" /> AC</span></SelectItem>
+                                <SelectItem value="Waves"><span className="flex items-center gap-2"><Waves className="w-4 h-4" /> Pool</span></SelectItem>
+                                <SelectItem value="Wind"><span className="flex items-center gap-2"><Wind className="w-4 h-4" /> Fan</span></SelectItem>
+                                <SelectItem value="Mountain"><span className="flex items-center gap-2"><Mountain className="w-4 h-4" /> Mountain View</span></SelectItem>
+                                <SelectItem value="TreePine"><span className="flex items-center gap-2"><TreePine className="w-4 h-4" /> Garden</span></SelectItem>
+                                <SelectItem value="Monitor"><span className="flex items-center gap-2"><Monitor className="w-4 h-4" /> Business Center</span></SelectItem>
+                                <SelectItem value="Users"><span className="flex items-center gap-2"><Users className="w-4 h-4" /> Meeting Room</span></SelectItem>
+                                <SelectItem value="Bell"><span className="flex items-center gap-2"><Bell className="w-4 h-4" /> Bell Service</span></SelectItem>
+                                <SelectItem value="ShoppingBag"><span className="flex items-center gap-2"><ShoppingBag className="w-4 h-4" /> Shop</span></SelectItem>
+                                <SelectItem value="Heart"><span className="flex items-center gap-2"><Heart className="w-4 h-4" /> Romance Package</span></SelectItem>
+                                <SelectItem value="Sparkles"><span className="flex items-center gap-2"><Sparkles className="w-4 h-4" /> Premium</span></SelectItem>
+                                <SelectItem value="MapPin"><span className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Location</span></SelectItem>
+                                <SelectItem value="Phone"><span className="flex items-center gap-2"><Phone className="w-4 h-4" /> Phone</span></SelectItem>
+                                <SelectItem value="Mail"><span className="flex items-center gap-2"><Mail className="w-4 h-4" /> Email</span></SelectItem>
+                                <SelectItem value="Globe"><span className="flex items-center gap-2"><Globe className="w-4 h-4" /> International</span></SelectItem>
+                                <SelectItem value="Compass"><span className="flex items-center gap-2"><Compass className="w-4 h-4" /> Tours</span></SelectItem>
+                                <SelectItem value="Palette"><span className="flex items-center gap-2"><Palette className="w-4 h-4" /> Art & Culture</span></SelectItem>
+                                <SelectItem value="Zap"><span className="flex items-center gap-2"><Zap className="w-4 h-4" /> Power Backup</span></SelectItem>
+                                <SelectItem value="Droplets"><span className="flex items-center gap-2"><Droplets className="w-4 h-4" /> Water</span></SelectItem>
+                                <SelectItem value="Sun"><span className="flex items-center gap-2"><Sun className="w-4 h-4" /> Rooftop</span></SelectItem>
+                                <SelectItem value="Music"><span className="flex items-center gap-2"><Music className="w-4 h-4" /> Music</span></SelectItem>
+                                <SelectItem value="Camera"><span className="flex items-center gap-2"><Camera className="w-4 h-4" /> Photography</span></SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Input value={amenity.description || ''} onChange={e => {
+                            const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
+                            arr[idx] = {...arr[idx], description: e.target.value};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                          }} placeholder="Description" />
+                          <ImagePicker images={selectedHotel.images || []} value={amenity.image || ''} onChange={v => {
+                            const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
+                            arr[idx] = {...arr[idx], image: v};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                          }} label="Amenity Image" />
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={() => {
+                        const arr = [...(selectedHotel.website?.amenitiesDetailed || []), {name: "", description: "", icon: "Star", image: "", isActive: true}];
+                        setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                      }}><Plus className="w-4 h-4 mr-1" />Add Amenity</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Testimonials</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      {(selectedHotel.website?.testimonials || []).map((t, idx) => (
+                        <div key={idx} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Testimonial {idx + 1}</span>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              const arr = [...(selectedHotel.website?.testimonials || [])];
+                              arr.splice(idx, 1);
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                            }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input value={t.name || ''} onChange={e => {
+                              const arr = [...(selectedHotel.website?.testimonials || [])];
+                              arr[idx] = {...arr[idx], name: e.target.value};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                            }} placeholder="Guest name" />
+                            <Input type="number" value={t.rating || 5} onChange={e => {
+                              const arr = [...(selectedHotel.website?.testimonials || [])];
+                              arr[idx] = {...arr[idx], rating: parseInt(e.target.value) || 5};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                            }} placeholder="Rating (1-5)" />
+                          </div>
+                          <textarea value={t.comment || ''} onChange={e => {
+                            const arr = [...(selectedHotel.website?.testimonials || [])];
+                            arr[idx] = {...arr[idx], comment: e.target.value};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                          }} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} placeholder="Guest comment" />
+                          <ImagePicker images={selectedHotel.images || []} value={t.image || ''} onChange={v => {
+                            const arr = [...(selectedHotel.website?.testimonials || [])];
+                            arr[idx] = {...arr[idx], image: v};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                          }} label="Guest Photo" />
+                          <div className="flex items-center gap-2">
+                            <Switch checked={t.isActive ?? true} onCheckedChange={v => {
+                              const arr = [...(selectedHotel.website?.testimonials || [])];
+                              arr[idx] = {...arr[idx], isActive: v};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                            }} />
+                            <span className="text-xs">Active</span>
+                          </div>
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={() => {
+                        const arr = [...(selectedHotel.website?.testimonials || []), {name: "", comment: "", rating: 5, date: new Date().toISOString(), image: "", isActive: true}];
+                        setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                      }}><Plus className="w-4 h-4 mr-1" />Add Testimonial</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Experiences</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      {(selectedHotel.website?.experiences || []).map((exp, idx) => (
+                        <div key={idx} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Experience {idx + 1}</span>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              const arr = [...(selectedHotel.website?.experiences || [])];
+                              arr.splice(idx, 1);
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiences: arr}});
+                            }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                          <Input value={exp.title || ''} onChange={e => {
+                            const arr = [...(selectedHotel.website?.experiences || [])];
+                            arr[idx] = {...arr[idx], title: e.target.value};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiences: arr}});
+                          }} placeholder="Experience title" />
+                          <textarea value={exp.description || ''} onChange={e => {
+                            const arr = [...(selectedHotel.website?.experiences || [])];
+                            arr[idx] = {...arr[idx], description: e.target.value};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiences: arr}});
+                          }} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} placeholder="Description" />
+                          <ImagePicker images={selectedHotel.images || []} value={exp.image || ''} onChange={v => {
+                            const arr = [...(selectedHotel.website?.experiences || [])];
+                            arr[idx] = {...arr[idx], image: v};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiences: arr}});
+                          }} label="Experience Image" />
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={() => {
+                        const arr = [...(selectedHotel.website?.experiences || []), {title: "", description: "", image: "", isActive: true}];
+                        setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiences: arr}});
+                      }}><Plus className="w-4 h-4 mr-1" />Add Experience</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Contact Info</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <Input value={selectedHotel.website?.contactInfo?.phone || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), phone: e.target.value}}})} placeholder="Phone" />
+                      <Input value={selectedHotel.website?.contactInfo?.email || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), email: e.target.value}}})} placeholder="Email" />
+                      <Input value={selectedHotel.website?.contactInfo?.address || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), address: e.target.value}}})} placeholder="Address" className="md:col-span-2" />
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <Input value={selectedHotel.seo?.title || ''} onChange={e => setSelectedHotel({...selectedHotel, seo: {...(selectedHotel.seo as any || {}), title: e.target.value}})} placeholder="Meta Title" />
+                      <textarea value={selectedHotel.seo?.description || ''} onChange={e => setSelectedHotel({...selectedHotel, seo: {...(selectedHotel.seo as any || {}), description: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} placeholder="Meta Description" />
+                      <Input value={(selectedHotel.seo?.keywords || []).join(", ")} onChange={e => setSelectedHotel({...selectedHotel, seo: {...(selectedHotel.seo as any || {}), keywords: e.target.value.split(",").map(s => s.trim()).filter(Boolean)}})} placeholder="Keywords (comma-separated)" />
+                    </CardContent>
+                  </Card>
+
+                  {/* Gallery Section */}
+                  <Card>
+                    <CardHeader><CardTitle>Gallery (Image Carousel)</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <p className="text-sm text-muted-foreground">Select which images to show in the website image carousel. Available images from hotel uploads:</p>
+                      {(!selectedHotel.images || selectedHotel.images.length === 0) && (
+                        <p className="text-sm text-amber-600">No images uploaded yet. Upload images in the "Images" tab first.</p>
+                      )}
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                        {(selectedHotel.images || []).filter(url => isValidUrl(url)).map((url, idx) => {
+                          const selected = (selectedHotel.website?.galleryImages || []).includes(url);
+                          return (
+                            <div key={idx} className={`relative cursor-pointer rounded-lg border-2 overflow-hidden ${selected ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-200 hover:border-gray-400'}`}
+                              onClick={() => {
+                                const current = selectedHotel.website?.galleryImages || [];
+                                const updated = selected ? current.filter(u => u !== url) : [...current, url];
+                                setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), galleryImages: updated}});
+                              }}>
+                              <img src={url} alt={`Gallery ${idx}`} className="w-full h-20 object-cover" />
+                              {selected && <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">✓</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>Selected: {(selectedHotel.website?.galleryImages || []).length} images</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Save / Cancel Footer */}
+                <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+                  <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+                  <Button onClick={async () => {
                     if (!selectedHotel._id) return;
                     try {
-                      const updatedHotel = { ...selectedHotel, nepaliLanguage: !!selectedHotel.nepaliLanguage };
+                      const updatedHotel = {...selectedHotel, nepaliLanguage: !!selectedHotel.nepaliLanguage};
                       await updateHotel(selectedHotel._id, updatedHotel);
+                      if (selectedHotel.website || selectedHotel.seo) {
+                        try {
+                          await updateHotelWebsite(selectedHotel._id, {
+                            website: {
+                              heroTitle: selectedHotel.website?.heroTitle || '',
+                              heroSubtitle: selectedHotel.website?.heroSubtitle || '',
+                              heroImage: selectedHotel.website?.heroImage || '',
+                              heroVideo: selectedHotel.website?.heroVideo || '',
+                              aboutDescription: selectedHotel.website?.aboutDescription || '',
+                              amenitiesDescription: selectedHotel.website?.amenitiesDescription || '',
+                              experiencesDescription: selectedHotel.website?.experiencesDescription || '',
+                              testimonialsDescription: selectedHotel.website?.testimonialsDescription || '',
+                              footerDescription: selectedHotel.website?.footerDescription || '',
+                              rooms: selectedHotel.website?.rooms || [],
+                              amenities: selectedHotel.website?.amenities || [],
+                              amenitiesDetailed: selectedHotel.website?.amenitiesDetailed || [],
+                              experiences: selectedHotel.website?.experiences || [],
+                              testimonials: selectedHotel.website?.testimonials || [],
+                              contactInfo: selectedHotel.website?.contactInfo || { phone: '', email: '', address: '' },
+                              galleryImages: selectedHotel.website?.galleryImages || []
+                            },
+                            seo: selectedHotel.seo || { title: '', description: '', keywords: [] }
+                          });
+                        } catch (e: any) {
+                          console.error('Website save error:', e);
+                        }
+                      }
                       localStorage.setItem('hotel', JSON.stringify(updatedHotel));
                       window.dispatchEvent(new StorageEvent('storage', { key: 'hotel', newValue: JSON.stringify(updatedHotel) }));
                       setShowEditModal(false);
@@ -1590,205 +2159,9 @@ export default function HotelsPage() {
                       setError(e.message);
                       toast.error("Failed to update hotel");
                     }
-                  }} className="space-y-4">
-                    
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div>
-    <Label htmlFor="edit-name">Hotel Name *</Label>
-    <Input
-      id="edit-name"
-      type="text"
-      value={selectedHotel.name || ''}
-      onChange={(e) => setSelectedHotel({...selectedHotel, name: e.target.value})}
-      required
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-type">Type</Label>
-    <Input
-      id="edit-type"
-      type="text"
-      value={selectedHotel.type || ''}
-      onChange={(e) => setSelectedHotel({...selectedHotel, type: e.target.value})}
-      placeholder="e.g., 5-Star Luxury Hotel"
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-phone">Phone</Label>
-    <Input
-      id="edit-phone"
-      type="text"
-      value={selectedHotel.contact?.phone || selectedHotel.phone || ''}
-      onChange={(e) => setSelectedHotel({
-        ...selectedHotel, 
-        contact: { ...selectedHotel.contact, phone: e.target.value }
-      })}
-      placeholder="+1-555-123-4567"
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-roomCount">Room Count</Label>
-    <Input
-      id="edit-roomCount"
-      type="number"
-      value={selectedHotel.roomCount || 0}
-      onChange={(e) => setSelectedHotel({...selectedHotel, roomCount: parseInt(e.target.value) || 0})}
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-floors">Floors</Label>
-    <Input
-      id="edit-floors"
-      type="number"
-      value={selectedHotel.floors || 0}
-      onChange={(e) => setSelectedHotel({...selectedHotel, floors: parseInt(e.target.value) || 0})}
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-established">Established Year</Label>
-    <Input
-      id="edit-established"
-      type="number"
-      value={selectedHotel.established || new Date().getFullYear()}
-      onChange={(e) => setSelectedHotel({...selectedHotel, established: parseInt(e.target.value) || new Date().getFullYear()})}
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-vatNumber">VAT Number</Label>
-    <Input
-      id="edit-vatNumber"
-      type="text"
-      value={selectedHotel.vatNumber || ''}
-      onChange={(e) => setSelectedHotel({...selectedHotel, vatNumber: e.target.value})}
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-companyName">Company Name</Label>
-    <Input
-      id="edit-companyName"
-      type="text"
-      value={selectedHotel.companyName || ''}
-      onChange={(e) => setSelectedHotel({...selectedHotel, companyName: e.target.value})}
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-vatAddress">VAT Address</Label>
-    <Input
-      id="edit-vatAddress"
-      type="text"
-      value={selectedHotel.vatAddress || ''}
-      onChange={(e) => setSelectedHotel({...selectedHotel, vatAddress: e.target.value})}
-    />
-  </div>
-</div>
-
-                    <textarea value={selectedHotel.description || ''} onChange={(e) => setSelectedHotel({...selectedHotel, description: e.target.value})} className="w-full border border-gray-300 rounded px-3 py-2" rows={3} placeholder="Description" />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input type="text" value={selectedHotel.address?.street || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, street: e.target.value }})} placeholder="Street" />
-                      <Input type="text" value={selectedHotel.address?.area || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, area: e.target.value }})} placeholder="Area" />
-                      <Input type="text" value={selectedHotel.address?.city || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, city: e.target.value }})} placeholder="City" />
-                      <Input type="text" value={selectedHotel.address?.state || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, state: e.target.value }})} placeholder="State" />
-                      <Input type="text" value={selectedHotel.address?.zip || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, zip: e.target.value }})} placeholder="ZIP Code" />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input type="text" value={selectedHotel.contact?.phone || ''} onChange={(e) => setSelectedHotel({...selectedHotel, contact: { ...selectedHotel.contact, phone: e.target.value }})} placeholder="Phone" />
-                      <Input type="text" value={selectedHotel.contact?.reception || ''} onChange={(e) => setSelectedHotel({...selectedHotel, contact: { ...selectedHotel.contact, reception: e.target.value }})} placeholder="Reception" />
-                      <Input type="email" value={selectedHotel.contact?.email || ''} onChange={(e) => setSelectedHotel({...selectedHotel, contact: { ...selectedHotel.contact, email: e.target.value }})} placeholder="Email" />
-                      <Input type="url" value={selectedHotel.contact?.website || ''} onChange={(e) => setSelectedHotel({...selectedHotel, contact: { ...selectedHotel.contact, website: e.target.value }})} placeholder="Website URL" />
-                    </div>
-
-                    <Input type="text" value={selectedHotel.amenities?.join(", ") || ''} onChange={(e) => setSelectedHotel({...selectedHotel, amenities: e.target.value.split(",").map(item => item.trim()).filter(Boolean)})} placeholder="Amenities" />
-                    <Input type="text" value={selectedHotel.nearby?.join(", ") || ''} onChange={(e) => setSelectedHotel({...selectedHotel, nearby: e.target.value.split(",").map(item => item.trim()).filter(Boolean)})} placeholder="Nearby" />
-                    <Input type="url" value={selectedHotel.locationMap || ''} onChange={(e) => setSelectedHotel({...selectedHotel, locationMap: e.target.value})} placeholder="Location Map URL" />
-
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                      <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Update Hotel</Button>
-                    </DialogFooter>
-                  </form>
+                  }}>Update Hotel</Button>
                 </div>
-
-                {/* Image Management */}
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold">Image Management</h3>
-                  
-                  {/* Logo Upload */}
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-medium mb-3">Hotel Logo</h4>
-                    {selectedHotel.logo && isValidUrl(selectedHotel.logo) ? (
-                      <div className="relative w-32 h-32">
-                        <img src={selectedHotel.logo} alt="Hotel Logo" className="w-full h-full object-cover rounded-lg" />
-                        <button onClick={() => handleRemoveImage(selectedHotel._id!, selectedHotel.logo!, 'logo')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><XMarkIcon className="w-4 h-4" /></button>
-                      </div>
-                    ) : (
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                        <PhotoIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500 mb-2">No logo uploaded</p>
-                        <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
-                          Upload Logo
-                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadLogo(e, selectedHotel._id!)} />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Main Images */}
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-medium mb-3">Main Images</h4>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      {selectedHotel.images?.filter(url => isValidUrl(url)).map((image, index) => (
-                        <div key={index} className="relative w-full h-24">
-                          <img src={image} alt={`Hotel ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
-                          <button onClick={() => handleRemoveImage(selectedHotel._id!, image, 'images')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><XMarkIcon className="w-4 h-4" /></button>
-                        </div>
-                      ))}
-                    </div>
-                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block">
-                      <PlusIcon className="w-4 h-4 inline mr-1" />Add Images
-                      <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'images')} />
-                    </label>
-                  </div>
-
-                  {/* Gallery Images */}
-                  <div className="border rounded-lg p-4">
-                    <h4 className="font-medium mb-3">Gallery Images</h4>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      {selectedHotel.gallery?.filter(url => isValidUrl(url)).map((image, index) => (
-                        <div key={index} className="relative w-full h-24">
-                          <img src={image} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
-                          <button onClick={() => handleRemoveImage(selectedHotel._id!, image, 'gallery')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><XMarkIcon className="w-4 h-4" /></button>
-                        </div>
-                      ))}
-                    </div>
-                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block">
-                      <PlusIcon className="w-4 h-4 inline mr-1" />Add Gallery Images
-                      <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'gallery')} />
-                    </label>
-                  </div>
-
-                  {uploading && (
-                    <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-                        <div>
-                          <p className="text-sm font-medium">Uploading... {uploadProgress}%</p>
-                          <div className="w-32 h-2 bg-gray-200 rounded-full mt-1"><div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+              </Tabs>
             )}
           </DialogContent>
         </Dialog>
@@ -1814,7 +2187,7 @@ export default function HotelsPage() {
         <Button variant="outline" onClick={() => setShowBalanceModal(false)}>
           Cancel
         </Button>
-        <Button onClick={handleUpdateBalance} className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button onClick={handleUpdateBalance} className="bg-primary hover:bg-primary/90 text-primary-foreground">
           Update Balance
         </Button>
       </DialogFooter>
@@ -1845,7 +2218,7 @@ export default function HotelsPage() {
                   selectedHotel[domainType]!.map((domain, index) => (
                     <div key={index} className="flex items-center justify-between p-2 border rounded mb-2">
                       <span className="font-medium">{domain}</span>
-                      <Button variant="ghost" size="sm" onClick={() => handleRemoveDomain(domain, domainType)}><XMarkIcon className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleRemoveDomain(domain, domainType)}><X className="w-4 h-4" /></Button>
                     </div>
                   ))
                 ) : (
@@ -1863,7 +2236,7 @@ export default function HotelsPage() {
             {emailServiceStatus && (
               <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
                 <div className="flex items-center">
-                  <EnvelopeIcon className="w-5 h-5 text-blue-600 mr-2" />
+                  <Mail className="w-5 h-5 text-blue-600 mr-2" />
                   <span className="font-medium">Email Service Status:</span>
                   <Badge variant="outline" className={`ml-2 ${emailServiceStatus.global.serviceAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
                     {emailServiceStatus.global.serviceAvailable ? "Available" : "Unavailable"}
@@ -1936,7 +2309,7 @@ export default function HotelsPage() {
               size="sm"
               onClick={() => handleRemoveRecipient(recipient.email)}
             >
-              <XMarkIcon className="w-4 h-4" />
+              <X className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -2193,10 +2566,10 @@ export default function HotelsPage() {
 
         {/* Summary Stats */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card><CardContent><div className="text-2xl font-bold text-blue-600">{hotels.length}</div><div className="text-sm text-gray-600">Total Hotels</div></CardContent></Card>
-          <Card><CardContent><div className="text-2xl font-bold text-green-600">{hotels.reduce((sum, h) => sum + (h.roomCount || 0), 0)}</div><div className="text-sm text-gray-600">Total Rooms</div></CardContent></Card>
-          <Card><CardContent><div className="text-2xl font-bold text-orange-600">{hotels.reduce((sum, h) => sum + (h.amenities?.length || 0), 0)}</div><div className="text-sm text-gray-600">Total Amenities</div></CardContent></Card>
-          <Card><CardContent><div className="text-2xl font-bold text-purple-600">{hotels.filter(h => h.license?.status === 'active').length}</div><div className="text-sm text-gray-600">Active Licenses</div></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-primary">{hotels.length}</div><div className="text-sm text-muted-foreground">Total Hotels</div></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{hotels.reduce((sum, h) => sum + (h.roomCount || 0), 0)}</div><div className="text-sm text-muted-foreground">Total Rooms</div></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{hotels.reduce((sum, h) => sum + (h.amenities?.length || 0), 0)}</div><div className="text-sm text-muted-foreground">Total Amenities</div></CardContent></Card>
+          <Card><CardContent><div className="text-2xl font-bold text-violet-600 dark:text-violet-400">{hotels.filter(h => h.license?.status === 'active').length}</div><div className="text-sm text-muted-foreground">Active Licenses</div></CardContent></Card>
         </div>
 
         {/* Expenditures Section */}
@@ -2238,7 +2611,7 @@ export default function HotelsPage() {
 
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow mb-6 border border-blue-100">
               <div className="flex justify-between items-center">
-                <div><h3 className="text-sm font-medium text-gray-600">Filtered Results</h3><span className="text-3xl font-bold text-blue-700">रु{filteredTotal.toFixed(2)}</span></div>
+                <div><h3 className="text-sm font-medium text-muted-foreground">Filtered Results</h3><span className="text-3xl font-bold text-primary">रु{filteredTotal.toFixed(2)}</span></div>
                 <div className="flex gap-4">
                   <div className="bg-white px-4 py-2 rounded-lg shadow-sm"><span className="text-xs text-gray-500">Count</span><div className="text-xl font-semibold">{filteredCount}</div></div>
                   <div className="bg-white px-4 py-2 rounded-lg shadow-sm"><span className="text-xs text-gray-500">Average</span><div className="text-xl font-semibold">रु{filteredCount > 0 ? (filteredTotal / filteredCount).toFixed(2) : '0.00'}</div></div>
@@ -2329,7 +2702,7 @@ export default function HotelsPage() {
           required
           value={newExpenditure.description}
           onChange={(e) => setNewExpenditure(prev => ({ ...prev, description: e.target.value }))}
-          className="w-full border border-gray-300 rounded px-3 py-2"
+          className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background"
           rows={3}
           placeholder="Description"
         />
@@ -2352,7 +2725,7 @@ export default function HotelsPage() {
           id="expenditure-notes"
           value={newExpenditure.notes || ''}
           onChange={(e) => setNewExpenditure(prev => ({ ...prev, notes: e.target.value }))}
-          className="w-full border border-gray-300 rounded px-3 py-2"
+          className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background"
           rows={2}
           placeholder="Additional notes"
         />
@@ -2426,7 +2799,7 @@ export default function HotelsPage() {
         <Button type="button" variant="outline" onClick={() => setShowExpenditureModal(false)}>
           Cancel
         </Button>
-        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+        <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">
           Create Expenditure
         </Button>
       </DialogFooter>
@@ -2438,7 +2811,7 @@ export default function HotelsPage() {
               <DialogContent>
                 <DialogHeader><DialogTitle>Reject Expenditure</DialogTitle></DialogHeader>
                 <form onSubmit={(e) => { e.preventDefault(); if (selectedExpenditure) { handleRejectExpenditure(selectedExpenditure._id); setShowRejectModal(false); } }} className="space-y-4">
-                  <textarea required value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2" rows={3} placeholder="Reason for Rejection" />
+                  <textarea required value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={3} placeholder="Reason for Rejection" />
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setShowRejectModal(false)}>Cancel</Button>
                     <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white">Reject</Button>
@@ -2449,6 +2822,6 @@ export default function HotelsPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

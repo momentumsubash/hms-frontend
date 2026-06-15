@@ -28,6 +28,14 @@ hms-cypress/node_modules/
 .DS_Store
 *.pem
 
+# cypress artifacts
+cypress/screenshots/
+cypress/videos/
+
+# temp files
+tmp/
+progress.md
+
 # debug
 npm-debug.log*
 yarn-debug.log*

@@ -1,11 +1,12 @@
 "use client";
 
 import { getGuests, getRooms, updateGuest, addGuest as createGuest, getMe, getAvailableRooms } from "@/lib/api";
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useAuth } from "@/components/ui/auth-provider";
-import { NavBar } from "@/components/ui/NavBar";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { DashboardLayout } from "@/components/dashboard-layout";
 import { format } from "date-fns";
 import { isAPIResponse } from "@/types/api";
+import { Search, X, Eye, Edit, Plus, Info, SlidersHorizontal } from "lucide-react";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface AdditionalGuest {
   name: string;
@@ -227,38 +228,38 @@ const PreviousStayModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
-      <div className="bg-white rounded-lg p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]">
+      <div className="bg-card rounded-lg p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-foreground">
             Previous Stay Details - {guest.firstName} {guest.lastName}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl font-semibold"
+            className="text-muted-foreground hover:text-gray-700 text-2xl font-semibold"
           >
             ×
           </button>
         </div>
 
         {/* Guest Summary */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-blue-600 font-medium">Total Stays</p>
-              <p className="text-xl font-bold text-gray-900">{guest.checkouts?.length || 0}</p>
+              <p className="text-xs text-primary font-medium">Total Stays</p>
+              <p className="text-xl font-bold text-foreground">{guest.checkouts?.length || 0}</p>
             </div>
             <div>
-              <p className="text-xs text-blue-600 font-medium">Total Spent</p>
-              <p className="text-xl font-bold text-gray-900">{formatCurrency(guest.totalSpent || 0)}</p>
+              <p className="text-xs text-primary font-medium">Total Spent</p>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(guest.totalSpent || 0)}</p>
             </div>
             <div>
-              <p className="text-xs text-blue-600 font-medium">Phone</p>
-              <p className="text-sm font-medium text-gray-900">{guest.phone}</p>
+              <p className="text-xs text-primary font-medium">Phone</p>
+              <p className="text-sm font-medium text-foreground">{guest.phone}</p>
             </div>
             <div>
-              <p className="text-xs text-blue-600 font-medium">Email</p>
-              <p className="text-sm font-medium text-gray-900">{guest.email || 'N/A'}</p>
+              <p className="text-xs text-primary font-medium">Email</p>
+              <p className="text-sm font-medium text-foreground">{guest.email || 'N/A'}</p>
             </div>
           </div>
         </div>
@@ -268,18 +269,18 @@ const PreviousStayModal = ({
         <div className="space-y-4">
           {guest.checkouts && guest.checkouts.length > 0 ? (
             guest.checkouts.map((checkout) => (
-              <div key={checkout._id} className="border rounded-lg p-4 hover:bg-gray-50">
+              <div key={checkout._id} className="border rounded-lg p-4 hover:bg-muted/30">
                 <div className="flex justify-between items-start mb-3">
                   <div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
                       Checkout ID: {checkout._id.slice(-6)}
                     </span>
-                    <span className="ml-2 text-sm text-gray-500">
+                    <span className="ml-2 text-sm text-muted-foreground">
                       {formatDate(checkout.createdAt)}
                     </span>
                   </div>
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    checkout.status === 'completed' ? 'bg-gray-100 text-gray-800' : 'bg-yellow-100 text-yellow-800'
+                    checkout.status === 'completed' ? 'bg-muted text-muted-foreground' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
                   }`}>
                     {checkout.status}
                   </span>
@@ -288,21 +289,21 @@ const PreviousStayModal = ({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Stay Period */}
                   <div>
-                    <p className="text-xs text-gray-500">Stay Period</p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-xs text-muted-foreground">Stay Period</p>
+                    <p className="text-sm font-medium text-foreground">
                       {formatDate(checkout.checkInDate)} - {formatDate(checkout.checkOutDate)}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">{checkout.nights} night(s)</p>
+                    <p className="text-xs text-muted-foreground mt-1">{checkout.nights} night(s)</p>
                   </div>
 
                   {/* Rooms */}
                   <div>
-                    <p className="text-xs text-gray-500">Rooms</p>
+                    <p className="text-xs text-muted-foreground">Rooms</p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {checkout.rooms.map((room) => (
                         <span
                           key={room._id}
-                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
                         >
                           {room.roomNumber} ({room.type})
                         </span>
@@ -312,21 +313,21 @@ const PreviousStayModal = ({
 
                   {/* Billing */}
                   <div>
-                    <p className="text-xs text-gray-500">Billing Summary</p>
+                    <p className="text-xs text-muted-foreground">Billing Summary</p>
                     <div className="space-y-1 mt-1">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Room Charge:</span>
+                        <span className="text-muted-foreground">Room Charge:</span>
                         <span className="font-medium">{formatCurrency(checkout.totalRoomCharge)}</span>
                       </div>
                       {checkout.roomDiscount > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Discount:</span>
-                          <span className="font-medium text-green-600">-{formatCurrency(checkout.roomDiscount)}</span>
+                          <span className="text-muted-foreground">Discount:</span>
+                          <span className="font-medium text-emerald-600 dark:text-emerald-400">-{formatCurrency(checkout.roomDiscount)}</span>
                         </div>
                       )}
                       {checkout.totalOrderCharge > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Orders:</span>
+                          <span className="text-muted-foreground">Orders:</span>
                           <span className="font-medium">{formatCurrency(checkout.totalOrderCharge)}</span>
                         </div>
                       )}
@@ -335,7 +336,7 @@ const PreviousStayModal = ({
                         <span>{formatCurrency(checkout.totalBill)}</span>
                       </div>
                       {checkout.advancePaid > 0 && (
-                        <div className="flex justify-between text-xs text-gray-600">
+                        <div className="flex justify-between text-xs text-muted-foreground">
                           <span>Advance Paid:</span>
                           <span>{formatCurrency(checkout.advancePaid)}</span>
                         </div>
@@ -345,7 +346,7 @@ const PreviousStayModal = ({
                 </div>
 
                 {/* Payment Details */}
-                <div className="mt-3 pt-3 border-t text-xs text-gray-500">
+                <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
                   <div className="flex flex-wrap gap-3">
                     <span>Payment Method: {checkout.paymentMethod}</span>
                     {checkout.advancePaymentMethod && (
@@ -357,8 +358,8 @@ const PreviousStayModal = ({
               </div>
             ))
           ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">No previous stay history available for this guest.</p>
+            <div className="text-center py-8 bg-muted/50 rounded-lg">
+              <p className="text-muted-foreground">No previous stay history available for this guest.</p>
             </div>
           )}
         </div>
@@ -377,14 +378,13 @@ const PreviousStayModal = ({
 };
 
 export default function GuestsPage() {
-  // Load hotel from localStorage
-  const [hotel, setHotel] = useState(() => {
+  const [hotel, setHotel] = useState<any>(null);
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('hotel');
-      return stored ? JSON.parse(stored) : null;
+      if (stored) setHotel(JSON.parse(stored));
     }
-    return null;
-  });
+  }, []);
 
   // Listen for localStorage changes (e.g., nepaliLanguage toggle)
   useEffect(() => {
@@ -405,17 +405,6 @@ export default function GuestsPage() {
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalGuests, setTotalGuests] = useState(0);
-
-  const navLinks = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Checkouts", href: "/checkouts" },
-    { label: "Guests", href: "/guests" },
-    { label: "Hotels", href: "/hotels" },
-    { label: "Items", href: "/items" },
-    { label: "Orders", href: "/orders" },
-    { label: "Rooms", href: "/rooms" },
-    { label: "Users", href: "/users" },
-  ];
 
   const [guests, setGuests] = useState<Guest[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -449,7 +438,7 @@ export default function GuestsPage() {
   });
   const [formLoading, setFormLoading] = useState(false);
 
-  // User info for nav bar
+  // User info
     const [user, setUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('user');
@@ -457,8 +446,6 @@ export default function GuestsPage() {
     }
     return null;
   });
-  const { logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false);
 
   // Form validation errors
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
@@ -481,6 +468,10 @@ export default function GuestsPage() {
   // Previous stay modal state
   const [showPreviousStayModal, setShowPreviousStayModal] = useState(false);
   const [selectedGuestForHistory, setSelectedGuestForHistory] = useState<Guest | null>(null);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const toggleRow = (id: string) => setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
 
   // Helper function to get standard headers
   const getRequestHeaders = (token: string) => {
@@ -1356,198 +1347,237 @@ const handleAddNewGuest = async () => {
     return roomId;
   };
 
-  // Generate pagination buttons
-  const generatePaginationButtons = () => {
-    const buttons = [];
-    const maxVisiblePages = 5;
-
-    let startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    if (startPage > 1) {
-      buttons.push(
-        <button
-          key="first"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => setPage(1)}
-          disabled={page === 1 || loading}
-        >
-          «
-        </button>
-      );
-
-      buttons.push(
-        <button
-          key="prev"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => setPage(page - 1)}
-          disabled={page === 1 || loading}
-        >
-          ‹
-        </button>
-      );
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      buttons.push(
-        <button
-          key={i}
-          className={`px-3 py-2 text-sm font-medium rounded-md ${page === i
-              ? 'text-white bg-blue-600 border border-blue-600'
-              : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
-            } disabled:opacity-50`}
-          onClick={() => setPage(i)}
-          disabled={loading}
-        >
-          {i}
-        </button>
-      );
-    }
-
-    if (endPage < totalPages) {
-      buttons.push(
-        <button
-          key="next"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => setPage(page + 1)}
-          disabled={page === totalPages || loading}
-        >
-          ›
-        </button>
-      );
-
-      buttons.push(
-        <button
-          key="last"
-          className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          onClick={() => setPage(totalPages)}
-          disabled={page === totalPages || loading}
-        >
-          »
-        </button>
-      );
-    }
-
-    return buttons;
-  };
-
-  if (loading && guests.length === 0) return <div className="flex justify-center items-center h-64">Loading...</div>;
+  if (loading && guests.length === 0) return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center gap-3">
+          <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <span className="text-sm text-muted-foreground">Loading...</span>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <NavBar
-        user={user}
-        showUserMenu={showUserMenu}
-        setShowUserMenu={setShowUserMenu}
-        logout={logout}
-        nepaliFlag={hotel?.nepaliFlag}
-      />
-      <div className="max-w-9xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Guests Management</h1>
-          <button
-            onClick={handleAddNewGuest}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            data-cy="guests-add-btn"
-          >
-            Add New Guest
-          </button>
-        </div>
+    <DashboardLayout>
+      <div className="p-6">
 
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-            <button
-              onClick={() => setError("")}
-              className="float-right text-red-700 hover:text-red-900"
-            >
-              ×
-            </button>
-          </div>
-        )}
+        <div className="bg-card rounded-xl border border-border p-3 mb-5">
 
-        {/* Summary Section */}
-        <div className="flex gap-8 mb-6">
-          <div className="bg-blue-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-blue-700 text-sm font-semibold">Total Guests</div>
-            <div className="text-2xl font-bold text-blue-900">{totalGuests}</div>
-          </div>
-          <div className="bg-green-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-green-700 text-sm font-semibold">Current Page</div>
-            <div className="text-2xl font-bold text-green-900">{guests.length}</div>
-          </div>
-          <div className="bg-purple-100 rounded-lg shadow p-4 flex-1 text-center">
-            <div className="text-purple-700 text-sm font-semibold">Total Pages</div>
-            <div className="text-2xl font-bold text-purple-900">{totalPages}</div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-semibold">Filters</h3>
-            <button
-              onClick={clearFilters}
-              className="text-sm text-blue-600 hover:text-blue-800 underline"
-            >
-              Clear All Filters
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Search (Name, Email, Phone)</label>
+          {/* Mobile row: search + filter toggle + action */}
+          <div className="flex items-center gap-2 md:hidden">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                 placeholder="Search guests..."
+                data-cy="guests-search"
               />
+              {filters.search && (
+                <button
+                  onClick={() => handleFilterChange('search', '')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Room Number</label>
-              <input
-                type="text"
-                value={filters.roomNumber}
-                onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
-                placeholder="Filter by room..."
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Customer Type</label>
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-all shrink-0 ${showMobileFilters ? 'bg-primary text-white border-primary' : 'bg-muted/50 border-input text-muted-foreground hover:text-foreground'}`}
+              title="Filters"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleAddNewGuest}
+              className="shrink-0 h-9 px-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+              data-cy="guests-add-new"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Mobile filter panel */}
+          {showMobileFilters && (
+            <div className="mt-3 space-y-2 md:hidden">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    value={filters.roomNumber}
+                    onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
+                    className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm"
+                    placeholder="Room #..."
+                    data-cy="guests-room-filter"
+                  />
+                {filters.roomNumber && (
+                  <button
+                    onClick={() => handleFilterChange('roomNumber', '')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
               <select
                 value={filters.existingCustomer}
                 onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
+                data-cy="guests-customer-filter"
               >
                 <option value="">All Customers</option>
-                <option value="true">Existing Customers</option>
-                <option value="false">New Customers</option>
+                <option value="true">Existing</option>
+                <option value="false">New</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Outstanding Dues</label>
               <select
                 value={filters.hasDue}
                 onChange={(e) => handleFilterChange('hasDue', e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
+                data-cy="guests-due-filter"
               >
                 <option value="">Any Dues</option>
-                <option value="true">Only Due Amounts</option>
+                <option value="true">Has Due</option>
+                <option value="false">No Due</option>
+              </select>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={() => setShowMobileSummary(!showMobileSummary)}
+                  className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  {showMobileSummary ? 'Hide' : 'Show'} Stats
+                </button>
+                {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
+                  <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 ml-auto shrink-0" data-cy="guests-clear-filters">
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Desktop: all filters in one row */}
+          <div className="hidden md:flex items-start gap-3">
+            <div className="flex items-center gap-3 flex-nowrap overflow-x-auto flex-1 min-w-0">
+              <div className="relative flex-1 min-w-[160px] max-w-xs shrink-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+                  placeholder="Search guests..."
+                  data-cy="guests-search"
+                />
+                {filters.search && (
+                  <button
+                    onClick={() => handleFilterChange('search', '')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <div className="relative min-w-[120px] shrink-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={filters.roomNumber}
+                  onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
+                  className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+                  placeholder="Room #..."
+                  data-cy="guests-room-filter"
+                />
+                {filters.roomNumber && (
+                  <button
+                    onClick={() => handleFilterChange('roomNumber', '')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <select
+                value={filters.existingCustomer}
+                onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px] shrink-0"
+                data-cy="guests-customer-filter"
+              >
+                <option value="">All Customers</option>
+                <option value="true">Existing</option>
+                <option value="false">New</option>
+              </select>
+              <select
+                value={filters.hasDue}
+                onChange={(e) => handleFilterChange('hasDue', e.target.value)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[110px] shrink-0"
+                data-cy="guests-due-filter"
+              >
+                <option value="">Any Dues</option>
+                <option value="true">Has Due</option>
                 <option value="false">No Due</option>
               </select>
             </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={() => setShowMobileSummary(!showMobileSummary)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0"
+                title={showMobileSummary ? 'Hide Stats' : 'Show Stats'}
+              >
+                <Info className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">{showMobileSummary ? 'Hide' : 'Show'} Stats</span>
+              </button>
+              {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
+                <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 shrink-0 whitespace-nowrap" data-cy="guests-clear-filters">
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={handleAddNewGuest}
+                className="shrink-0 h-9 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+                data-cy="guests-add-new"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden lg:inline">Add Guest</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between mb-5">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors"><X className="w-4 h-4" /></button>
+          </div>
+        )}
+
+        {/* Summary Section */}
+        <div className={`grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5 ${showMobileSummary ? '' : 'hidden'} md:grid`}>
+          <div className="bg-blue-100/60 rounded-lg p-3 text-center">
+            <div className="text-blue-700 text-xs font-semibold">Total Guests</div>
+            <div className="text-xl font-bold text-blue-900">{totalGuests}</div>
+          </div>
+          <div className="bg-emerald-100/60 rounded-lg p-3 text-center">
+            <div className="text-emerald-700 text-xs font-semibold">Currently Staying</div>
+            <div className="text-xl font-bold text-emerald-900">{guests.filter((g: any) => !g.isCheckedOut).length}</div>
+          </div>
+          <div className="bg-muted/60 rounded-lg p-3 text-center">
+            <div className="text-muted-foreground text-xs font-semibold">Checked Out</div>
+            <div className="text-xl font-bold text-muted-foreground">{guests.filter((g: any) => g.isCheckedOut).length}</div>
+          </div>
+          <div className="bg-indigo-100/60 rounded-lg p-3 text-center">
+            <div className="text-indigo-700 text-xs font-semibold">Available Rooms</div>
+            <div className="text-xl font-bold text-indigo-900">{availableRooms.filter((r: any) => !r.isOccupied).length}</div>
           </div>
         </div>
 
         {/* Loading indicator for filter changes */}
         {loading && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4 flex items-center">
+          <div className="bg-primary/5 border border-primary/20 text-blue-700 px-4 py-3 rounded mb-4 flex items-center">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
             Loading guests...
           </div>
@@ -1555,29 +1585,30 @@ const handleAddNewGuest = async () => {
 
         {/* Guest Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4">
+            <div className="bg-card rounded-lg shadow-xl w-full max-w-4xl my-8 max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-card border-b px-4 sm:px-6 py-4 flex justify-between items-center z-10">
+                <h2 className="text-lg sm:text-xl font-semibold">
                   {editingGuest ? "Edit Guest" : "Add New Guest"}
                 </h2>
                 <button
                   onClick={resetForm}
-                  className="text-gray-500 hover:text-gray-700 text-2xl font-semibold"
+                  className="text-muted-foreground hover:text-gray-700 text-2xl font-semibold p-1"
                 >
                   ×
                 </button>
               </div>
+              <div className="p-4 sm:p-6">
 
               {/* Existing Guest Notification */}
               {existingGuest && (
-                <div className="bg-green-50 border border-green-200 rounded p-4 mb-4">
+                <div className="bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800 rounded p-4 mb-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
                       <p className="text-green-800 font-medium text-lg">
                         Existing Guest Found
                       </p>
-                      <p className="text-green-600 text-sm">
+                      <p className="text-emerald-600 dark:text-emerald-400 text-sm">
                         {existingGuest.firstName} {existingGuest.lastName} - 
                         Previous stays: {existingGuest.checkouts?.length || 0} | 
                         Total spent: रु{existingGuest.totalSpent?.toLocaleString() || 0}
@@ -1594,7 +1625,7 @@ const handleAddNewGuest = async () => {
                       <button
                         type="button"
                         onClick={clearGuestSearch}
-                        className="px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-50 text-sm"
+                        className="px-4 py-2 border border-green-600 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-green-50 text-sm"
                       >
                         Clear & Start New
                       </button>
@@ -1615,18 +1646,18 @@ const handleAddNewGuest = async () => {
                         value={formData.phone}
                         onChange={handlePhoneChange}
                         onBlur={handlePhoneBlur}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         required
                         disabled={isSearchingGuest || !!editingGuest}
                         placeholder="Enter 10-digit phone number"
-                        data-cy="guests-phone"
+                        data-cy="guests-form-phone"
                       />
                       {formErrors.phone && <p className="text-red-500 text-sm">{formErrors.phone}</p>}
 
                       {/* Guest search status message */}
                       {guestSearchMessage && (
-                        <p className={`text-sm mt-1 ${existingGuest ? 'text-green-600' :
-                            isSearchingGuest ? 'text-blue-600' : 'text-gray-600'
+                        <p className={`text-sm mt-1 ${existingGuest ? 'text-emerald-600 dark:text-emerald-400' :
+                            isSearchingGuest ? 'text-primary' : 'text-muted-foreground'
                           }`}>
                           {isSearchingGuest && (
                             <span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></span>
@@ -1641,9 +1672,9 @@ const handleAddNewGuest = async () => {
                         type="text"
                         value={formData.firstName}
                         onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         required
-                        data-cy="guests-firstname"
+                        data-cy="guests-form-first-name"
                       />
                     </div>
 
@@ -1653,9 +1684,9 @@ const handleAddNewGuest = async () => {
                         type="text"
                         value={formData.lastName}
                         onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         required
-                        data-cy="guests-lastname"
+                        data-cy="guests-form-last-name"
                       />
                     </div>
 
@@ -1665,9 +1696,9 @@ const handleAddNewGuest = async () => {
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         placeholder="Optional"
-                        data-cy="guests-email"
+                        data-cy="guests-form-email"
                       />
                       {formErrors.email && <p className="text-red-500 text-sm">{formErrors.email}</p>}
                     </div>
@@ -1677,7 +1708,7 @@ const handleAddNewGuest = async () => {
                       <textarea
                         value={formData.address}
                         onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         rows={2}
                         data-cy="guests-address"
                       />
@@ -1694,7 +1725,7 @@ const handleAddNewGuest = async () => {
                         type="text"
                         value={formData.idNo}
                         onChange={(e) => setFormData({ ...formData, idNo: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         data-cy="guests-idno"
                       />
                     </div>
@@ -1705,7 +1736,7 @@ const handleAddNewGuest = async () => {
                         type="text"
                         value={formData.occupation}
                         onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         data-cy="guests-occupation"
                       />
                     </div>
@@ -1716,7 +1747,7 @@ const handleAddNewGuest = async () => {
                         type="text"
                         value={formData.vehicleNo}
                         onChange={(e) => setFormData({ ...formData, vehicleNo: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         data-cy="guests-vehicleno"
                       />
                     </div>
@@ -1727,7 +1758,7 @@ const handleAddNewGuest = async () => {
                         type="text"
                         value={formData.purposeOfStay}
                         onChange={(e) => setFormData({ ...formData, purposeOfStay: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         data-cy="guests-purpose"
                       />
                     </div>
@@ -1738,7 +1769,7 @@ const handleAddNewGuest = async () => {
                       <select
                         value={formData.referrer}
                         onChange={(e) => setFormData({ ...formData, referrer: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2 max-w-full truncate"
                       >
                         <option value="">Select a referrer (optional)</option>
                         {loadingReferrers ? (
@@ -1752,7 +1783,7 @@ const handleAddNewGuest = async () => {
                         )}
                       </select>
                       {referrers.length === 0 && !loadingReferrers && (
-                        <p className="text-sm text-gray-500 mt-1">No referrers available. Add referrers first.</p>
+                        <p className="text-sm text-muted-foreground mt-1">No referrers available. Add referrers first.</p>
                       )}
                     </div>
 
@@ -1763,7 +1794,7 @@ const handleAddNewGuest = async () => {
                           type="checkbox"
                           checked={formData.existingCustomer}
                           onChange={(e) => setFormData({ ...formData, existingCustomer: e.target.checked })}
-                          className="mr-2 h-4 w-4 border-gray-300 rounded"
+                          className="mr-2 h-4 w-4 border-input rounded"
                           data-cy="guests-existing-customer"
                         />
                         Existing Customer (Enable Due Management)
@@ -1785,7 +1816,7 @@ const handleAddNewGuest = async () => {
                     </button>
                   </div>
 
-                  <div className="text-sm text-gray-500 mb-2">
+                  <div className="text-sm text-muted-foreground mb-2">
                     Total additional guests: {(formData.additionalGuests || []).filter(
                       guest => guest != null &&
                         typeof guest === 'object' &&
@@ -1805,7 +1836,7 @@ const handleAddNewGuest = async () => {
                             type="text"
                             value={safeGuest.name || ''}
                             onChange={(e) => handleAdditionalGuestChange(index, 'name', e.target.value)}
-                            className="w-full border border-gray-300 rounded px-3 py-2"
+                            className="w-full border border-input rounded px-3 py-2"
                             placeholder="Guest name"
                           />
                         </div>
@@ -1815,7 +1846,7 @@ const handleAddNewGuest = async () => {
                           <select
                             value={safeGuest.gender || 'male'}
                             onChange={(e) => handleAdditionalGuestChange(index, 'gender', e.target.value)}
-                            className="w-full border border-gray-300 rounded px-3 py-2"
+                            className="w-full border border-input rounded px-3 py-2 max-w-full truncate"
                           >
                             <option value="male">Male</option>
                             <option value="female">Female</option>
@@ -1829,7 +1860,7 @@ const handleAddNewGuest = async () => {
                             type="text"
                             value={safeGuest.relationship || ''}
                             onChange={(e) => handleAdditionalGuestChange(index, 'relationship', e.target.value)}
-                            className="w-full border border-gray-300 rounded px-3 py-2"
+                            className="w-full border border-input rounded px-3 py-2"
                             placeholder="Relationship to main guest"
                           />
                         </div>
@@ -1838,7 +1869,7 @@ const handleAddNewGuest = async () => {
                           <button
                             type="button"
                             onClick={() => removeAdditionalGuest(index)}
-                            className="text-red-600 hover:text-red-800 text-sm"
+                            className="text-destructive hover:text-destructive/80 text-sm"
                           >
                             Remove
                           </button>
@@ -1862,7 +1893,7 @@ const handleAddNewGuest = async () => {
                           const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
                           setFormData({ ...formData, rooms: selectedOptions });
                         }}
-                        className="w-full border border-gray-300 rounded px-3 py-2 h-32"
+                        className="w-full border border-input rounded px-3 py-2 h-32 max-w-full truncate"
                         required
                         data-cy="guests-rooms"
                       >
@@ -1880,10 +1911,10 @@ const handleAddNewGuest = async () => {
                         ))}
                       </select>
                       {formErrors.rooms && <p className="text-red-500 text-sm">{formErrors.rooms}</p>}
-                      <p className="text-sm text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
+                      <p className="text-sm text-muted-foreground mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
 
                       {/* Show room status information */}
-                      <div className="mt-2 text-sm text-gray-600">
+                      <div className="mt-2 text-sm text-muted-foreground">
                         {editingGuest && (
                           <p>
                             <span className="font-semibold">Note:</span> You can deselect rooms to de-allocate them from this guest.
@@ -1899,7 +1930,7 @@ const handleAddNewGuest = async () => {
                         type="number"
                         value={formData.roomDiscount}
                         onChange={(e) => setFormData({ ...formData, roomDiscount: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         min="0"
                         step="0.01"
                         data-cy="guests-roomdiscount"
@@ -1913,7 +1944,7 @@ const handleAddNewGuest = async () => {
                         type="number"
                         value={formData.advancePaid}
                         onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         min="0"
                         step="0.01"
                         data-cy="guests-advancepaid"
@@ -1931,7 +1962,7 @@ const handleAddNewGuest = async () => {
                         type="datetime-local"
                         value={formData.checkInDate}
                         onChange={handleCheckInDateChange}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         required
                         data-cy="guests-checkin"
                       />
@@ -1945,7 +1976,7 @@ const handleAddNewGuest = async () => {
                         value={formData.checkOutDate || ''}
                         onChange={handleCheckOutDateChange}
                         min={getMinCheckOutDateTime()}
-                        className="w-full border border-gray-300 rounded px-3 py-2"
+                        className="w-full border border-input rounded px-3 py-2"
                         data-cy="guests-checkout"
                       />
                       {formErrors.checkOutDate && <p className="text-red-500 text-sm">{formErrors.checkOutDate}</p>}
@@ -1957,16 +1988,16 @@ const handleAddNewGuest = async () => {
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    data-cy="guests-cancel"
+                    className="px-4 py-2 border border-input rounded-lg hover:bg-muted/30"
+                    data-cy="guests-form-cancel"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={formLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                    data-cy="guests-submit"
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                    data-cy="guests-form-submit"
                   >
                     {formLoading ? "Saving..." : editingGuest ? "Update Guest" : "Add Guest"}
                   </button>
@@ -1974,6 +2005,7 @@ const handleAddNewGuest = async () => {
               </form>
             </div>
           </div>
+        </div>
         )}
 
         {/* Previous Stay Modal */}
@@ -1986,82 +2018,91 @@ const handleAddNewGuest = async () => {
 
         {/* Notification Toast */}
         {notification && (
-          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-lg text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
+          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
             {notification.message}
           </div>
         )}
 
         {/* Guests Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-card rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-border" data-cy="guests-table">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Guest Details
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     Contact
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
                     Additional Info
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     Room
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     Stay Period
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     Referrer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     Due Amount
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
                     Bill
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-card divide-y divide-border">
                 {guests.map((guest) => (
-                  <tr key={guest._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {guest.firstName} {guest.lastName}
+                  <React.Fragment key={guest._id}>
+                  <tr className="hover:bg-muted/30" data-cy={`guests-row-${guest._id}`}>
+                    <td className="px-6 py-4">
+                      <div className="flex items-start gap-1">
+                        <button
+                          onClick={() => toggleRow(guest._id)}
+                          className="p-0.5 rounded text-muted-foreground hover:text-foreground md:hidden shrink-0 mt-0.5"
+                        >
+                          <Info className="w-3.5 h-3.5" />
+                        </button>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-foreground break-words">
+                            {guest.firstName} {guest.lastName}
+                          </div>
+                          {guest.address && (
+                            <div className="text-sm text-muted-foreground break-words">{guest.address}</div>
+                          )}
+                          {/* Previous stays badge */}
+                          {guest.checkouts && guest.checkouts.length > 0 && (
+                            <button
+                              onClick={() => handleViewPreviousStays(guest)}
+                              className="mt-1 inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 hover:bg-purple-200"
+                              data-cy={`guests-view-btn-${guest._id}`}
+                            >
+                              <span className="mr-1">📋</span>
+                              {guest.checkouts.length} {guest.checkouts.length === 1 ? 'Stay' : 'Stays'} · रु{guest.totalSpent?.toLocaleString() || 0}
+                            </button>
+                          )}
                         </div>
-                        {guest.address && (
-                          <div className="text-sm text-gray-500">{guest.address}</div>
-                        )}
-                        {/* Previous stays badge */}
-                        {guest.checkouts && guest.checkouts.length > 0 && (
-                          <button
-                            onClick={() => handleViewPreviousStays(guest)}
-                            className="mt-1 inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200"
-                          >
-                            <span className="mr-1">📋</span>
-                            {guest.checkouts.length} {guest.checkouts.length === 1 ? 'Stay' : 'Stays'} · रु{guest.totalSpent?.toLocaleString() || 0}
-                          </button>
-                        )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{guest.email}</div>
-                      <div className="text-sm text-gray-500">{guest.phone}</div>
+                    <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
+                      <div className="text-sm text-foreground">{guest.email}</div>
+                      <div className="text-sm text-muted-foreground">{guest.phone}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        {guest.idNo && <div>ID: {guest.idNo}</div>}
+                    <td className="px-6 py-4 hidden lg:table-cell">
+                      <div className="text-sm text-foreground">
                         {guest.occupation && <div>Occupation: {guest.occupation}</div>}
                         {guest.vehicleNo && <div>Vehicle: {guest.vehicleNo}</div>}
                         {guest.purposeOfStay && <div>Purpose: {guest.purposeOfStay}</div>}
@@ -2070,21 +2111,21 @@ const handleAddNewGuest = async () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                       {guest.rooms && guest.rooms.length > 0 ? (
                         guest.rooms.map((roomId, idx) => {
                           const roomNumber = getRoomNumberFromGuest(guest, roomId);
                           return (
-                            <span key={`${guest._id}-${roomId}-${roomNumber}-${idx}`} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-1">
+                            <span key={`${guest._id}-${roomId}-${roomNumber}-${idx}`} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 mr-1">
                               Room {roomNumber}
                             </span>
                           );
                         })
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">No rooms</span>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">No rooms</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground hidden md:table-cell">
                       <div>
                         <div>In: {format(new Date(guest.checkInDate), "MMM dd, yyyy HH:mm")}</div>
                         {guest.checkOutDate && (
@@ -2092,9 +2133,9 @@ const handleAddNewGuest = async () => {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground hidden md:table-cell">
                       {guest.referrer ? (
-                        <div className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">
+                        <div className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-1 rounded text-xs">
                           Referred
                           {guest.referralStatus && (
                             <span className="ml-1">({guest.referralStatus})</span>
@@ -2104,114 +2145,119 @@ const handleAddNewGuest = async () => {
                         <span className="text-gray-400">None</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${guest.isCheckedOut
-                          ? "bg-gray-100 text-gray-800"
-                          : "bg-green-100 text-green-800"
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
                         }`}>
                         {guest.isCheckedOut ? "Checked Out" : "Currently Staying"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap hidden md:table-cell">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${guest.existingCustomer
-                          ? "bg-indigo-100 text-indigo-800"
-                          : "bg-gray-100 text-gray-600"
+                          ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300"
+                          : "bg-muted text-muted-foreground"
                         }`}>
                         {guest.existingCustomer ? "Existing" : "New"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground hidden md:table-cell">
                       {guest.dueAmount && guest.dueAmount > 0 ? (
-                        <span className="text-red-600 font-semibold">रु{guest.dueAmount.toLocaleString()}</span>
+                        <span className="text-destructive font-semibold">रु{guest.dueAmount.toLocaleString()}</span>
                       ) : (
-                        <span className="text-gray-500">None</span>
+                        <span className="text-muted-foreground">None</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground hidden md:table-cell">
                       रु{guest.totalBill.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => handleEdit(guest)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      {guest.checkouts && guest.checkouts.length > 0 && (
-                        <button
-                          onClick={() => handleViewPreviousStays(guest)}
-                          className="text-purple-600 hover:text-purple-900"
-                        >
-                          View History
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1">
+                        {guest.checkouts && guest.checkouts.length > 0 && (
+                          <button onClick={() => handleViewPreviousStays(guest)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="View History" data-cy={`guests-view-btn-${guest._id}`}>
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button onClick={() => handleEdit(guest)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit" data-cy={`guests-edit-btn-${guest._id}`}>
+                          <Edit className="w-4 h-4" />
                         </button>
-                      )}
+                      </div>
                     </td>
                   </tr>
+                  {expandedRows[guest._id] && (
+                    <tr className="md:hidden">
+                      <td colSpan={11} className="px-4 py-3 bg-muted/20">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Email:</span> {guest.email}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Phone:</span> {guest.phone}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Room:</span> {guest.rooms?.length ? guest.rooms.map((r: any) => getRoomNumberFromGuest(guest, r)).join(', ') : 'None'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Status:</span> {guest.isCheckedOut ? 'Checked Out' : 'Currently Staying'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">In:</span> {format(new Date(guest.checkInDate), "MMM dd, yyyy HH:mm")}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Out:</span> {guest.checkOutDate ? format(new Date(guest.checkOutDate), "MMM dd, yyyy HH:mm") : '-'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Due:</span> {(guest.dueAmount ?? 0) > 0 ? `रु${(guest.dueAmount ?? 0).toLocaleString()}` : 'None'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Bill:</span> रु{guest.totalBill.toLocaleString()}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Customer:</span> {guest.existingCustomer ? 'Existing' : 'New'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Referrer:</span> {guest.referrer ? 'Referred' : 'None'}</div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
           </div>
 
           {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 bg-gray-50 border-t gap-4">
-              <div className="text-sm text-gray-700">
-                Showing {guests.length} of {totalGuests} guests (Page {page} of {totalPages})
-              </div>
-              <div className="flex items-center space-x-1">
-                {generatePaginationButtons()}
-              </div>
-              <div className="flex items-center space-x-2 text-sm">
-                <span>Go to page:</span>
-                <input
-                  type="number"
-                  min="1"
-                  max={totalPages}
-                  value={page}
-                  onChange={(e) => {
-                    const newPage = Math.max(1, Math.min(totalPages, parseInt(e.target.value) || 1));
-                    setPage(newPage);
-                  }}
-                  className="w-16 border border-gray-300 rounded px-2 py-1 text-center"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-          )}
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            disabled={loading}
+          />
 
           {guests.length === 0 && !loading && (
             <div className="text-center py-12">
-              <div className="text-gray-500">No guests found matching your criteria.</div>
+              <div className="text-muted-foreground">No guests found matching your criteria.</div>
             </div>
           )}
         </div>
 
         {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-blue-600">{totalGuests}</div>
-            <div className="text-sm text-gray-600">Total Guests</div>
+        <div className="mt-6 flex items-center gap-2 mb-3">
+          <button
+            onClick={() => setShowMobileSummary(!showMobileSummary)}
+            className="h-8 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5"
+          >
+            <Info className="w-3.5 h-3.5" />
+            {showMobileSummary ? 'Hide Stats' : 'Show Stats'}
+          </button>
+        </div>
+        <div className={`mt-2 grid grid-cols-1 md:grid-cols-4 gap-4 ${showMobileSummary ? '' : 'hidden'}`}>
+          <div className="bg-card p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-primary">{totalGuests}</div>
+            <div className="text-sm text-muted-foreground">Total Guests</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-green-600">
+          <div className="bg-card p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
               {guests.filter(g => !g.isCheckedOut).length}
             </div>
-            <div className="text-sm text-gray-600">Currently Staying</div>
+            <div className="text-sm text-muted-foreground">Currently Staying</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-2xl font-bold text-gray-600">
+          <div className="bg-card p-4 rounded-lg shadow">
+            <div className="text-2xl font-bold text-muted-foreground">
               {guests.filter(g => g.isCheckedOut).length}
             </div>
-            <div className="text-sm text-gray-600">Checked Out</div>
+            <div className="text-sm text-muted-foreground">Checked Out</div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow">
+          <div className="bg-card p-4 rounded-lg shadow">
             <div className="text-2xl font-bold text-indigo-600">
               {availableRooms.filter(r => !r.isOccupied).length}
             </div>
-            <div className="text-sm text-gray-600">Available Rooms</div>
+            <div className="text-sm text-muted-foreground">Available Rooms</div>
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
