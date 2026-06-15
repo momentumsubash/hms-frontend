@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2, Save, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Save, Image as ImageIcon, Loader2, X } from 'lucide-react';
 import { IconSelector } from "@/components/ui/icon-selector";
 import { Hotel } from "@/types/hotel";
 import { WebsiteContent, SEOData, RoomItem, TestimonialItem, AmenityDetailed } from "@/types/website";
