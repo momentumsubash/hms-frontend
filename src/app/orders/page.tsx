@@ -1417,11 +1417,11 @@ const getPrinterStatusIndicator = () => {
               <tr className="md:hidden">
                 <td colSpan={10} className="px-4 py-3 bg-muted/20">
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div><span className="text-muted-foreground">Guest:</span> {guest}</div>
-                    <div><span className="text-muted-foreground">Room:</span> {room}</div>
-                    <div className="col-span-2"><span className="text-muted-foreground">Items:</span> {items}</div>
-                    <div><span className="text-muted-foreground">Total:</span> {total}</div>
-                    <div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">Guest:</span> {guest}</div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">Room:</span> {room}</div>
+                    <div className="col-span-2 break-words min-w-0"><span className="text-muted-foreground">Items:</span> {items}</div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">Total:</span> {total}</div>
+                    <div className="break-words min-w-0">
                       <span className="text-muted-foreground">Status:</span>{' '}
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         status === 'completed' ? 'bg-emerald-100 text-emerald-800' :
@@ -1430,9 +1430,9 @@ const getPrinterStatusIndicator = () => {
                         'bg-muted text-muted-foreground'
                       }`}>{status}</span>
                     </div>
-                    <div><span className="text-muted-foreground">KOT:</span> {kotStatus}</div>
-                    <div><span className="text-muted-foreground">Print:</span> {printStatus}</div>
-                    <div><span className="text-muted-foreground">Created:</span> {createdBy}</div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">KOT:</span> {kotStatus}</div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">Print:</span> {printStatus}</div>
+                    <div className="break-words min-w-0"><span className="text-muted-foreground">Created:</span> {createdBy}</div>
                   </div>
                 </td>
               </tr>
@@ -1485,12 +1485,17 @@ const getPrinterStatusIndicator = () => {
             data-cy="orders-status-select"
             value={updateStatus}
             onChange={e => setUpdateStatus(e.target.value)}
-             className="w-full border border-input rounded px-3 py-2 max-w-full truncate"
+            className="w-full border border-input rounded px-3 py-2"
            >
-             <option value="pending" data-cy="orders-status-pending">Pending</option>
-             <option value="completed" data-cy="orders-status-completed">Completed</option>
-             <option value="cancelled" data-cy="orders-status-cancelled">Cancelled</option>
+             {(user?.role !== 'staff' || selectedOrder?.status !== 'completed') && (
+               <option value="pending" data-cy="orders-status-pending">Pending</option>
+             )}
+              <option value="completed" data-cy="orders-status-completed">Completed</option>
+              <option value="cancelled" data-cy="orders-status-cancelled">Cancelled</option>
            </select>
+           {user?.role === 'staff' && selectedOrder?.status === 'completed' && (
+             <p className="text-xs text-muted-foreground mt-1">Completed orders cannot be reverted by staff.</p>
+           )}
         </div>
         {updateError && <div className="text-destructive mb-2">{updateError}</div>}
         <div className="flex justify-end space-x-2">

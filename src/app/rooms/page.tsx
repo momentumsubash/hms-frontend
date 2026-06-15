@@ -358,6 +358,7 @@ export default function RoomsPage() {
                 onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
                 className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                 placeholder="Search by room number..."
+                data-cy="rooms-search"
               />
               {filters.roomNumber && (
                 <button onClick={() => handleFilterChange('roomNumber', '')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5">
@@ -369,6 +370,7 @@ export default function RoomsPage() {
               value={filters.type}
               onChange={(e) => handleFilterChange('type', e.target.value)}
               className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px]"
+              data-cy="rooms-type-filter"
             >
               <option value="">All Types</option>
               <option value="single">Single</option>
@@ -380,17 +382,18 @@ export default function RoomsPage() {
               value={filters.isOccupied}
               onChange={(e) => handleFilterChange('isOccupied', e.target.value)}
               className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px]"
+              data-cy="rooms-occupied-filter"
             >
               <option value="">All Rooms</option>
               <option value="true">Occupied</option>
               <option value="false">Available</option>
             </select>
             {(filters.roomNumber || filters.type || filters.isOccupied) && (
-              <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0">
+              <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0" data-cy="rooms-clear-filters">
                 Clear
               </button>
             )}
-            <Button onClick={() => { setAddForm({ roomNumber: "", type: "", rate: 0, description: "", amenities: [], isOccupied: false, capacity: 1, maintanenceStatus: "" }); setShowAdd(true); }} className="ml-auto shrink-0">
+            <Button onClick={() => { setAddForm({ roomNumber: "", type: "", rate: 0, description: "", amenities: [], isOccupied: false, capacity: 1, maintanenceStatus: "" }); setShowAdd(true); }} className="ml-auto shrink-0" data-cy="rooms-add-new">
               <Plus className="w-4 h-4" />
               Add New
             </Button>
@@ -406,7 +409,7 @@ export default function RoomsPage() {
 
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full" data-cy="rooms-table">
               <thead>
                 <tr className="bg-muted/50">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Room #</th>
@@ -423,7 +426,7 @@ export default function RoomsPage() {
               <tbody className="divide-y divide-border">
                 {Array.isArray(rooms) && rooms.length > 0 ? (
                   rooms.map((room: any) => (
-                    <tr key={room._id} className="hover:bg-muted/30 transition-colors">
+                    <tr key={room._id} className="hover:bg-muted/30 transition-colors" data-cy={`rooms-row-${room._id}`}>
                       <td className="px-4 py-3 whitespace-nowrap font-medium text-sm">{room.roomNumber}</td>
                       <td className="px-4 py-3 whitespace-nowrap capitalize text-sm">{room.type}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -455,17 +458,17 @@ export default function RoomsPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-1">
-                          <button className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" onClick={() => { setRoomDetails(room); setShowDetails(true); }} title="View">
+                          <button className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" onClick={() => { setRoomDetails(room); setShowDetails(true); }} title="View" data-cy={`rooms-view-btn-${room._id}`}>
                             <Eye className="w-4 h-4" />
                           </button>
                           <button className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" onClick={() => {
                             setEditRoom(room);
                             setEditForm({ type: room.type, rate: room.rate, amenities: room.amenities || [], isOccupied: room.isOccupied, capacity: room.capacity, maintanenceStatus: (room.maintenanceStatus || room.maintanenceStatus || "") });
                             setShowEdit(true);
-                          }} title="Edit">
+                          }} title="Edit" data-cy={`rooms-edit-btn-${room._id}`}>
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all" onClick={() => { setRoomToDelete(room); setShowDeleteConfirm(true); }} title="Delete">
+                          <button className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all" onClick={() => { setRoomToDelete(room); setShowDeleteConfirm(true); }} title="Delete" data-cy={`rooms-delete-btn-${room._id}`}>
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -552,11 +555,11 @@ export default function RoomsPage() {
           }} className="p-5 space-y-4">
             <FormField label="Room Number" error={formErrors.roomNumber}>
               <input type="text" value={addForm.roomNumber} onChange={e => setAddForm((f: any) => ({ ...f, roomNumber: e.target.value }))}
-                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.roomNumber ? 'border-destructive bg-destructive/5' : 'border-input'}`} required />
+                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.roomNumber ? 'border-destructive bg-destructive/5' : 'border-input'}`} required data-cy="rooms-add-room-number" />
             </FormField>
             <FormField label="Type" error={formErrors.type}>
               <select value={addForm.type} onChange={e => setAddForm((f: any) => ({ ...f, type: e.target.value }))}
-                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.type ? 'border-destructive bg-destructive/5' : 'border-input'}`} required>
+                className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.type ? 'border-destructive bg-destructive/5' : 'border-input'}`} required data-cy="rooms-add-type">
                 <option value="">Select Type</option>
                 <option value="single">Single</option>
                 <option value="double">Double</option>
@@ -567,7 +570,7 @@ export default function RoomsPage() {
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Rate" error={formErrors.rate}>
                 <input type="number" value={addForm.rate} onChange={e => setAddForm((f: any) => ({ ...f, rate: e.target.value }))}
-                  className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.rate ? 'border-destructive bg-destructive/5' : 'border-input'}`} required />
+                  className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.rate ? 'border-destructive bg-destructive/5' : 'border-input'}`} required data-cy="rooms-add-rate" />
               </FormField>
               <FormField label="Capacity" error={formErrors.capacity}>
                 <input type="number" value={addForm.capacity} onChange={e => setAddForm((f: any) => ({ ...f, capacity: e.target.value }))}
@@ -591,8 +594,8 @@ export default function RoomsPage() {
               </select>
             </FormField>
             <div className="flex justify-end gap-3 pt-2 border-t border-border">
-              <Button type="button" variant="outline" onClick={() => setShowAdd(false)} disabled={addLoading}>Cancel</Button>
-              <Button type="submit" disabled={addLoading}>
+              <Button type="button" variant="outline" onClick={() => setShowAdd(false)} disabled={addLoading} data-cy="rooms-add-cancel">Cancel</Button>
+              <Button type="submit" disabled={addLoading} data-cy="rooms-add-submit">
                 {addLoading ? <><span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> Creating...</> : "Create Room"}
               </Button>
             </div>
@@ -644,8 +647,8 @@ export default function RoomsPage() {
               </select>
             </FormField>
             <div className="flex justify-end gap-3 pt-2 border-t border-border">
-              <Button type="button" variant="outline" onClick={() => setShowEdit(false)} disabled={editLoading}>Cancel</Button>
-              <Button type="submit" disabled={editLoading}>
+              <Button type="button" variant="outline" onClick={() => setShowEdit(false)} disabled={editLoading} data-cy="rooms-edit-cancel">Cancel</Button>
+              <Button type="submit" disabled={editLoading} data-cy="rooms-edit-submit">
                 {editLoading ? <><span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" /> Saving...</> : "Update Room"}
               </Button>
             </div>
@@ -667,7 +670,7 @@ export default function RoomsPage() {
                   const msg = e.message || '';
                   showToast(msg.includes('occupied') || msg.includes('checkout') ? "Cannot delete: Room is occupied or has active checkouts" : msg, "error");
                 } finally { setDeleteLoading(false); }
-              }} variant="destructive" disabled={deleteLoading}>
+              }} variant="destructive" disabled={deleteLoading} data-cy="rooms-delete-confirm">
                 {deleteLoading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Deleting...</> : "Delete"}
               </Button>
             </div>

@@ -403,6 +403,7 @@ export default function ReferrersPage() {
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                 placeholder="Search by name, taxi no, ID..."
+                data-cy="referrers-search"
               />
               {filters.search && (
                 <button onClick={() => handleFilterChange('search', '')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5">
@@ -414,6 +415,7 @@ export default function ReferrersPage() {
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value)}
               className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px]"
+              data-cy="referrers-status-filter"
             >
               <option value="">All Statuses</option>
               <option value="active">Active</option>
@@ -421,11 +423,11 @@ export default function ReferrersPage() {
               <option value="paid">Paid</option>
             </select>
             {(filters.search || filters.status) && (
-              <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0">
+              <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0" data-cy="referrers-clear-filters">
                 Clear
               </button>
             )}
-            <Button onClick={() => setShowForm(true)} className="ml-auto shrink-0">
+            <Button onClick={() => setShowForm(true)} className="ml-auto shrink-0" data-cy="referrers-add-new">
               <Plus className="w-4 h-4" />
               Add New
             </Button>
@@ -434,23 +436,23 @@ export default function ReferrersPage() {
 
         {/* Stats Summary */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center" data-cy="referrers-stat-total">
             <div className="text-2xl font-bold text-primary">{totalReferrers}</div>
             <div className="text-sm text-muted-foreground">Total Referrers</div>
           </div>
-          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center" data-cy="referrers-stat-active">
             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
               {referrers.filter(r => r.status === 'active').length}
             </div>
             <div className="text-sm text-muted-foreground">Active</div>
           </div>
-          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center" data-cy="referrers-stat-amount-to-receive">
             <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
               {referrers.reduce((sum, r) => sum + r.totalAmountToReceive, 0).toLocaleString()}
             </div>
             <div className="text-sm text-muted-foreground">Amount to Receive</div>
           </div>
-          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-4 text-center" data-cy="referrers-stat-amount-received">
             <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">
               {referrers.reduce((sum, r) => sum + r.totalAmountReceived, 0).toLocaleString()}
             </div>
@@ -461,7 +463,7 @@ export default function ReferrersPage() {
         {/* Referrers Table */}
         <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border">
+            <table className="min-w-full divide-y divide-border" data-cy="referrers-table">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Referrer</th>
@@ -474,7 +476,7 @@ export default function ReferrersPage() {
               </thead>
               <tbody className="bg-card divide-y divide-border">
                 {referrers.map((referrer) => (
-                  <tr key={referrer._id} className="hover:bg-muted/30 transition-colors">
+                  <tr key={referrer._id} className="hover:bg-muted/30 transition-colors" data-cy={`referrers-row-${referrer._id}`}>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-foreground">{referrer.fullName}</div>
                       <div className="text-sm text-muted-foreground">रु{referrer.referralPrice}/guest</div>
@@ -516,15 +518,15 @@ export default function ReferrersPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => handleEdit(referrer)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit">
+                        <button onClick={() => handleEdit(referrer)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit" data-cy={`referrers-edit-btn-${referrer._id}`}>
                           <Edit className="w-4 h-4" />
                         </button>
                         {referrer.totalAmountToReceive > 0 && (
-                          <button onClick={() => handlePayment(referrer)} className="p-1.5 rounded-md text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all" title="Pay">
+                          <button onClick={() => handlePayment(referrer)} className="p-1.5 rounded-md text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all" title="Pay" data-cy={`referrers-pay-btn-${referrer._id}`}>
                             <DollarSign className="w-4 h-4" />
                           </button>
                         )}
-                        <button onClick={() => handleDelete(referrer._id)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all" title="Delete">
+                        <button onClick={() => handleDelete(referrer._id)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all" title="Delete" data-cy={`referrers-delete-btn-${referrer._id}`}>
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -617,6 +619,7 @@ export default function ReferrersPage() {
                     type="button"
                     onClick={resetForm}
                     className="px-4 py-2 border border-input bg-background text-foreground rounded-lg hover:bg-muted transition-colors text-sm font-medium"
+                    data-cy="referrers-form-cancel"
                   >
                     Cancel
                   </button>
@@ -624,6 +627,7 @@ export default function ReferrersPage() {
                     type="submit"
                     disabled={formLoading}
                     className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm font-medium"
+                    data-cy="referrers-form-submit"
                   >
                     {formLoading ? "Saving..." : editingReferrer ? "Update" : "Add Referrer"}
                   </button>
@@ -680,6 +684,7 @@ export default function ReferrersPage() {
                     type="button"
                     onClick={resetPaymentForm}
                     className="px-4 py-2 border border-input bg-background text-foreground rounded-lg hover:bg-muted transition-colors text-sm font-medium"
+                    data-cy="referrers-payment-cancel"
                   >
                     Cancel
                   </button>
@@ -687,6 +692,7 @@ export default function ReferrersPage() {
                     type="submit"
                     disabled={paymentLoading}
                     className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                    data-cy="referrers-payment-submit"
                   >
                     {paymentLoading ? "Processing..." : "Process Payment"}
                   </button>

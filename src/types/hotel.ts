@@ -105,6 +105,7 @@ export interface Hotel {
   logo?: string;
   images?: string[];
   gallery?: string[];
+  videos?: string[];
   address?: HotelAddress;
   contact?: HotelContact;
   

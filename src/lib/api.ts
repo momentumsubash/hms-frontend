@@ -541,6 +541,23 @@ export const uploadHotelLogo = async (hotelId: string, formData: FormData): Prom
   return response.json();
 };
 
+export const uploadHotelVideos = async (hotelId: string, formData: FormData): Promise<{ urls: string[] }> => {
+  const token = getToken();
+  const response = await fetch(`${API_URL}/hotels/${hotelId}/videos`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to upload videos');
+  }
+  
+  return response.json();
+};
+
 export const uploadHotelImages = async (hotelId: string, formData: FormData): Promise<{ urls: string[] }> => {
   const token = getToken();
   const response = await fetch(`${API_URL}/hotels/${hotelId}/images`, {

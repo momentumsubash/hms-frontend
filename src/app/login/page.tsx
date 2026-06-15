@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { login, API_URL } from "@/lib/api";
+import { useAuth } from "@/components/ui/auth-provider";
 import { Building2, Eye, EyeOff, LogIn, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
@@ -11,6 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const { refreshUser } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,6 +24,7 @@ export default function LoginPage() {
       if (data.user) {
         localStorage.setItem("user", JSON.stringify(data.user));
       }
+      await refreshUser();
       router.push("/dashboard");
     } catch (err: any) {
       console.log("HMS_LOGIN: error:", err.message);

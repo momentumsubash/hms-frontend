@@ -64,6 +64,8 @@ const RecordBook = () => {
   const [checkoutRowsPerPage, setCheckoutRowsPerPage] = useState(5);
   const [itemPage, setItemPage] = useState(0);
   const [itemRowsPerPage, setItemRowsPerPage] = useState(10);
+  const [roomPage, setRoomPage] = useState(0);
+  const [roomRowsPerPage, setRoomRowsPerPage] = useState(10);
 
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [data, setData] = useState(null);
@@ -179,12 +181,14 @@ const RecordBook = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <input
               type="date"
+              data-cy="recordbook-date"
               value={selectedDate}
               onChange={handleDateChange}
               className="h-9 px-3 bg-background border border-input rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <Button
               variant="outline"
+              data-cy="recordbook-refresh"
               onClick={handleRefresh}
               disabled={loading}
               size="sm"
@@ -194,6 +198,7 @@ const RecordBook = () => {
             </Button>
             <Button
               variant="outline"
+              data-cy="recordbook-print"
               onClick={handlePrint}
               disabled={!data}
               size="sm"
@@ -202,6 +207,7 @@ const RecordBook = () => {
             </Button>
             <Button
               variant="outline"
+              data-cy="recordbook-csv"
               onClick={handleExport}
               disabled={!data}
               size="sm"
@@ -233,13 +239,13 @@ const RecordBook = () => {
           <>
             {/* Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
+              <Card data-cy="recordbook-total-revenue">
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground">Total Revenue</p>
                   <p className="text-2xl font-bold text-primary">Rs. {(data.totals?.totalNetRevenue || 0).toLocaleString()}</p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card data-cy="recordbook-net-profit">
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground">Net Profit</p>
                   <p className={`text-2xl font-bold ${data.totals?.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
@@ -247,13 +253,13 @@ const RecordBook = () => {
                   </p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card data-cy="recordbook-total-orders">
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground">Total Orders</p>
                   <p className="text-2xl font-bold text-foreground">{data.summary?.totalOrders || 0}</p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card data-cy="recordbook-total-checkouts">
                 <CardContent className="p-4">
                   <p className="text-sm text-muted-foreground">Total Checkouts</p>
                   <p className="text-2xl font-bold text-foreground">{data.summary?.totalCheckouts || 0}</p>
@@ -264,49 +270,85 @@ const RecordBook = () => {
             {/* Detailed Sections */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Allocated Rooms */}
-              <AccordionSection title="Allocated Rooms" count={data.roomAllocations?.length || 0}>
+              <AccordionSection title="Allocated Rooms" data-cy="recordbook-allocated-rooms-section" count={data.roomAllocations?.length || 0}>
                 {!data.roomAllocations || data.roomAllocations.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">No rooms allocated on this date</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th className="text-left py-2 px-2 font-medium text-muted-foreground">Room Number</th>
-                          <th className="text-left py-2 px-2 font-medium text-muted-foreground">Type</th>
-                          <th className="text-left py-2 px-2 font-medium text-muted-foreground">Rate</th>
-                          <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.roomAllocations.map((room, index) => (
-                          <tr key={room.roomNumber || index} className="border-b border-border hover:bg-muted/30">
-                            <td className="py-2 px-2 font-medium text-foreground">{room.roomNumber}</td>
-                            <td className="py-2 px-2">
-                              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">{room.type}</Badge>
-                            </td>
-                            <td className="py-2 px-2 text-foreground">Rs. {(room.rate || 0).toLocaleString()}</td>
-                            <td className="py-2 px-2">
-                              <Badge className={room.isCurrentlyOccupied ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}>
-                                {room.isCurrentlyOccupied ? 'Occupied' : 'Vacant'}
-                              </Badge>
-                            </td>
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm" data-cy="recordbook-allocated-rooms-table">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="text-left py-2 px-2 font-medium text-muted-foreground">Room Number</th>
+                            <th className="text-left py-2 px-2 font-medium text-muted-foreground">Type</th>
+                            <th className="text-left py-2 px-2 font-medium text-muted-foreground">Rate</th>
+                            <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {data.roomAllocations
+                            .slice(roomPage * roomRowsPerPage, roomPage * roomRowsPerPage + roomRowsPerPage)
+                            .map((room, index) => (
+                            <tr key={room.roomNumber || index} className="border-b border-border hover:bg-muted/30">
+                              <td className="py-2 px-2 font-medium text-foreground">{room.roomNumber}</td>
+                              <td className="py-2 px-2">
+                                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">{room.type}</Badge>
+                              </td>
+                              <td className="py-2 px-2 text-foreground">Rs. {(room.rate || 0).toLocaleString()}</td>
+                              <td className="py-2 px-2">
+                                <Badge className={room.isCurrentlyOccupied ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}>
+                                  {room.isCurrentlyOccupied ? 'Occupied' : 'Vacant'}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {data.roomAllocations.length > roomRowsPerPage && (
+                      <div className="flex items-center justify-between mt-3">
+                        <p className="text-sm text-muted-foreground">
+                          Page <span className="font-medium text-foreground">{roomPage + 1}</span> of <span className="font-medium text-foreground">{Math.ceil(data.roomAllocations.length / roomRowsPerPage)}</span>
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setRoomPage(0)} disabled={roomPage === 0} className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                            <span className="text-xs font-medium">«</span>
+                          </button>
+                          <button onClick={() => setRoomPage(roomPage - 1)} disabled={roomPage === 0} className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          {(() => {
+                            const total = Math.ceil(data.roomAllocations.length / roomRowsPerPage);
+                            const current = roomPage;
+                            let start = Math.max(0, current - 2);
+                            let end = Math.min(total - 1, start + 4);
+                            if (end - start + 1 < 5) start = Math.max(0, end - 4);
+                            return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+                          })().map(n => (
+                            <button key={n} onClick={() => setRoomPage(n)}
+                              className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-all ${n === roomPage ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>{n + 1}</button>
+                          ))}
+                          <button onClick={() => setRoomPage(roomPage + 1)} disabled={(roomPage + 1) * roomRowsPerPage >= data.roomAllocations.length} className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setRoomPage(Math.ceil(data.roomAllocations.length / roomRowsPerPage) - 1)} disabled={(roomPage + 1) * roomRowsPerPage >= data.roomAllocations.length} className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                            <span className="text-xs font-medium">»</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </AccordionSection>
 
               {/* Items Sold */}
-              <AccordionSection title="Items Sold" count={data.itemSalesBreakdown?.length || 0}>
+              <AccordionSection title="Items Sold" data-cy="recordbook-items-sold-section" count={data.itemSalesBreakdown?.length || 0}>
                 {(!data.itemSalesBreakdown || data.itemSalesBreakdown.length === 0) ? (
                   <p className="text-muted-foreground text-center py-4">No items sold on this date</p>
                 ) : (
                   <>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-sm" data-cy="recordbook-items-sold-table">
                         <thead>
                           <tr className="border-b border-border">
                             <th className="text-left py-2 px-2 font-medium text-muted-foreground">Name</th>
@@ -369,13 +411,13 @@ const RecordBook = () => {
             </div>
 
             {/* Daily Checkouts */}
-            <AccordionSection title="Daily Checkouts" count={data.dailyCheckouts?.length || 0}>
+            <AccordionSection title="Daily Checkouts" data-cy="recordbook-daily-checkouts-section" count={data.dailyCheckouts?.length || 0}>
               {!data.dailyCheckouts || data.dailyCheckouts.length === 0 ? (
                 <p className="text-muted-foreground text-center py-4">No checkouts on this date</p>
               ) : (
                 <>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-sm" data-cy="recordbook-daily-checkouts-table">
                       <thead>
                         <tr className="border-b border-border">
                           <th className="text-left py-2 px-2 font-medium text-muted-foreground">Checkout ID</th>

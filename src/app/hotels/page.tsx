@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { 
   getHotels, addHotel, updateHotel, updateHotelBalance,
-  uploadHotelLogo, uploadHotelImages, uploadHotelGallery,
+  uploadHotelLogo, uploadHotelImages, uploadHotelGallery, uploadHotelVideos,
   getHotelLicense, updateHotelLicense,
   getNotificationSettings, updateNotificationSettings,
   addNotificationRecipient, removeNotificationRecipient,
@@ -25,7 +25,11 @@ import {
   FileText, Mail, Globe, Search,
   Printer, Monitor, Server, Wifi,
   CheckCircle, XCircle, FlaskConical, Settings,
-  Eye, Edit, Trash2, ChevronLeft, ChevronRight
+  Eye, Edit, Trash2, ChevronLeft, ChevronRight, Check,
+  Star, Coffee, Dumbbell, Car, Shield, UtensilsCrossed,
+  BedDouble, Bath, Tv, Snowflake, Waves, Wind, Mountain,
+  TreePine, Users, ShoppingBag, Heart, Sparkles, MapPin,
+  Phone, Compass, Palette, Zap, Droplets, Sun, Music, Camera
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -38,6 +42,51 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from 'sonner';
 import WebsiteContentManager from "@/components/WebsiteContentManager";
 import { Hotel } from "@/types/hotel";
+
+// ==================== IMAGE PICKER COMPONENT ====================
+function ImagePicker({ images, value, onChange, label }: { images: string[]; value: string; onChange: (url: string) => void; label?: string }) {
+  const validImages = (images || []).filter(url => url && (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:')));
+  const [showPicker, setShowPicker] = useState(false);
+  const hasValue = value && value.trim().length > 0;
+  return (
+    <div className="space-y-2">
+      {label && <Label>{label}</Label>}
+      {hasValue && (
+        <div className="relative w-full h-32 rounded-lg overflow-hidden border mb-2 group">
+          <img src={value} alt="Selected" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          <button onClick={() => onChange('')} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-3 h-3" /></button>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => setShowPicker(!showPicker)} className="text-xs">
+          <ImageIcon className="w-3 h-3 mr-1" />{showPicker ? 'Close' : hasValue ? 'Change' : 'Select from Uploads'}
+        </Button>
+        {hasValue && (
+          <Input value={value} onChange={e => onChange(e.target.value)} placeholder="Or paste image URL..." className="text-xs h-8 flex-1" />
+        )}
+      </div>
+      {showPicker && (
+        <div className="border rounded-lg p-2 bg-muted/30">
+          {validImages.length === 0 ? (
+            <p className="text-xs text-muted-foreground p-3 text-center">No uploaded images. Upload in the Images tab first.</p>
+          ) : (
+            <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-2 max-h-48 overflow-y-auto">
+              {validImages.map((url, idx) => (
+                <div key={idx}
+                  className={`relative aspect-square rounded-md overflow-hidden cursor-pointer border-2 transition-all ${value === url ? 'border-primary ring-2 ring-primary/30 scale-105' : 'border-transparent hover:border-muted-foreground/30'}`}
+                  onClick={() => { onChange(value === url ? '' : url); setShowPicker(false); }}
+                >
+                  <img src={url} alt={`Option ${idx}`} className="w-full h-full object-cover" />
+                  {value === url && <div className="absolute inset-0 bg-primary/20 flex items-center justify-center"><Check className="w-5 h-5 text-primary" /></div>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ==================== PRINTER MANAGEMENT COMPONENT ====================
 
@@ -979,8 +1028,11 @@ export default function HotelsPage() {
       footerDescription: "",
       rooms: [],
       amenities: [],
+      amenitiesDetailed: [],
+      experiences: [],
       testimonials: [],
-      contactInfo: { phone: "", email: "", address: "" }
+      contactInfo: { phone: "", email: "", address: "" },
+      galleryImages: []
     },
     seo: { title: "", description: "", keywords: [] },
     nepaliLanguage: false
@@ -1285,6 +1337,33 @@ export default function HotelsPage() {
     }
   };
 
+  const handleUploadVideos = async (e: React.ChangeEvent<HTMLInputElement>, hotelId: string) => {
+    if (!e.target.files?.length) return;
+    try {
+      setUploading(true);
+      setUploadProgress(0);
+      const files = Array.from(e.target.files);
+      const interval = setInterval(() => {
+        setUploadProgress(prev => prev >= 90 ? 90 : prev + 10);
+      }, 200);
+      const formData = new FormData();
+      files.forEach(file => formData.append('videos', file));
+      const response = await uploadHotelVideos(hotelId, formData);
+      setUploadProgress(100);
+      setHotels(prev => prev.map(h => h._id === hotelId ? { ...h, videos: [...(h.videos || []), ...response.urls] } : h));
+      if (selectedHotel?._id === hotelId) {
+        setSelectedHotel(prev => prev ? { ...prev, videos: [...(prev.videos || []), ...response.urls] } : null);
+      }
+      setTimeout(() => { setUploading(false); setUploadProgress(0); }, 500);
+      toast.success(`${files.length} videos uploaded successfully`);
+    } catch (e: any) {
+      setError(e.message);
+      setUploading(false);
+      setUploadProgress(0);
+      toast.error('Failed to upload videos');
+    }
+  };
+
   const handleRemoveImage = async (hotelId: string, imageUrl: string, type: 'logo' | 'images' | 'gallery') => {
     try {
       setHotels(prev => prev.map(h => {
@@ -1367,8 +1446,8 @@ export default function HotelsPage() {
                     locationMap: "", nearby: [], notes: [], initialAmount: 0, currentBalance: 0, createdAt: new Date().toISOString(),
                     whitelistedDomains: [], customDomains: [],
                     website: { heroTitle: "", heroSubtitle: "", heroImage: "", aboutDescription: "", amenitiesDescription: "",
-                      experiencesDescription: "", testimonialsDescription: "", footerDescription: "", rooms: [], amenities: [], testimonials: [],
-                      contactInfo: { phone: "", email: "", address: "" } },
+                      experiencesDescription: "", testimonialsDescription: "", footerDescription: "", rooms: [], amenities: [], amenitiesDetailed: [], experiences: [], testimonials: [],
+                      contactInfo: { phone: "", email: "", address: "" }, galleryImages: [] },
                     seo: { title: "", description: "", keywords: [] },
                     nepaliLanguage: false
                   });
@@ -1586,161 +1665,80 @@ export default function HotelsPage() {
               <DialogTitle>Edit Hotel - {selectedHotel?.name}</DialogTitle>
             </DialogHeader>
             {selectedHotel && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
+              <Tabs defaultValue="basic" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                  <TabsTrigger value="images">Images</TabsTrigger>
+                  <TabsTrigger value="website">Website Content</TabsTrigger>
+                </TabsList>
+
+                {/* === TAB 1: BASIC INFO === */}
+                <TabsContent value="basic" className="space-y-4 mt-4">
                   <div className="flex items-center gap-3">
                     <input type="checkbox" checked={!!selectedHotel.nepaliLanguage} onChange={e => setSelectedHotel({ ...selectedHotel, nepaliLanguage: e.target.checked })} className="accent-blue-600" />
                     <span>Enable Nepali Language</span>
                   </div>
                   <h3 className="text-lg font-semibold">Hotel Details</h3>
-                  <form onSubmit={async (e) => {
-                    e.preventDefault();
-                    if (!selectedHotel._id) return;
-                    try {
-                      const updatedHotel = { ...selectedHotel, nepaliLanguage: !!selectedHotel.nepaliLanguage };
-                      await updateHotel(selectedHotel._id, updatedHotel);
-                      localStorage.setItem('hotel', JSON.stringify(updatedHotel));
-                      window.dispatchEvent(new StorageEvent('storage', { key: 'hotel', newValue: JSON.stringify(updatedHotel) }));
-                      setShowEditModal(false);
-                      loadData();
-                      toast.success("Hotel updated successfully");
-                    } catch (e: any) {
-                      setError(e.message);
-                      toast.error("Failed to update hotel");
-                    }
-                  }} className="space-y-4">
-                    
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div>
-    <Label htmlFor="edit-name">Hotel Name *</Label>
-    <Input
-      id="edit-name"
-      type="text"
-      value={selectedHotel.name || ''}
-      onChange={(e) => setSelectedHotel({...selectedHotel, name: e.target.value})}
-      required
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-type">Type</Label>
-    <Input
-      id="edit-type"
-      type="text"
-      value={selectedHotel.type || ''}
-      onChange={(e) => setSelectedHotel({...selectedHotel, type: e.target.value})}
-      placeholder="e.g., 5-Star Luxury Hotel"
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-phone">Phone</Label>
-    <Input
-      id="edit-phone"
-      type="text"
-      value={selectedHotel.contact?.phone || selectedHotel.phone || ''}
-      onChange={(e) => setSelectedHotel({
-        ...selectedHotel, 
-        contact: { ...selectedHotel.contact, phone: e.target.value }
-      })}
-      placeholder="+1-555-123-4567"
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-roomCount">Room Count</Label>
-    <Input
-      id="edit-roomCount"
-      type="number"
-      value={selectedHotel.roomCount || 0}
-      onChange={(e) => setSelectedHotel({...selectedHotel, roomCount: parseInt(e.target.value) || 0})}
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-floors">Floors</Label>
-    <Input
-      id="edit-floors"
-      type="number"
-      value={selectedHotel.floors || 0}
-      onChange={(e) => setSelectedHotel({...selectedHotel, floors: parseInt(e.target.value) || 0})}
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-established">Established Year</Label>
-    <Input
-      id="edit-established"
-      type="number"
-      value={selectedHotel.established || new Date().getFullYear()}
-      onChange={(e) => setSelectedHotel({...selectedHotel, established: parseInt(e.target.value) || new Date().getFullYear()})}
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-vatNumber">VAT Number</Label>
-    <Input
-      id="edit-vatNumber"
-      type="text"
-      value={selectedHotel.vatNumber || ''}
-      onChange={(e) => setSelectedHotel({...selectedHotel, vatNumber: e.target.value})}
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-companyName">Company Name</Label>
-    <Input
-      id="edit-companyName"
-      type="text"
-      value={selectedHotel.companyName || ''}
-      onChange={(e) => setSelectedHotel({...selectedHotel, companyName: e.target.value})}
-    />
-  </div>
-  
-  <div>
-    <Label htmlFor="edit-vatAddress">VAT Address</Label>
-    <Input
-      id="edit-vatAddress"
-      type="text"
-      value={selectedHotel.vatAddress || ''}
-      onChange={(e) => setSelectedHotel({...selectedHotel, vatAddress: e.target.value})}
-    />
-  </div>
-</div>
-
-                    <textarea value={selectedHotel.description || ''} onChange={(e) => setSelectedHotel({...selectedHotel, description: e.target.value})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={3} placeholder="Description" />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input type="text" value={selectedHotel.address?.street || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, street: e.target.value }})} placeholder="Street" />
-                      <Input type="text" value={selectedHotel.address?.area || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, area: e.target.value }})} placeholder="Area" />
-                      <Input type="text" value={selectedHotel.address?.city || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, city: e.target.value }})} placeholder="City" />
-                      <Input type="text" value={selectedHotel.address?.state || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, state: e.target.value }})} placeholder="State" />
-                      <Input type="text" value={selectedHotel.address?.zip || ''} onChange={(e) => setSelectedHotel({...selectedHotel, address: { ...selectedHotel.address, zip: e.target.value }})} placeholder="ZIP Code" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="edit-name">Hotel Name *</Label>
+                      <Input id="edit-name" value={selectedHotel.name || ''} onChange={e => setSelectedHotel({...selectedHotel, name: e.target.value})} required />
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Input type="text" value={selectedHotel.contact?.phone || ''} onChange={(e) => setSelectedHotel({...selectedHotel, contact: { ...selectedHotel.contact, phone: e.target.value }})} placeholder="Phone" />
-                      <Input type="text" value={selectedHotel.contact?.reception || ''} onChange={(e) => setSelectedHotel({...selectedHotel, contact: { ...selectedHotel.contact, reception: e.target.value }})} placeholder="Reception" />
-                      <Input type="email" value={selectedHotel.contact?.email || ''} onChange={(e) => setSelectedHotel({...selectedHotel, contact: { ...selectedHotel.contact, email: e.target.value }})} placeholder="Email" />
-                      <Input type="url" value={selectedHotel.contact?.website || ''} onChange={(e) => setSelectedHotel({...selectedHotel, contact: { ...selectedHotel.contact, website: e.target.value }})} placeholder="Website URL" />
+                    <div>
+                      <Label htmlFor="edit-type">Type</Label>
+                      <Input id="edit-type" value={selectedHotel.type || ''} onChange={e => setSelectedHotel({...selectedHotel, type: e.target.value})} placeholder="e.g., 5-Star Luxury Hotel" />
                     </div>
+                    <div>
+                      <Label>Phone</Label>
+                      <Input value={selectedHotel.contact?.phone || selectedHotel.phone || ''} onChange={e => setSelectedHotel({...selectedHotel, contact: {...selectedHotel.contact, phone: e.target.value}})} />
+                    </div>
+                    <div>
+                      <Label>Room Count</Label>
+                      <Input type="number" value={selectedHotel.roomCount || 0} onChange={e => setSelectedHotel({...selectedHotel, roomCount: parseInt(e.target.value) || 0})} />
+                    </div>
+                    <div>
+                      <Label>Floors</Label>
+                      <Input type="number" value={selectedHotel.floors || 0} onChange={e => setSelectedHotel({...selectedHotel, floors: parseInt(e.target.value) || 0})} />
+                    </div>
+                    <div>
+                      <Label>Established Year</Label>
+                      <Input type="number" value={selectedHotel.established || new Date().getFullYear()} onChange={e => setSelectedHotel({...selectedHotel, established: parseInt(e.target.value) || new Date().getFullYear()})} />
+                    </div>
+                    <div>
+                      <Label>VAT Number</Label>
+                      <Input value={selectedHotel.vatNumber || ''} onChange={e => setSelectedHotel({...selectedHotel, vatNumber: e.target.value})} />
+                    </div>
+                    <div>
+                      <Label>Company Name</Label>
+                      <Input value={selectedHotel.companyName || ''} onChange={e => setSelectedHotel({...selectedHotel, companyName: e.target.value})} />
+                    </div>
+                    <div>
+                      <Label>VAT Address</Label>
+                      <Input value={selectedHotel.vatAddress || ''} onChange={e => setSelectedHotel({...selectedHotel, vatAddress: e.target.value})} />
+                    </div>
+                  </div>
 
-                    <Input type="text" value={selectedHotel.amenities?.join(", ") || ''} onChange={(e) => setSelectedHotel({...selectedHotel, amenities: e.target.value.split(",").map(item => item.trim()).filter(Boolean)})} placeholder="Amenities" />
-                    <Input type="text" value={selectedHotel.nearby?.join(", ") || ''} onChange={(e) => setSelectedHotel({...selectedHotel, nearby: e.target.value.split(",").map(item => item.trim()).filter(Boolean)})} placeholder="Nearby" />
-                    <Input type="url" value={selectedHotel.locationMap || ''} onChange={(e) => setSelectedHotel({...selectedHotel, locationMap: e.target.value})} placeholder="Location Map URL" />
+                  <div><Label>Description</Label>
+                    <textarea value={selectedHotel.description || ''} onChange={e => setSelectedHotel({...selectedHotel, description: e.target.value})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={3} />
+                  </div>
 
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                      <Button type="submit" className="bg-primary hover:bg-primary/90 text-primary-foreground">Update Hotel</Button>
-                    </DialogFooter>
-                  </form>
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input value={selectedHotel.address?.street || ''} onChange={e => setSelectedHotel({...selectedHotel, address: {...selectedHotel.address, street: e.target.value}})} placeholder="Street" />
+                    <Input value={selectedHotel.address?.area || ''} onChange={e => setSelectedHotel({...selectedHotel, address: {...selectedHotel.address, area: e.target.value}})} placeholder="Area" />
+                    <Input value={selectedHotel.address?.city || ''} onChange={e => setSelectedHotel({...selectedHotel, address: {...selectedHotel.address, city: e.target.value}})} placeholder="City" />
+                    <Input value={selectedHotel.address?.state || ''} onChange={e => setSelectedHotel({...selectedHotel, address: {...selectedHotel.address, state: e.target.value}})} placeholder="State" />
+                    <Input value={selectedHotel.address?.zip || ''} onChange={e => setSelectedHotel({...selectedHotel, address: {...selectedHotel.address, zip: e.target.value}})} placeholder="ZIP Code" />
+                  </div>
 
-                {/* Image Management */}
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold">Image Management</h3>
-                  
-                  {/* Logo Upload */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input value={selectedHotel.contact?.reception || ''} onChange={e => setSelectedHotel({...selectedHotel, contact: {...selectedHotel.contact, reception: e.target.value}})} placeholder="Reception" />
+                    <Input value={selectedHotel.nearby?.join(", ") || ''} onChange={e => setSelectedHotel({...selectedHotel, nearby: e.target.value.split(",").map(s => s.trim()).filter(Boolean)})} placeholder="Nearby (comma-separated)" />
+                    <Input value={selectedHotel.locationMap || ''} onChange={e => setSelectedHotel({...selectedHotel, locationMap: e.target.value})} placeholder="Location Map URL" />
+                  </div>
+                </TabsContent>
+
+                {/* === TAB 2: IMAGES === */}
+                <TabsContent value="images" className="space-y-6 mt-4">
                   <div className="border rounded-lg p-4">
                     <h4 className="font-medium mb-3">Hotel Logo</h4>
                     {selectedHotel.logo && isValidUrl(selectedHotel.logo) ? (
@@ -1752,15 +1750,10 @@ export default function HotelsPage() {
                       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                         <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-500 mb-2">No logo uploaded</p>
-                        <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">
-                          Upload Logo
-                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleUploadLogo(e, selectedHotel._id!)} />
-                        </label>
+                        <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm">Upload Logo<input type="file" accept="image/*" className="hidden" onChange={e => handleUploadLogo(e, selectedHotel._id!)} /></label>
                       </div>
                     )}
                   </div>
-
-                  {/* Main Images */}
                   <div className="border rounded-lg p-4">
                     <h4 className="font-medium mb-3">Main Images</h4>
                     <div className="grid grid-cols-2 gap-3 mb-4">
@@ -1771,13 +1764,8 @@ export default function HotelsPage() {
                         </div>
                       ))}
                     </div>
-                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block">
-                      <Plus className="w-4 h-4 inline mr-1" />Add Images
-                      <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'images')} />
-                    </label>
+                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block"><Plus className="w-4 h-4 inline mr-1" />Add Images<input type="file" accept="image/*" multiple className="hidden" onChange={e => handleUploadImages(e, selectedHotel._id!, 'images')} /></label>
                   </div>
-
-                  {/* Gallery Images */}
                   <div className="border rounded-lg p-4">
                     <h4 className="font-medium mb-3">Gallery Images</h4>
                     <div className="grid grid-cols-2 gap-3 mb-4">
@@ -1788,25 +1776,390 @@ export default function HotelsPage() {
                         </div>
                       ))}
                     </div>
-                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block">
-                      <Plus className="w-4 h-4 inline mr-1" />Add Gallery Images
-                      <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleUploadImages(e, selectedHotel._id!, 'gallery')} />
-                    </label>
+                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block"><Plus className="w-4 h-4 inline mr-1" />Add Gallery Images<input type="file" accept="image/*" multiple className="hidden" onChange={e => handleUploadImages(e, selectedHotel._id!, 'gallery')} /></label>
                   </div>
-
+                  <div className="border rounded-lg p-4">
+                    <h4 className="font-medium mb-3">Hero Videos</h4>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {selectedHotel.videos?.filter(url => isValidUrl(url)).map((video, index) => (
+                        <div key={index} className="relative w-full h-28">
+                          <video src={video} className="w-full h-full object-cover rounded-lg" muted />
+                          <button onClick={() => handleRemoveImage(selectedHotel._id!, video, 'images')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-4 h-4" /></button>
+                        </div>
+                      ))}
+                    </div>
+                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded text-sm inline-block"><Plus className="w-4 h-4 inline mr-1" />Add Videos<input type="file" accept="video/*" multiple className="hidden" onChange={e => handleUploadVideos(e, selectedHotel._id!)} /></label>
+                  </div>
                   {uploading && (
                     <div className="fixed bottom-4 right-4 bg-white p-4 rounded-lg shadow-lg border">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-                        <div>
-                          <p className="text-sm font-medium">Uploading... {uploadProgress}%</p>
-                          <div className="w-32 h-2 bg-gray-200 rounded-full mt-1"><div className="h-full bg-blue-600 rounded-full transition-all" style={{ width: `${uploadProgress}%` }} /></div>
-                        </div>
+                        <div><p className="text-sm font-medium">Uploading... {uploadProgress}%</p><div className="w-32 h-2 bg-gray-200 rounded-full mt-1"><div className="h-full bg-blue-600 rounded-full transition-all" style={{width: `${uploadProgress}%`}} /></div></div>
                       </div>
                     </div>
                   )}
+                </TabsContent>
+
+                {/* === TAB 3: WEBSITE CONTENT === */}
+                <TabsContent value="website" className="space-y-6 mt-4">
+                  <Card>
+                    <CardHeader><CardTitle>Hero Section</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <div><Label>Hero Title</Label><Input value={selectedHotel.website?.heroTitle || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), heroTitle: e.target.value}})} placeholder="Welcome to Our Hotel" /></div>
+                      <div><Label>Hero Subtitle</Label><Input value={selectedHotel.website?.heroSubtitle || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), heroSubtitle: e.target.value}})} placeholder="Experience Comfort" /></div>
+                      <ImagePicker images={selectedHotel.images || []} value={selectedHotel.website?.heroImage || ''} onChange={v => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), heroImage: v}})} label="Hero Image" />
+                      <div className="space-y-2">
+                        <Label>Hero Video (background video)</Label>
+                        <div className="flex gap-2">
+                          <Input value={selectedHotel.website?.heroVideo || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), heroVideo: e.target.value}})} placeholder="Paste video URL or select from uploaded videos" className="flex-1" />
+                        </div>
+                        {(selectedHotel.videos || []).filter(v => v).length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {(selectedHotel.videos || []).filter(v => v).map((video, idx) => (
+                              <div key={idx} className={`relative w-24 h-16 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${selectedHotel.website?.heroVideo === video ? 'border-primary ring-2 ring-primary/30' : 'border-transparent hover:border-muted-foreground/30'}`} onClick={() => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), heroVideo: selectedHotel.website?.heroVideo === video ? '' : video}})}>
+                                <video src={video} className="w-full h-full object-cover" muted />
+                                {selectedHotel.website?.heroVideo === video && <div className="absolute inset-0 bg-primary/20 flex items-center justify-center"><Check className="w-5 h-5 text-primary" /></div>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Section Descriptions</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <div><Label>About Description</Label><textarea value={selectedHotel.website?.aboutDescription || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), aboutDescription: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} /></div>
+                      <div><Label>Amenities Description</Label><textarea value={selectedHotel.website?.amenitiesDescription || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDescription: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} /></div>
+                      <div><Label>Experiences Description</Label><textarea value={selectedHotel.website?.experiencesDescription || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiencesDescription: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} /></div>
+                      <div><Label>Testimonials Description</Label><textarea value={selectedHotel.website?.testimonialsDescription || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonialsDescription: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} /></div>
+                      <div><Label>Footer Description</Label><textarea value={selectedHotel.website?.footerDescription || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), footerDescription: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} /></div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Rooms</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      {(selectedHotel.website?.rooms || []).map((room, idx) => (
+                        <div key={idx} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Room {idx + 1}</span>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              const rooms = [...(selectedHotel.website?.rooms || [])];
+                              rooms.splice(idx, 1);
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                            }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input value={room.title || ''} onChange={e => {
+                              const rooms = [...(selectedHotel.website?.rooms || [])];
+                              rooms[idx] = {...rooms[idx], title: e.target.value};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                            }} placeholder="Room title" />
+                            <Input type="number" value={room.price || ''} onChange={e => {
+                              const rooms = [...(selectedHotel.website?.rooms || [])];
+                              rooms[idx] = {...rooms[idx], price: parseFloat(e.target.value) || 0};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                            }} placeholder="Price" />
+                          </div>
+                          <textarea value={room.description || ''} onChange={e => {
+                            const rooms = [...(selectedHotel.website?.rooms || [])];
+                            rooms[idx] = {...rooms[idx], description: e.target.value};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                          }} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} placeholder="Room description" />
+                          <ImagePicker images={selectedHotel.images || []} value={room.image || ''} onChange={v => {
+                            const rooms = [...(selectedHotel.website?.rooms || [])];
+                            rooms[idx] = {...rooms[idx], image: v};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                          }} label="Room Image" />
+                          <div className="flex items-center gap-2">
+                            <Switch checked={room.isActive ?? true} onCheckedChange={v => {
+                              const rooms = [...(selectedHotel.website?.rooms || [])];
+                              rooms[idx] = {...rooms[idx], isActive: v};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                            }} />
+                            <span className="text-xs">Active</span>
+                          </div>
+                          <Input value={(room.features || []).join(", ")} onChange={e => {
+                            const rooms = [...(selectedHotel.website?.rooms || [])];
+                            rooms[idx] = {...rooms[idx], features: e.target.value.split(",").map(s => s.trim()).filter(Boolean)};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                          }} placeholder="Features (comma-separated)" />
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={() => {
+                        const rooms = [...(selectedHotel.website?.rooms || []), {title: "", description: "", price: 0, features: [], image: "", isActive: true}];
+                        setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
+                      }}><Plus className="w-4 h-4 mr-1" />Add Room</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Detailed Amenities</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      {(selectedHotel.website?.amenitiesDetailed || []).map((amenity, idx) => (
+                        <div key={idx} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Amenity {idx + 1}</span>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
+                              arr.splice(idx, 1);
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                            }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input value={amenity.name || ''} onChange={e => {
+                              const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
+                              arr[idx] = {...arr[idx], name: e.target.value};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                            }} placeholder="Name (e.g. Free WiFi)" />
+                            <Select value={amenity.icon || 'Star'} onValueChange={v => {
+                              const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
+                              arr[idx] = {...arr[idx], icon: v};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                            }}>
+                              <SelectTrigger><SelectValue placeholder="Select icon" /></SelectTrigger>
+                              <SelectContent className="max-h-64">
+                                <SelectItem value="Star"><span className="flex items-center gap-2"><Star className="w-4 h-4" /> Star</span></SelectItem>
+                                <SelectItem value="Wifi"><span className="flex items-center gap-2"><Wifi className="w-4 h-4" /> WiFi</span></SelectItem>
+                                <SelectItem value="Coffee"><span className="flex items-center gap-2"><Coffee className="w-4 h-4" /> Coffee</span></SelectItem>
+                                <SelectItem value="Dumbbell"><span className="flex items-center gap-2"><Dumbbell className="w-4 h-4" /> Gym</span></SelectItem>
+                                <SelectItem value="Car"><span className="flex items-center gap-2"><Car className="w-4 h-4" /> Parking</span></SelectItem>
+                                <SelectItem value="Shield"><span className="flex items-center gap-2"><Shield className="w-4 h-4" /> Security</span></SelectItem>
+                                <SelectItem value="Clock"><span className="flex items-center gap-2"><Clock className="w-4 h-4" /> 24/7 Service</span></SelectItem>
+                                <SelectItem value="UtensilsCrossed"><span className="flex items-center gap-2"><UtensilsCrossed className="w-4 h-4" /> Restaurant</span></SelectItem>
+                                <SelectItem value="BedDouble"><span className="flex items-center gap-2"><BedDouble className="w-4 h-4" /> Bed</span></SelectItem>
+                                <SelectItem value="Bath"><span className="flex items-center gap-2"><Bath className="w-4 h-4" /> Bath</span></SelectItem>
+                                <SelectItem value="Tv"><span className="flex items-center gap-2"><Tv className="w-4 h-4" /> TV</span></SelectItem>
+                                <SelectItem value="Snowflake"><span className="flex items-center gap-2"><Snowflake className="w-4 h-4" /> AC</span></SelectItem>
+                                <SelectItem value="Waves"><span className="flex items-center gap-2"><Waves className="w-4 h-4" /> Pool</span></SelectItem>
+                                <SelectItem value="Wind"><span className="flex items-center gap-2"><Wind className="w-4 h-4" /> Fan</span></SelectItem>
+                                <SelectItem value="Mountain"><span className="flex items-center gap-2"><Mountain className="w-4 h-4" /> Mountain View</span></SelectItem>
+                                <SelectItem value="TreePine"><span className="flex items-center gap-2"><TreePine className="w-4 h-4" /> Garden</span></SelectItem>
+                                <SelectItem value="Monitor"><span className="flex items-center gap-2"><Monitor className="w-4 h-4" /> Business Center</span></SelectItem>
+                                <SelectItem value="Users"><span className="flex items-center gap-2"><Users className="w-4 h-4" /> Meeting Room</span></SelectItem>
+                                <SelectItem value="Bell"><span className="flex items-center gap-2"><Bell className="w-4 h-4" /> Bell Service</span></SelectItem>
+                                <SelectItem value="ShoppingBag"><span className="flex items-center gap-2"><ShoppingBag className="w-4 h-4" /> Shop</span></SelectItem>
+                                <SelectItem value="Heart"><span className="flex items-center gap-2"><Heart className="w-4 h-4" /> Romance Package</span></SelectItem>
+                                <SelectItem value="Sparkles"><span className="flex items-center gap-2"><Sparkles className="w-4 h-4" /> Premium</span></SelectItem>
+                                <SelectItem value="MapPin"><span className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Location</span></SelectItem>
+                                <SelectItem value="Phone"><span className="flex items-center gap-2"><Phone className="w-4 h-4" /> Phone</span></SelectItem>
+                                <SelectItem value="Mail"><span className="flex items-center gap-2"><Mail className="w-4 h-4" /> Email</span></SelectItem>
+                                <SelectItem value="Globe"><span className="flex items-center gap-2"><Globe className="w-4 h-4" /> International</span></SelectItem>
+                                <SelectItem value="Compass"><span className="flex items-center gap-2"><Compass className="w-4 h-4" /> Tours</span></SelectItem>
+                                <SelectItem value="Palette"><span className="flex items-center gap-2"><Palette className="w-4 h-4" /> Art & Culture</span></SelectItem>
+                                <SelectItem value="Zap"><span className="flex items-center gap-2"><Zap className="w-4 h-4" /> Power Backup</span></SelectItem>
+                                <SelectItem value="Droplets"><span className="flex items-center gap-2"><Droplets className="w-4 h-4" /> Water</span></SelectItem>
+                                <SelectItem value="Sun"><span className="flex items-center gap-2"><Sun className="w-4 h-4" /> Rooftop</span></SelectItem>
+                                <SelectItem value="Music"><span className="flex items-center gap-2"><Music className="w-4 h-4" /> Music</span></SelectItem>
+                                <SelectItem value="Camera"><span className="flex items-center gap-2"><Camera className="w-4 h-4" /> Photography</span></SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Input value={amenity.description || ''} onChange={e => {
+                            const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
+                            arr[idx] = {...arr[idx], description: e.target.value};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                          }} placeholder="Description" />
+                          <ImagePicker images={selectedHotel.images || []} value={amenity.image || ''} onChange={v => {
+                            const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
+                            arr[idx] = {...arr[idx], image: v};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                          }} label="Amenity Image" />
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={() => {
+                        const arr = [...(selectedHotel.website?.amenitiesDetailed || []), {name: "", description: "", icon: "Star", image: "", isActive: true}];
+                        setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
+                      }}><Plus className="w-4 h-4 mr-1" />Add Amenity</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Testimonials</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      {(selectedHotel.website?.testimonials || []).map((t, idx) => (
+                        <div key={idx} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Testimonial {idx + 1}</span>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              const arr = [...(selectedHotel.website?.testimonials || [])];
+                              arr.splice(idx, 1);
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                            }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input value={t.name || ''} onChange={e => {
+                              const arr = [...(selectedHotel.website?.testimonials || [])];
+                              arr[idx] = {...arr[idx], name: e.target.value};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                            }} placeholder="Guest name" />
+                            <Input type="number" value={t.rating || 5} onChange={e => {
+                              const arr = [...(selectedHotel.website?.testimonials || [])];
+                              arr[idx] = {...arr[idx], rating: parseInt(e.target.value) || 5};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                            }} placeholder="Rating (1-5)" />
+                          </div>
+                          <textarea value={t.comment || ''} onChange={e => {
+                            const arr = [...(selectedHotel.website?.testimonials || [])];
+                            arr[idx] = {...arr[idx], comment: e.target.value};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                          }} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} placeholder="Guest comment" />
+                          <ImagePicker images={selectedHotel.images || []} value={t.image || ''} onChange={v => {
+                            const arr = [...(selectedHotel.website?.testimonials || [])];
+                            arr[idx] = {...arr[idx], image: v};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                          }} label="Guest Photo" />
+                          <div className="flex items-center gap-2">
+                            <Switch checked={t.isActive ?? true} onCheckedChange={v => {
+                              const arr = [...(selectedHotel.website?.testimonials || [])];
+                              arr[idx] = {...arr[idx], isActive: v};
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                            }} />
+                            <span className="text-xs">Active</span>
+                          </div>
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={() => {
+                        const arr = [...(selectedHotel.website?.testimonials || []), {name: "", comment: "", rating: 5, date: new Date().toISOString(), image: "", isActive: true}];
+                        setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
+                      }}><Plus className="w-4 h-4 mr-1" />Add Testimonial</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Experiences</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      {(selectedHotel.website?.experiences || []).map((exp, idx) => (
+                        <div key={idx} className="border rounded-lg p-3 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">Experience {idx + 1}</span>
+                            <Button variant="ghost" size="sm" onClick={() => {
+                              const arr = [...(selectedHotel.website?.experiences || [])];
+                              arr.splice(idx, 1);
+                              setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiences: arr}});
+                            }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                          </div>
+                          <Input value={exp.title || ''} onChange={e => {
+                            const arr = [...(selectedHotel.website?.experiences || [])];
+                            arr[idx] = {...arr[idx], title: e.target.value};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiences: arr}});
+                          }} placeholder="Experience title" />
+                          <textarea value={exp.description || ''} onChange={e => {
+                            const arr = [...(selectedHotel.website?.experiences || [])];
+                            arr[idx] = {...arr[idx], description: e.target.value};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiences: arr}});
+                          }} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} placeholder="Description" />
+                          <ImagePicker images={selectedHotel.images || []} value={exp.image || ''} onChange={v => {
+                            const arr = [...(selectedHotel.website?.experiences || [])];
+                            arr[idx] = {...arr[idx], image: v};
+                            setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiences: arr}});
+                          }} label="Experience Image" />
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" onClick={() => {
+                        const arr = [...(selectedHotel.website?.experiences || []), {title: "", description: "", image: "", isActive: true}];
+                        setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), experiences: arr}});
+                      }}><Plus className="w-4 h-4 mr-1" />Add Experience</Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>Contact Info</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <Input value={selectedHotel.website?.contactInfo?.phone || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), phone: e.target.value}}})} placeholder="Phone" />
+                      <Input value={selectedHotel.website?.contactInfo?.email || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), email: e.target.value}}})} placeholder="Email" />
+                      <Input value={selectedHotel.website?.contactInfo?.address || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), address: e.target.value}}})} placeholder="Address" className="md:col-span-2" />
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <Input value={selectedHotel.seo?.title || ''} onChange={e => setSelectedHotel({...selectedHotel, seo: {...(selectedHotel.seo as any || {}), title: e.target.value}})} placeholder="Meta Title" />
+                      <textarea value={selectedHotel.seo?.description || ''} onChange={e => setSelectedHotel({...selectedHotel, seo: {...(selectedHotel.seo as any || {}), description: e.target.value}})} className="w-full border border-input rounded-lg px-3 py-2 text-sm bg-background" rows={2} placeholder="Meta Description" />
+                      <Input value={(selectedHotel.seo?.keywords || []).join(", ")} onChange={e => setSelectedHotel({...selectedHotel, seo: {...(selectedHotel.seo as any || {}), keywords: e.target.value.split(",").map(s => s.trim()).filter(Boolean)}})} placeholder="Keywords (comma-separated)" />
+                    </CardContent>
+                  </Card>
+
+                  {/* Gallery Section */}
+                  <Card>
+                    <CardHeader><CardTitle>Gallery (Image Carousel)</CardTitle></CardHeader>
+                    <CardContent className="space-y-3">
+                      <p className="text-sm text-muted-foreground">Select which images to show in the website image carousel. Available images from hotel uploads:</p>
+                      {(!selectedHotel.images || selectedHotel.images.length === 0) && (
+                        <p className="text-sm text-amber-600">No images uploaded yet. Upload images in the "Images" tab first.</p>
+                      )}
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                        {(selectedHotel.images || []).filter(url => isValidUrl(url)).map((url, idx) => {
+                          const selected = (selectedHotel.website?.galleryImages || []).includes(url);
+                          return (
+                            <div key={idx} className={`relative cursor-pointer rounded-lg border-2 overflow-hidden ${selected ? 'border-blue-500 ring-2 ring-blue-300' : 'border-gray-200 hover:border-gray-400'}`}
+                              onClick={() => {
+                                const current = selectedHotel.website?.galleryImages || [];
+                                const updated = selected ? current.filter(u => u !== url) : [...current, url];
+                                setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), galleryImages: updated}});
+                              }}>
+                              <img src={url} alt={`Gallery ${idx}`} className="w-full h-20 object-cover" />
+                              {selected && <div className="absolute top-1 right-1 bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">✓</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span>Selected: {(selectedHotel.website?.galleryImages || []).length} images</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* Save / Cancel Footer */}
+                <div className="flex justify-end gap-2 pt-4 border-t mt-4">
+                  <Button variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+                  <Button onClick={async () => {
+                    if (!selectedHotel._id) return;
+                    try {
+                      const updatedHotel = {...selectedHotel, nepaliLanguage: !!selectedHotel.nepaliLanguage};
+                      await updateHotel(selectedHotel._id, updatedHotel);
+                      if (selectedHotel.website || selectedHotel.seo) {
+                        try {
+                          await updateHotelWebsite(selectedHotel._id, {
+                            website: {
+                              heroTitle: selectedHotel.website?.heroTitle || '',
+                              heroSubtitle: selectedHotel.website?.heroSubtitle || '',
+                              heroImage: selectedHotel.website?.heroImage || '',
+                              aboutDescription: selectedHotel.website?.aboutDescription || '',
+                              amenitiesDescription: selectedHotel.website?.amenitiesDescription || '',
+                              experiencesDescription: selectedHotel.website?.experiencesDescription || '',
+                              testimonialsDescription: selectedHotel.website?.testimonialsDescription || '',
+                              footerDescription: selectedHotel.website?.footerDescription || '',
+                              rooms: selectedHotel.website?.rooms || [],
+                              amenities: selectedHotel.website?.amenities || [],
+                              amenitiesDetailed: selectedHotel.website?.amenitiesDetailed || [],
+                              experiences: selectedHotel.website?.experiences || [],
+                              testimonials: selectedHotel.website?.testimonials || [],
+                              contactInfo: selectedHotel.website?.contactInfo || { phone: '', email: '', address: '' },
+                              galleryImages: selectedHotel.website?.galleryImages || []
+                            },
+                            seo: selectedHotel.seo || { title: '', description: '', keywords: [] }
+                          });
+                        } catch (e: any) {
+                          console.error('Website save error:', e);
+                        }
+                      }
+                      localStorage.setItem('hotel', JSON.stringify(updatedHotel));
+                      window.dispatchEvent(new StorageEvent('storage', { key: 'hotel', newValue: JSON.stringify(updatedHotel) }));
+                      setShowEditModal(false);
+                      loadData();
+                      toast.success("Hotel updated successfully");
+                    } catch (e: any) {
+                      setError(e.message);
+                      toast.error("Failed to update hotel");
+                    }
+                  }}>Update Hotel</Button>
                 </div>
-              </div>
+              </Tabs>
             )}
           </DialogContent>
         </Dialog>

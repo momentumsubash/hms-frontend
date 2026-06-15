@@ -198,8 +198,17 @@ export default function CheckoutsPage() {
     }
   }, [editCheckout, roomDiscount, orderDiscount, editVatPercent, editVatAmount, advanceAmount, discountNote]);
 
-  // Paper type selection for printing
-  const [paperType, setPaperType] = useState<"a4" | "a5" | "thermal">("a4");
+  // Paper type selection for printing (persisted to localStorage)
+  const [paperType, setPaperType] = useState<"a4" | "a5" | "thermal">(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('billPaperType') as "a4" | "a5" | "thermal") || "a4";
+    }
+    return "a4";
+  });
+
+  useEffect(() => {
+    localStorage.setItem('billPaperType', paperType);
+  }, [paperType]);
 
   // Load data when page, status filter, or debounced search changes
   useEffect(() => {
@@ -445,18 +454,17 @@ export default function CheckoutsPage() {
         // Apply different styles based on paper type
         if (paperType === 'thermal') {
           printStyles = `
+            @page { size: 57mm 297mm; margin: 0; }
             @media print {
               * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', monospace !important; }
-              body { width: 57mm; max-width: 57mm; padding: 1mm; font-size: 7px; line-height: 1; }
-              h1 { font-size: 8px !important; font-weight: bold !important; text-align: center !important; margin: 0 0 0.3mm 0 !important; }
+              body { width: 57mm; padding: 1mm; font-size: 7px; line-height: 1.1; }
+              h1 { font-size: 8px !important; font-weight: bold !important; text-align: center !important; margin: 0 0 0.5mm 0 !important; letter-spacing: 0.5px; }
               h2 { font-size: 7px !important; font-weight: bold !important; text-align: center !important; margin: 0 0 0.3mm 0 !important; }
-              h3 { font-size: 7px !important; font-weight: bold !important; border-bottom: 1px dashed #ccc !important; padding-bottom: 0.3mm !important; margin: 0.3mm 0 !important; }
-              p { font-size: 6px !important; margin: 0.2mm 0 !important; }
-              table { width: 100% !important; border-collapse: collapse !important; margin: 0.3mm 0 !important; font-size: 6px !important; }
-              th, td { padding: 0.2mm !important; vertical-align: top !important; }
-              th { font-weight: bold !important; border-bottom: 1px solid #ccc !important; }
-              td[style*="text-align: right"], th[style*="text-align: right"] { text-align: right !important; }
-              td[style*="text-align: center"], th[style*="text-align: center"] { text-align: center !important; }
+              h3 { font-size: 7px !important; font-weight: bold !important; border-bottom: 1px dashed #aaa !important; padding-bottom: 0.5mm !important; margin: 0.5mm 0 !important; }
+              p { font-size: 6px !important; margin: 0.3mm 0 !important; }
+              table { width: 100% !important; border-collapse: collapse !important; margin: 0.5mm 0 !important; font-size: 6px !important; }
+              th, td { padding: 0.2mm 0.5mm !important; vertical-align: top !important; }
+              th { font-weight: bold !important; border-bottom: 1px solid #aaa !important; }
               .text-right { text-align: right !important; }
               .text-center { text-align: center !important; }
               .text-red-600 { color: #dc2626 !important; }
@@ -482,19 +490,18 @@ export default function CheckoutsPage() {
           `;
         } else if (paperType === 'a5') {
           printStyles = `
+            @page { size: A5; margin: 4mm; }
             @media print {
               * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif !important; }
               html, body { height: auto !important; }
-              body { width: 148mm; padding: 4mm; font-size: 9px; line-height: 1.2; }
-              h1 { font-size: 12px !important; font-weight: bold !important; text-align: center !important; margin: 0 0 0.5mm 0 !important; }
-              h2 { font-size: 11px !important; font-weight: bold !important; text-align: center !important; margin: 0 0 0.5mm 0 !important; }
-              h3 { font-size: 10px !important; font-weight: bold !important; border-bottom: 1px dashed #ccc !important; padding-bottom: 0.5mm !important; margin: 0.5mm 0 !important; }
+              body { width: 100%; padding: 0; font-size: 9px; line-height: 1.3; }
+              h1 { font-size: 13px !important; font-weight: bold !important; text-align: center !important; margin: 0 0 0.5mm 0 !important; }
+              h2 { font-size: 12px !important; font-weight: bold !important; text-align: center !important; margin: 0 0 0.5mm 0 !important; }
+              h3 { font-size: 10px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 0.5mm !important; margin: 0.5mm 0 !important; }
               p { font-size: 8px !important; margin: 0.4mm 0 !important; }
               table { width: 100% !important; border-collapse: collapse !important; margin: 0.5mm 0 !important; font-size: 8px !important; }
-              th, td { padding: 0.4mm !important; vertical-align: top !important; }
+              th, td { padding: 0.4mm 0.6mm !important; vertical-align: top !important; }
               th { font-weight: bold !important; border-bottom: 1px solid #ccc !important; }
-              td[style*="text-align: right"], th[style*="text-align: right"] { text-align: right !important; }
-              td[style*="text-align: center"], th[style*="text-align: center"] { text-align: center !important; }
               .text-right { text-align: right !important; }
               .text-center { text-align: center !important; }
               .text-red-600 { color: #dc2626 !important; }
@@ -502,7 +509,6 @@ export default function CheckoutsPage() {
               .font-medium { font-weight: 500 !important; }
               strong { font-weight: bold !important; }
               .w-full { width: 100% !important; }
-              .max-w-2xl { max-width: 100% !important; }
               .mx-auto { margin: 0 auto !important; }
               .bg-white, .bg-gray-100 { background: none !important; }
               .shadow-sm { box-shadow: none !important; }
@@ -510,28 +516,25 @@ export default function CheckoutsPage() {
               .text-gray-500, .text-gray-600 { color: #555 !important; }
               .text-gray-900 { color: #000 !important; }
               .border, .border-dashed, .border-gray-200, .border-gray-300, .border-gray-800, .border-double, .border-b, .border-t, .border-t-2 { border-color: #ccc !important; }
-              .inline-block { display: inline !important; }
               .italic { font-style: italic !important; }
-              .ml-1 { margin-left: 0.3mm !important; }
               br { display: none; }
               h1, h2, h3, p, table, div { page-break-inside: avoid !important; }
             }
           `;
         } else { // A4 paper
           printStyles = `
+            @page { size: A4; margin: 8mm; }
             @media print {
               * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif !important; }
               html, body { height: auto !important; }
-              body { width: 210mm; padding: 8mm; font-size: 11px; line-height: 1.3; }
+              body { width: 100%; padding: 0; font-size: 11px; line-height: 1.4; }
               h1 { font-size: 18px !important; font-weight: bold !important; text-align: center !important; margin: 0 0 1mm 0 !important; }
               h2 { font-size: 16px !important; font-weight: bold !important; text-align: center !important; margin: 0 0 1mm 0 !important; }
-              h3 { font-size: 13px !important; font-weight: bold !important; border-bottom: 1px dashed #ccc !important; padding-bottom: 1mm !important; margin: 1mm 0 !important; }
+              h3 { font-size: 13px !important; font-weight: bold !important; border-bottom: 1px solid #ccc !important; padding-bottom: 1mm !important; margin: 1mm 0 !important; }
               p { font-size: 10px !important; margin: 0.6mm 0 !important; }
               table { width: 100% !important; border-collapse: collapse !important; margin: 1mm 0 !important; font-size: 10px !important; }
-              th, td { padding: 0.6mm !important; vertical-align: top !important; }
+              th, td { padding: 0.6mm 1mm !important; vertical-align: top !important; }
               th { font-weight: bold !important; border-bottom: 2px solid #ccc !important; }
-              td[style*="text-align: right"], th[style*="text-align: right"] { text-align: right !important; }
-              td[style*="text-align: center"], th[style*="text-align: center"] { text-align: center !important; }
               .text-right { text-align: right !important; }
               .text-center { text-align: center !important; }
               .text-red-600 { color: #dc2626 !important; }
@@ -539,7 +542,6 @@ export default function CheckoutsPage() {
               .font-medium { font-weight: 500 !important; }
               strong { font-weight: bold !important; }
               .w-full { width: 100% !important; }
-              .max-w-2xl { max-width: 100% !important; }
               .mx-auto { margin: 0 auto !important; }
               .bg-white, .bg-gray-100 { background: none !important; }
               .shadow-sm { box-shadow: none !important; }
@@ -547,9 +549,7 @@ export default function CheckoutsPage() {
               .text-gray-500, .text-gray-600 { color: #555 !important; }
               .text-gray-900 { color: #000 !important; }
               .border, .border-dashed, .border-gray-200, .border-gray-300, .border-gray-800, .border-double, .border-b, .border-t, .border-t-2 { border-color: #ccc !important; }
-              .inline-block { display: inline !important; }
               .italic { font-style: italic !important; }
-              .ml-1 { margin-left: 0.5mm !important; }
               br { display: none; }
               h1, h2, h3, p, table, div { page-break-inside: avoid !important; }
             }
@@ -957,11 +957,11 @@ export default function CheckoutsPage() {
                         <tr className="md:hidden">
                           <td colSpan={6} className="px-4 py-3 bg-muted/20">
                             <div className="grid grid-cols-2 gap-2 text-sm">
-                              <div><span className="text-muted-foreground">Rooms:</span> {checkout.rooms?.length ? checkout.rooms.map((r: any) => `#${r.roomNumber}`).join(', ') : '-'}</div>
-                              <div><span className="text-muted-foreground">Status:</span> {checkout.status}</div>
-                              <div><span className="text-muted-foreground">Bill:</span> रु{checkout.totalBill?.toLocaleString()}</div>
-                              <div><span className="text-muted-foreground">Created:</span> {checkout.createdAt ? new Date(checkout.createdAt).toLocaleString() : ''}</div>
-                              {checkout.guest?.email && <div className="col-span-2"><span className="text-muted-foreground">Email:</span> {checkout.guest.email}</div>}
+                              <div className="break-words min-w-0"><span className="text-muted-foreground">Rooms:</span> {checkout.rooms?.length ? checkout.rooms.map((r: any) => `#${r.roomNumber}`).join(', ') : '-'}</div>
+                              <div className="break-words min-w-0"><span className="text-muted-foreground">Status:</span> {checkout.status}</div>
+                              <div className="break-words min-w-0"><span className="text-muted-foreground">Bill:</span> रु{checkout.totalBill?.toLocaleString()}</div>
+                              <div className="break-words min-w-0"><span className="text-muted-foreground">Created:</span> {checkout.createdAt ? new Date(checkout.createdAt).toLocaleString() : ''}</div>
+                              {checkout.guest?.email && <div className="col-span-2 break-words min-w-0"><span className="text-muted-foreground">Email:</span> {checkout.guest.email}</div>}
                             </div>
                           </td>
                         </tr>

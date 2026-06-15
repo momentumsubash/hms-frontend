@@ -709,6 +709,7 @@ const handleApplyDateFilter = () => {
           <CardContent>
             <div className="flex flex-wrap items-center gap-4">
               <select
+                data-cy="stats-date-filter"
                 value={dateFilter}
                 onChange={(e) => {
                   setDateFilter(e.target.value);
@@ -726,6 +727,7 @@ const handleApplyDateFilter = () => {
               {showCustomDatePicker && (
                 <>
                   <input
+                    data-cy="stats-custom-start-date"
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
@@ -734,6 +736,7 @@ const handleApplyDateFilter = () => {
                   />
                   <span>to</span>
                   <input
+                    data-cy="stats-custom-end-date"
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
@@ -743,7 +746,7 @@ const handleApplyDateFilter = () => {
                 </>
               )}
               
-              <Button onClick={handleApplyDateFilter} className="bg-primary hover:bg-primary/90">
+              <Button data-cy="stats-apply-date-filter" onClick={handleApplyDateFilter} className="bg-primary hover:bg-primary/90">
                 Apply Date Filter
               </Button>
             </div>
@@ -770,6 +773,7 @@ const handleApplyDateFilter = () => {
           <CardHeader>
             <div className="flex flex-wrap gap-2 border-b">
               <button
+                data-cy="stats-tab-summary"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'summary' 
                     ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
@@ -780,6 +784,7 @@ const handleApplyDateFilter = () => {
                 Summary Overview
               </button>
               <button
+                data-cy="stats-tab-item"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'item' 
                     ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
@@ -790,6 +795,7 @@ const handleApplyDateFilter = () => {
                 Item Sales
               </button>
               <button
+                data-cy="stats-tab-room"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'room' 
                     ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
@@ -800,6 +806,7 @@ const handleApplyDateFilter = () => {
                 Room Sales
               </button>
               <button
+                data-cy="stats-tab-expenditure"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'expenditure' 
                     ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
@@ -810,6 +817,7 @@ const handleApplyDateFilter = () => {
                 Expenditures
               </button>
               <button
+                data-cy="stats-tab-financial"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'financial' 
                     ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
@@ -820,6 +828,7 @@ const handleApplyDateFilter = () => {
                 Financial Overview
               </button>
               <button
+                data-cy="stats-tab-daily"
                 className={`px-4 py-2 font-medium rounded-t-lg transition-colors ${
                   activeTab === 'daily' 
                     ? 'border-b-2 border-blue-500 text-primary bg-primary/5' 
@@ -846,7 +855,7 @@ const handleApplyDateFilter = () => {
       <div className="text-destructive text-center bg-destructive/10 p-4 rounded">{errorStates.summary}</div>
     ) : (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
+        <Card data-cy="stats-card-hotel-balance">
           <CardHeader>
             <CardTitle className="text-lg">Hotel Balance</CardTitle>
           </CardHeader>
@@ -876,7 +885,7 @@ const handleApplyDateFilter = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card data-cy="stats-card-sales-summary">
           <CardHeader>
             <CardTitle className="text-lg">Sales Summary</CardTitle>
           </CardHeader>
@@ -904,7 +913,7 @@ const handleApplyDateFilter = () => {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card data-cy="stats-card-profit-loss">
           <CardHeader>
             <CardTitle className="text-lg">Profit/Loss</CardTitle>
           </CardHeader>
@@ -942,6 +951,7 @@ const handleApplyDateFilter = () => {
                   <h4 className="font-medium mb-3">Filter by Category</h4>
                   <div className="flex flex-wrap items-center gap-3">
                     <select
+                      data-cy="stats-item-category-filter"
                       value={selectedCategory}
                       onChange={(e) => setSelectedCategory(e.target.value)}
                       className="border rounded px-3 py-2 min-w-[200px]"
@@ -955,6 +965,7 @@ const handleApplyDateFilter = () => {
                     </select>
                     
                     <Button 
+                      data-cy="stats-item-apply-filter"
                       onClick={applyItemCategoryFilter} 
                       className="bg-primary hover:bg-primary/90"
                     >
@@ -992,7 +1003,7 @@ const handleApplyDateFilter = () => {
                   <div className="text-muted-foreground text-center py-8">No item sales data for this filter.</div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border text-sm">
+                    <table data-cy="stats-item-sales-table" className="min-w-full border text-sm">
                       <thead>
                         <tr className="bg-muted">
                           <th className="px-3 py-2 border text-left">Item Name</th>
@@ -1034,6 +1045,7 @@ const handleApplyDateFilter = () => {
                 {/* Room Type Filter */}
                 <div className="mb-4 flex items-center gap-4">
                   <select
+                    data-cy="stats-room-type-filter"
                     value={roomType}
                     onChange={(e) => setRoomType(e.target.value)}
                     className="border rounded px-3 py-2"
@@ -1043,7 +1055,7 @@ const handleApplyDateFilter = () => {
                       <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
                     ))}
                   </select>
-                  <Button onClick={applyRoomTypeFilter} size="sm" className="bg-primary hover:bg-primary/90">
+                  <Button data-cy="stats-room-apply-filter" onClick={applyRoomTypeFilter} size="sm" className="bg-primary hover:bg-primary/90">
                     Apply Room Filter
                   </Button>
                 </div>
@@ -1061,7 +1073,7 @@ const handleApplyDateFilter = () => {
                   <div className="text-muted-foreground text-center py-8">No room sales data for this filter.</div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border text-sm">
+                    <table data-cy="stats-room-sales-table" className="min-w-full border text-sm">
                       <thead>
                         <tr className="bg-muted">
                           <th className="px-3 py-2 border text-left">Room Number</th>
@@ -1106,6 +1118,7 @@ const handleApplyDateFilter = () => {
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-semibold">Expenditure Management</h3>
                   <Button 
+                    data-cy="stats-create-expenditure"
                     onClick={() => setShowExpenditureForm(true)}
                     className="bg-primary hover:bg-primary/90"
                   >
@@ -1151,6 +1164,7 @@ const handleApplyDateFilter = () => {
                   {/* Search Bar */}
                   <div className="flex-1 min-w-[250px]">
                     <input
+                      data-cy="stats-expenditure-search"
                       type="text"
                       placeholder="Search by description..."
                       value={searchQuery}
@@ -1160,6 +1174,7 @@ const handleApplyDateFilter = () => {
                   </div>
                   
                   <select
+                    data-cy="stats-expenditure-status-filter"
                     value={expenditureStatus}
                     onChange={(e) => setExpenditureStatus(e.target.value)}
                     className="border rounded px-3 py-2 min-w-[150px]"
@@ -1171,6 +1186,7 @@ const handleApplyDateFilter = () => {
                   </select>
                   
                   <select
+                    data-cy="stats-expenditure-category-filter"
                     value={expenditureCategory}
                     onChange={(e) => setExpenditureCategory(e.target.value)}
                     className="border rounded px-3 py-2 min-w-[150px]"
@@ -1182,6 +1198,7 @@ const handleApplyDateFilter = () => {
                   </select>
                   
                   <Button 
+                    data-cy="stats-expenditure-clear-filters"
                     onClick={clearExpenditureFilters}
                     variant="outline"
                     className="border-input"
@@ -1189,7 +1206,7 @@ const handleApplyDateFilter = () => {
                     Clear Filters
                   </Button>
                   
-                  <Button onClick={fetchExpenditureData} className="bg-primary hover:bg-primary/90">
+                  <Button data-cy="stats-expenditure-apply-filters" onClick={fetchExpenditureData} className="bg-primary hover:bg-primary/90">
                     Apply Filters
                   </Button>
                 </div>
@@ -1206,7 +1223,7 @@ const handleApplyDateFilter = () => {
                   <div className="text-destructive text-center bg-destructive/10 p-4 rounded">{errorStates.expenditure}</div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full border text-sm">
+                    <table data-cy="stats-expenditure-table" className="min-w-full border text-sm">
                       <thead>
                         <tr className="bg-muted">
                           <th className="px-3 py-2 border text-left">Date</th>
@@ -1227,7 +1244,7 @@ const handleApplyDateFilter = () => {
                           </tr>
                         ) : (
                           expenditures.map((expenditure) => (
-                            <tr key={expenditure._id} className="hover:bg-muted/30">
+                            <tr key={expenditure._id} data-cy={`stats-expenditure-row-${expenditure._id}`} className="hover:bg-muted/30">
                               <td className="px-3 py-2 border">
                                 {format(new Date(expenditure.date), "MMM dd, yyyy")}
                               </td>
@@ -1254,6 +1271,7 @@ const handleApplyDateFilter = () => {
                                     {expenditure.status === 'pending' && (
                                       <>
                                         <Button
+                                          data-cy={`stats-expenditure-review-btn-${expenditure._id}`}
                                           size="sm"
                                           onClick={() => {
                                             setSelectedExpenditure(expenditure);
@@ -1353,8 +1371,13 @@ const handleApplyDateFilter = () => {
                           </div>
                           
                           <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded">
-                            <span className="font-medium">Total Money Collected</span>
-                            <span className="font-bold text-emerald-600 dark:text-emerald-400">रु{financialOverview?.summary?.totalGainedMoney?.toLocaleString() ?? 0}</span>
+                            <span className="font-medium">Total Cash Collected</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">रु{financialOverview?.summary?.totalCashCollected?.toLocaleString() ?? 0}</span>
+                          </div>
+                          
+                          <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded">
+                            <span className="font-medium">Total Online Collected</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">रु{financialOverview?.summary?.totalOnlineCollected?.toLocaleString() ?? 0}</span>
                           </div>
                           
                           <div className="flex justify-between items-center p-3 bg-destructive/10 rounded">
@@ -1510,6 +1533,7 @@ const handleApplyDateFilter = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Amount (रु) *</label>
                   <input
+                    data-cy="stats-expenditure-form-amount"
                     type="number"
                     required
                     min="0"
@@ -1524,6 +1548,7 @@ const handleApplyDateFilter = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Description *</label>
                   <input
+                    data-cy="stats-expenditure-form-description"
                     type="text"
                     required
                     value={expenditureForm.description}
@@ -1536,6 +1561,7 @@ const handleApplyDateFilter = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Category *</label>
                   <select
+                    data-cy="stats-expenditure-form-category"
                     required
                     value={expenditureForm.category}
                     onChange={e => setExpenditureForm({ ...expenditureForm, category: e.target.value })}
@@ -1550,6 +1576,7 @@ const handleApplyDateFilter = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Date *</label>
                   <input
+                    data-cy="stats-expenditure-form-date"
                     type="date"
                     required
                     value={expenditureForm.date}
@@ -1644,6 +1671,7 @@ const handleApplyDateFilter = () => {
                     Cancel
                   </Button>
                   <Button
+                    data-cy="stats-expenditure-form-submit"
                     type="submit"
                     disabled={formLoading}
                     className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"

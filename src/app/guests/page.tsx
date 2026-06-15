@@ -1374,6 +1374,7 @@ const handleAddNewGuest = async () => {
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                 placeholder="Search guests..."
+                data-cy="guests-search"
               />
               {filters.search && (
                 <button
@@ -1394,6 +1395,7 @@ const handleAddNewGuest = async () => {
             <button
               onClick={handleAddNewGuest}
               className="shrink-0 h-9 px-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+              data-cy="guests-add-new"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -1404,13 +1406,14 @@ const handleAddNewGuest = async () => {
             <div className="mt-3 space-y-2 md:hidden">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  value={filters.roomNumber}
-                  onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
-                  className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm"
-                  placeholder="Room #..."
-                />
+                  <input
+                    type="text"
+                    value={filters.roomNumber}
+                    onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
+                    className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm"
+                    placeholder="Room #..."
+                    data-cy="guests-room-filter"
+                  />
                 {filters.roomNumber && (
                   <button
                     onClick={() => handleFilterChange('roomNumber', '')}
@@ -1424,6 +1427,7 @@ const handleAddNewGuest = async () => {
                 value={filters.existingCustomer}
                 onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
                 className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
+                data-cy="guests-customer-filter"
               >
                 <option value="">All Customers</option>
                 <option value="true">Existing</option>
@@ -1433,6 +1437,7 @@ const handleAddNewGuest = async () => {
                 value={filters.hasDue}
                 onChange={(e) => handleFilterChange('hasDue', e.target.value)}
                 className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
+                data-cy="guests-due-filter"
               >
                 <option value="">Any Dues</option>
                 <option value="true">Has Due</option>
@@ -1447,7 +1452,7 @@ const handleAddNewGuest = async () => {
                   {showMobileSummary ? 'Hide' : 'Show'} Stats
                 </button>
                 {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
-                  <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 ml-auto shrink-0">
+                  <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 ml-auto shrink-0" data-cy="guests-clear-filters">
                     Clear
                   </button>
                 )}
@@ -1466,6 +1471,7 @@ const handleAddNewGuest = async () => {
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                   className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                   placeholder="Search guests..."
+                  data-cy="guests-search"
                 />
                 {filters.search && (
                   <button
@@ -1484,6 +1490,7 @@ const handleAddNewGuest = async () => {
                   onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
                   className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                   placeholder="Room #..."
+                  data-cy="guests-room-filter"
                 />
                 {filters.roomNumber && (
                   <button
@@ -1498,6 +1505,7 @@ const handleAddNewGuest = async () => {
                 value={filters.existingCustomer}
                 onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
                 className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px] shrink-0"
+                data-cy="guests-customer-filter"
               >
                 <option value="">All Customers</option>
                 <option value="true">Existing</option>
@@ -1507,6 +1515,7 @@ const handleAddNewGuest = async () => {
                 value={filters.hasDue}
                 onChange={(e) => handleFilterChange('hasDue', e.target.value)}
                 className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[110px] shrink-0"
+                data-cy="guests-due-filter"
               >
                 <option value="">Any Dues</option>
                 <option value="true">Has Due</option>
@@ -1523,14 +1532,14 @@ const handleAddNewGuest = async () => {
                 <span className="hidden lg:inline">{showMobileSummary ? 'Hide' : 'Show'} Stats</span>
               </button>
               {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
-                <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 shrink-0 whitespace-nowrap">
+                <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 shrink-0 whitespace-nowrap" data-cy="guests-clear-filters">
                   Clear
                 </button>
               )}
               <button
                 onClick={handleAddNewGuest}
                 className="shrink-0 h-9 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
-                data-cy="guests-add-btn"
+                data-cy="guests-add-new"
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden lg:inline">Add Guest</span>
@@ -1576,19 +1585,20 @@ const handleAddNewGuest = async () => {
 
         {/* Guest Form Modal */}
         {showForm && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-card rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4">
+            <div className="bg-card rounded-lg shadow-xl w-full max-w-4xl my-8 max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-card border-b px-4 sm:px-6 py-4 flex justify-between items-center z-10">
+                <h2 className="text-lg sm:text-xl font-semibold">
                   {editingGuest ? "Edit Guest" : "Add New Guest"}
                 </h2>
                 <button
                   onClick={resetForm}
-                  className="text-muted-foreground hover:text-gray-700 text-2xl font-semibold"
+                  className="text-muted-foreground hover:text-gray-700 text-2xl font-semibold p-1"
                 >
                   ×
                 </button>
               </div>
+              <div className="p-4 sm:p-6">
 
               {/* Existing Guest Notification */}
               {existingGuest && (
@@ -1640,7 +1650,7 @@ const handleAddNewGuest = async () => {
                         required
                         disabled={isSearchingGuest || !!editingGuest}
                         placeholder="Enter 10-digit phone number"
-                        data-cy="guests-phone"
+                        data-cy="guests-form-phone"
                       />
                       {formErrors.phone && <p className="text-red-500 text-sm">{formErrors.phone}</p>}
 
@@ -1664,7 +1674,7 @@ const handleAddNewGuest = async () => {
                         onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                         className="w-full border border-input rounded px-3 py-2"
                         required
-                        data-cy="guests-firstname"
+                        data-cy="guests-form-first-name"
                       />
                     </div>
 
@@ -1676,7 +1686,7 @@ const handleAddNewGuest = async () => {
                         onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                         className="w-full border border-input rounded px-3 py-2"
                         required
-                        data-cy="guests-lastname"
+                        data-cy="guests-form-last-name"
                       />
                     </div>
 
@@ -1688,7 +1698,7 @@ const handleAddNewGuest = async () => {
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="w-full border border-input rounded px-3 py-2"
                         placeholder="Optional"
-                        data-cy="guests-email"
+                        data-cy="guests-form-email"
                       />
                       {formErrors.email && <p className="text-red-500 text-sm">{formErrors.email}</p>}
                     </div>
@@ -1979,7 +1989,7 @@ const handleAddNewGuest = async () => {
                     type="button"
                     onClick={resetForm}
                     className="px-4 py-2 border border-input rounded-lg hover:bg-muted/30"
-                    data-cy="guests-cancel"
+                    data-cy="guests-form-cancel"
                   >
                     Cancel
                   </button>
@@ -1987,7 +1997,7 @@ const handleAddNewGuest = async () => {
                     type="submit"
                     disabled={formLoading}
                     className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
-                    data-cy="guests-submit"
+                    data-cy="guests-form-submit"
                   >
                     {formLoading ? "Saving..." : editingGuest ? "Update Guest" : "Add Guest"}
                   </button>
@@ -1995,6 +2005,7 @@ const handleAddNewGuest = async () => {
               </form>
             </div>
           </div>
+        </div>
         )}
 
         {/* Previous Stay Modal */}
@@ -2015,7 +2026,7 @@ const handleAddNewGuest = async () => {
         {/* Guests Table */}
         <div className="bg-card rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border">
+            <table className="min-w-full divide-y divide-border" data-cy="guests-table">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -2056,27 +2067,28 @@ const handleAddNewGuest = async () => {
               <tbody className="bg-card divide-y divide-border">
                 {guests.map((guest) => (
                   <React.Fragment key={guest._id}>
-                  <tr className="hover:bg-muted/30">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-1">
+                  <tr className="hover:bg-muted/30" data-cy={`guests-row-${guest._id}`}>
+                    <td className="px-6 py-4">
+                      <div className="flex items-start gap-1">
                         <button
                           onClick={() => toggleRow(guest._id)}
-                          className="p-0.5 rounded text-muted-foreground hover:text-foreground md:hidden shrink-0"
+                          className="p-0.5 rounded text-muted-foreground hover:text-foreground md:hidden shrink-0 mt-0.5"
                         >
                           <Info className="w-3.5 h-3.5" />
                         </button>
-                        <div>
-                          <div className="text-sm font-medium text-foreground">
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-foreground break-words">
                             {guest.firstName} {guest.lastName}
                           </div>
                           {guest.address && (
-                            <div className="text-sm text-muted-foreground">{guest.address}</div>
+                            <div className="text-sm text-muted-foreground break-words">{guest.address}</div>
                           )}
                           {/* Previous stays badge */}
                           {guest.checkouts && guest.checkouts.length > 0 && (
                             <button
                               onClick={() => handleViewPreviousStays(guest)}
                               className="mt-1 inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 hover:bg-purple-200"
+                              data-cy={`guests-view-btn-${guest._id}`}
                             >
                               <span className="mr-1">📋</span>
                               {guest.checkouts.length} {guest.checkouts.length === 1 ? 'Stay' : 'Stays'} · रु{guest.totalSpent?.toLocaleString() || 0}
@@ -2162,11 +2174,11 @@ const handleAddNewGuest = async () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         {guest.checkouts && guest.checkouts.length > 0 && (
-                          <button onClick={() => handleViewPreviousStays(guest)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="View History">
+                          <button onClick={() => handleViewPreviousStays(guest)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="View History" data-cy={`guests-view-btn-${guest._id}`}>
                             <Eye className="w-4 h-4" />
                           </button>
                         )}
-                        <button onClick={() => handleEdit(guest)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit">
+                        <button onClick={() => handleEdit(guest)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" title="Edit" data-cy={`guests-edit-btn-${guest._id}`}>
                           <Edit className="w-4 h-4" />
                         </button>
                       </div>
@@ -2176,16 +2188,16 @@ const handleAddNewGuest = async () => {
                     <tr className="md:hidden">
                       <td colSpan={11} className="px-4 py-3 bg-muted/20">
                         <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div><span className="text-muted-foreground">Email:</span> {guest.email}</div>
-                          <div><span className="text-muted-foreground">Phone:</span> {guest.phone}</div>
-                          <div><span className="text-muted-foreground">Room:</span> {guest.rooms?.length ? guest.rooms.map((r: any) => getRoomNumberFromGuest(guest, r)).join(', ') : 'None'}</div>
-                          <div><span className="text-muted-foreground">Status:</span> {guest.isCheckedOut ? 'Checked Out' : 'Currently Staying'}</div>
-                          <div><span className="text-muted-foreground">In:</span> {format(new Date(guest.checkInDate), "MMM dd, yyyy HH:mm")}</div>
-                          <div><span className="text-muted-foreground">Out:</span> {guest.checkOutDate ? format(new Date(guest.checkOutDate), "MMM dd, yyyy HH:mm") : '-'}</div>
-                          <div><span className="text-muted-foreground">Due:</span> {(guest.dueAmount ?? 0) > 0 ? `रु${(guest.dueAmount ?? 0).toLocaleString()}` : 'None'}</div>
-                          <div><span className="text-muted-foreground">Bill:</span> रु{guest.totalBill.toLocaleString()}</div>
-                          <div><span className="text-muted-foreground">Customer:</span> {guest.existingCustomer ? 'Existing' : 'New'}</div>
-                          <div><span className="text-muted-foreground">Referrer:</span> {guest.referrer ? 'Referred' : 'None'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Email:</span> {guest.email}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Phone:</span> {guest.phone}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Room:</span> {guest.rooms?.length ? guest.rooms.map((r: any) => getRoomNumberFromGuest(guest, r)).join(', ') : 'None'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Status:</span> {guest.isCheckedOut ? 'Checked Out' : 'Currently Staying'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">In:</span> {format(new Date(guest.checkInDate), "MMM dd, yyyy HH:mm")}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Out:</span> {guest.checkOutDate ? format(new Date(guest.checkOutDate), "MMM dd, yyyy HH:mm") : '-'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Due:</span> {(guest.dueAmount ?? 0) > 0 ? `रु${(guest.dueAmount ?? 0).toLocaleString()}` : 'None'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Bill:</span> रु{guest.totalBill.toLocaleString()}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Customer:</span> {guest.existingCustomer ? 'Existing' : 'New'}</div>
+                          <div className="break-words min-w-0"><span className="text-muted-foreground">Referrer:</span> {guest.referrer ? 'Referred' : 'None'}</div>
                         </div>
                       </td>
                     </tr>

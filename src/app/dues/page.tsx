@@ -381,11 +381,11 @@ export default function DuesManagementPage() {
                       <tr className="md:hidden">
                         <td colSpan={6} className="px-4 py-3 bg-muted/20">
                           <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div className="col-span-2"><span className="text-muted-foreground">Phone:</span> {guest.phone}</div>
-                            {guest.email && <div className="col-span-2"><span className="text-muted-foreground">Email:</span> {guest.email}</div>}
-                            <div><span className="text-muted-foreground">Check-in:</span> {guest.checkInDate ? formatDate(guest.checkInDate) : '-'}</div>
-                            <div><span className="text-muted-foreground">Check-out:</span> {guest.checkOutDate ? formatDate(guest.checkOutDate) : '-'}</div>
-                            <div className="col-span-2"><span className="text-muted-foreground">Last Payment:</span> {guest.dueTransactions && guest.dueTransactions.length > 0 ? formatDate(guest.dueTransactions[0].date) : 'No payments'}</div>
+                            <div className="col-span-2 break-words min-w-0"><span className="text-muted-foreground">Phone:</span> {guest.phone}</div>
+                            {guest.email && <div className="col-span-2 break-words min-w-0"><span className="text-muted-foreground">Email:</span> {guest.email}</div>}
+                            <div className="break-words min-w-0"><span className="text-muted-foreground">Check-in:</span> {guest.checkInDate ? formatDate(guest.checkInDate) : '-'}</div>
+                            <div className="break-words min-w-0"><span className="text-muted-foreground">Check-out:</span> {guest.checkOutDate ? formatDate(guest.checkOutDate) : '-'}</div>
+                            <div className="col-span-2 break-words min-w-0"><span className="text-muted-foreground">Last Payment:</span> {guest.dueTransactions && guest.dueTransactions.length > 0 ? formatDate(guest.dueTransactions[0].date) : 'No payments'}</div>
                           </div>
                         </td>
                       </tr>

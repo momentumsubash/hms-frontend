@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import * as lucideIcons from "lucide-react"
-import { MapPin, Phone, Mail, Star, ChevronRight, Sparkles, Quote, ArrowRight, Wifi, Coffee, Dumbbell, Car, Shield, Clock } from "lucide-react"
+import { MapPin, Phone, Mail, Star, ChevronRight, Sparkles, Quote, ArrowRight, Wifi, Coffee, Dumbbell, Car, Shield, Clock, Camera, Play, Expand, Grid3x3, ChevronLeft, X } from "lucide-react"
 import Navbar from "@/components/navbar"
 import { API_URL } from "@/lib/api"
 
@@ -20,6 +20,221 @@ const getImageUrl = (primaryUrl, fallbackUrl, defaultImage = "/abstract-geometri
   if (fallbackUrl) return fallbackUrl;
   return defaultImage;
 };
+
+function GalleryCarousel({ images }) {
+  const [current, setCurrent] = useState(0);
+  const [direction, setDirection] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [viewMode, setViewMode] = useState('carousel');
+  const [loaded, setLoaded] = useState({});
+  const containerRef = useRef(null);
+  const touchStartRef = useRef(null);
+
+  const goTo = (idx) => {
+    setDirection(idx > current ? 1 : -1);
+    setCurrent(idx);
+  };
+  const next = () => goTo((current + 1) % images.length);
+  const prev = () => goTo((current - 1 + images.length) % images.length);
+
+  // Auto-advance
+  useEffect(() => {
+    if (isFullscreen) return;
+    const timer = setInterval(next, 5000);
+    return () => clearInterval(timer);
+  }, [current, images.length, isFullscreen]);
+
+  // Keyboard
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'ArrowLeft') { prev(); e.preventDefault(); }
+      if (e.key === 'ArrowRight') { next(); e.preventDefault(); }
+      if (e.key === 'Escape' && isFullscreen) { setIsFullscreen(false); e.preventDefault(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [current, images.length, isFullscreen]);
+
+  // Touch
+  const onTouchStart = (e) => { touchStartRef.current = e.touches[0].clientX; };
+  const onTouchEnd = (e) => {
+    if (!touchStartRef.current) return;
+    const diff = e.changedTouches[0].clientX - touchStartRef.current;
+    if (Math.abs(diff) > 50) diff > 0 ? prev() : next();
+    touchStartRef.current = null;
+  };
+
+  const onImgLoad = (idx) => setLoaded(p => ({ ...p, [idx]: true }));
+
+  if (viewMode === 'grid') {
+    return (
+      <section id="gallery" className="relative py-28 px-4">
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background pointer-events-none" />
+        <div className="max-w-7xl mx-auto relative">
+          <div className="flex items-end justify-between mb-12">
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 text-primary text-xs font-medium mb-4 border border-primary/10">
+                <Camera className="w-3.5 h-3.5" /> Gallery
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold">Our Gallery</h2>
+              <p className="text-muted-foreground mt-2 max-w-xl">A glimpse into the beauty and comfort that awaits you</p>
+            </div>
+            <button onClick={() => setViewMode('carousel')} className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/5 hover:bg-primary/10 text-primary text-sm transition-all border border-primary/10">
+              <Play className="w-4 h-4" /> Slideshow
+            </button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {images.map((url, idx) => (
+              <div
+                key={idx}
+                className={`relative group cursor-pointer rounded-2xl overflow-hidden animate-fade-in-up ${idx === 0 ? 'md:col-span-2 md:row-span-2' : ''}`}
+                style={{ animationDelay: `${idx * 0.05}s`, animationFillMode: 'backwards' }}
+                onClick={() => { setCurrent(idx); setViewMode('carousel'); }}
+              >
+                <div className={`relative ${idx === 0 ? 'aspect-[4/3] md:aspect-auto md:h-full' : 'aspect-[4/3]'}`}>
+                  {!loaded[idx] && <div className="absolute inset-0 bg-muted animate-pulse" />}
+                  <img src={url} alt={`Gallery ${idx + 1}`} className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-110 ${loaded[idx] ? 'opacity-100' : 'opacity-0'}`} onLoad={() => onImgLoad(idx)} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <div className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center">
+                      <Expand className="w-4 h-4 text-gray-800" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => setViewMode('carousel')} className="md:hidden mt-6 w-full py-3 rounded-xl bg-primary/5 hover:bg-primary/10 text-primary text-sm transition-all border border-primary/10 flex items-center justify-center gap-2">
+            <Play className="w-4 h-4" /> View Slideshow
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section id="gallery" className="relative py-28 px-4 overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/5 to-background pointer-events-none" />
+
+      {/* Decorative blurs */}
+      <div className="absolute top-1/3 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/3 right-0 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+
+      <div className="max-w-6xl mx-auto relative">
+        <div className="flex items-end justify-between mb-12">
+          <div>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 text-primary text-xs font-medium mb-4 border border-primary/10">
+              <Camera className="w-3.5 h-3.5" /> Gallery
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold">Our Gallery</h2>
+            <p className="text-muted-foreground mt-2 max-w-xl">A glimpse into the beauty and comfort that awaits you</p>
+          </div>
+          <div className="hidden md:flex items-center gap-3">
+            <button onClick={() => setViewMode('grid')} className="px-4 py-2 rounded-xl bg-primary/5 hover:bg-primary/10 text-primary text-sm transition-all border border-primary/10 flex items-center gap-2">
+              <Grid3x3 className="w-4 h-4" /> Grid View
+            </button>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-background/80 backdrop-blur-sm border text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">{current + 1}</span>
+              <span>/</span>
+              <span>{images.length}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative max-w-5xl mx-auto" ref={containerRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+          {/* Main image container */}
+          <div className="relative aspect-[16/9] rounded-3xl overflow-hidden shadow-2xl shadow-black/20 group bg-muted cursor-pointer" onClick={() => setIsFullscreen(true)}>
+            {/* Slide */}
+            {images.map((url, idx) => (
+              <div
+                key={idx}
+                className={`absolute inset-0 transition-all duration-700 ease-out ${idx === current ? 'opacity-100 scale-100' : 'opacity-0 scale-105'}`}
+                style={{ zIndex: idx === current ? 1 : 0 }}
+              >
+                {!loaded[idx] && <div className="absolute inset-0 bg-muted animate-pulse" />}
+                <img src={url} alt={`Gallery ${idx + 1}`} className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 ${loaded[idx] ? 'opacity-100' : 'opacity-0'}`} onLoad={() => onImgLoad(idx)} />
+              </div>
+            ))}
+
+            {/* Gradient overlays */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10 pointer-events-none" />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+
+            {/* Image counter (mobile) */}
+            <div className="absolute top-4 right-4 md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm text-white text-xs">
+              <span className="font-semibold">{current + 1}</span>
+              <span className="opacity-60">/</span>
+              <span className="opacity-60">{images.length}</span>
+            </div>
+
+            {/* Nav arrows */}
+            <button onClick={(e) => { e.stopPropagation(); prev(); }} className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/25 border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 shadow-lg">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); next(); }} className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/25 border border-white/20 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 shadow-lg">
+              <ChevronRight className="w-5 h-5" />
+            </button>
+
+            {/* Click hint */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 text-white/60 text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <Expand className="w-3.5 h-3.5" />
+              <span>Click to expand</span>
+            </div>
+          </div>
+
+          {/* Thumbnails */}
+          <div className="mt-6">
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin" style={{ scrollbarWidth: 'thin' }}>
+              {images.map((url, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => goTo(idx)}
+                  className={`relative shrink-0 w-20 h-14 rounded-xl overflow-hidden transition-all duration-300 border-2 ${idx === current ? 'border-primary ring-2 ring-primary/30 scale-105' : 'border-transparent hover:border-white/30 opacity-60 hover:opacity-100'}`}
+                >
+                  <img src={url} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Dot indicators (mobile) */}
+          <div className="md:hidden flex justify-center gap-1.5 mt-4">
+            {images.map((_, idx) => (
+              <button key={idx} onClick={() => goTo(idx)} className={`h-1.5 rounded-full transition-all duration-300 ${idx === current ? 'w-8 bg-primary' : 'w-1.5 bg-primary/30 hover:bg-primary/50'}`} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Fullscreen Lightbox */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center" onClick={() => setIsFullscreen(false)}>
+          <button onClick={() => setIsFullscreen(false)} className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all z-10">
+            <X className="w-5 h-5" />
+          </button>
+          <div className="absolute top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white text-sm z-10">
+            <Camera className="w-4 h-4" />
+            <span>{current + 1} / {images.length}</span>
+          </div>
+          <button onClick={(e) => { e.stopPropagation(); prev(); }} className="absolute left-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all z-10 hover:scale-110 backdrop-blur-sm">
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); next(); }} className="absolute right-6 top-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all z-10 hover:scale-110 backdrop-blur-sm">
+            <ChevronRight className="w-6 h-6" />
+          </button>
+          <div className="max-w-[90vw] max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <img src={images[current]} alt={`Gallery ${current + 1}`} className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl" />
+          </div>
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+            {images.map((_, idx) => (
+              <button key={idx} onClick={(e) => { e.stopPropagation(); goTo(idx); }} className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === current ? 'bg-white w-8' : 'bg-white/40 hover:bg-white/70'}`} />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
 
 export default function HotelLandingPage() {
   const [hotel, setHotel] = useState(null);
@@ -41,14 +256,18 @@ export default function HotelLandingPage() {
       testimonialsDescription: w.testimonialsDescription || "",
       footerDescription: w.footerDescription || "",
       heroImage: w.heroImage || null,
+      heroVideo: w.heroVideo || '',
       rooms: Array.isArray(w.rooms) ? w.rooms : [],
       amenities: Array.isArray(w.amenities) ? w.amenities : [],
       amenitiesDetailed: Array.isArray(w.amenitiesDetailed) ? w.amenitiesDetailed : [],
+      experiences: Array.isArray(w.experiences) ? w.experiences : [],
       testimonials: Array.isArray(w.testimonials) ? w.testimonials : [],
       contactInfo: {
         phone: w.contactInfo?.phone || "",
         email: w.contactInfo?.email || "",
         address: w.contactInfo?.address || "",
+        reception: w.contactInfo?.reception || "",
+        website: w.contactInfo?.website || "",
       },
     };
   };
@@ -135,8 +354,16 @@ export default function HotelLandingPage() {
 
   const nepaliFlag = hotel?.nepaliFlag === true;
   const activeRooms = (websiteContent.rooms || []).filter(r => r.isActive);
-  const activeAmenities = (websiteContent.amenitiesDetailed || []).filter(a => a.isActive !== false);
+  const amenitiesDetailed = websiteContent.amenitiesDetailed || [];
+  const simpleAmenities = websiteContent.amenities || [];
+  const activeDetailedAmenities = amenitiesDetailed.filter(a => a.isActive !== false);
+  const activeAmenities = activeDetailedAmenities.length > 0 ? activeDetailedAmenities : simpleAmenities.filter(a => a && (a.isActive !== false || !('isActive' in a)));
   const activeTestimonials = (websiteContent.testimonials || []).filter(t => t.isActive);
+
+  const amenityName = (a) => a.name || a.title || '';
+  const amenityIcon = (a) => a.icon || 'Star';
+  const amenityDesc = (a) => a.description || '';
+  const amenityImage = (a) => a.image || '';
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
@@ -144,12 +371,29 @@ export default function HotelLandingPage() {
 
       {/* ==================== HERO SECTION ==================== */}
       <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-110"
-          style={{
-            backgroundImage: `url(${getImageUrl(websiteContent.heroImage, hotel?.images?.[0])})`,
-          }}
-        />
+        {websiteContent.heroVideo ? (
+          <div className="absolute inset-0">
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover scale-110"
+              poster={websiteContent.heroImage || hotel?.images?.[0] || ''}
+            >
+              <source src={websiteContent.heroVideo} type="video/mp4" />
+            </video>
+          </div>
+        ) : websiteContent.heroImage || hotel?.images?.[0] ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-110"
+            style={{
+              backgroundImage: `url(${getImageUrl(websiteContent.heroImage, hotel?.images?.[0])})`,
+            }}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-deep-navy via-[oklch(0.18_0.05_280)] to-[oklch(0.12_0.04_260)]" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-deep-navy/80 via-deep-navy/60 to-deep-navy/90" />
 
         {/* Decorative elements */}
@@ -221,6 +465,15 @@ export default function HotelLandingPage() {
         </div>
       </section>
 
+      {/* ==================== GALLERY SECTION ==================== */}
+      {(() => {
+        const galleryImages = websiteContent?.galleryImages?.length > 0
+          ? websiteContent.galleryImages
+          : (hotel?.images || []).filter(u => typeof u === 'string' && u.startsWith('http'));
+        if (galleryImages.length === 0) return null;
+        return <GalleryCarousel images={galleryImages} />;
+      })()}
+
       {/* ==================== ROOMS SECTION ==================== */}
       <section id="rooms" className="relative py-28 px-4">
         <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background pointer-events-none" />
@@ -243,16 +496,24 @@ export default function HotelLandingPage() {
           <div className={`grid gap-8 ${activeRooms.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : activeRooms.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
             {activeRooms.map((room, index) => (
               <Card key={index} className="group overflow-hidden border-0 bg-card/80 backdrop-blur-sm shadow-card hover:shadow-card-hover transition-all duration-500 hover:-translate-y-2 rounded-2xl">
-                <div className="relative overflow-hidden aspect-[4/3]">
-                  <img
-                    src={getImageUrl(room.image, hotel?.images?.[0])}
-                    alt={room.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = "/abstract-geometric-shapes.png";
-                    }}
-                  />
+                <div className="relative overflow-hidden aspect-[4/3] bg-gradient-to-br from-primary/20 to-accent/20">
+                  {room.image ? (
+                    <img
+                      src={room.image}
+                      alt={room.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center">
+                        {lucideIcons['BedDouble'] ? <lucideIcons.BedDouble className="w-10 h-10 text-primary" /> : null}
+                      </div>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                   <Badge className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-foreground border-0 px-3 py-1.5 text-sm font-semibold rounded-xl shadow-lg">
                     From रु{room.price}
@@ -311,62 +572,49 @@ export default function HotelLandingPage() {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{websiteContent.amenitiesDescription || 'Everything you need for a comfortable and memorable stay'}</p>
           </div>
 
-          {activeAmenities.length > 0 ? (
-            <div className={`grid gap-6 ${activeAmenities.length <= 2 ? 'grid-cols-1 md:grid-cols-2 max-w-2xl mx-auto' : activeAmenities.length <= 4 ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-4 lg:grid-cols-6'}`}>
-              {activeAmenities.map((a, idx) => {
-                const IconComponent = lucideIcons[a.icon || 'Star'];
-                return (
-                  <Card key={idx} className="group border-0 bg-card/60 backdrop-blur-sm hover:bg-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 rounded-2xl overflow-hidden">
-                    {a.image && (
-                      <div className="relative overflow-hidden h-24">
-                        <img
-                          src={getImageUrl(a.image, hotel?.images?.[0])}
-                          alt={a.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = "/abstract-geometric-shapes.png";
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
-                      </div>
-                    )}
-                    <CardHeader className={`text-center ${a.image ? 'pt-3' : 'pt-6'}`}>
-                      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                        {IconComponent ? <IconComponent className="w-7 h-7 text-primary" /> : null}
-                      </div>
-                      <CardTitle className="text-base font-semibold text-foreground">{a.name}</CardTitle>
-                      {a.description && (
-                        <CardDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">{a.description}</CardDescription>
-                      )}
-                    </CardHeader>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {(websiteContent.amenities || []).map((amenity, idx) => {
-                const amenityName = typeof amenity === 'string' ? amenity : amenity.name;
-                const amenityIcon = typeof amenity === 'object' ? amenity.icon : 'Star';
-                const IconComponent = lucideIcons[amenityIcon];
-                return (
-                  <Card key={idx} className="group border-0 bg-card/60 backdrop-blur-sm hover:bg-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 rounded-2xl text-center p-6">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                      {IconComponent ? <IconComponent className="w-7 h-7 text-primary" /> : null}
+          <div className="flex flex-wrap justify-center gap-6">
+            {activeAmenities.map((a, idx) => {
+              const name = amenityName(a);
+              const icon = amenityIcon(a);
+              const desc = amenityDesc(a);
+              const img = amenityImage(a);
+              const IconComponent = lucideIcons[icon] || Star;
+              const isDetailed = icon !== 'Star' || desc || img;
+              return (
+                <div
+                  key={idx}
+                  className="group w-[180px] flex-shrink-0 border-0 bg-card/60 backdrop-blur-sm hover:bg-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 rounded-2xl overflow-hidden"
+                >
+                  {img && (
+                    <div className="relative overflow-hidden h-20">
+                      <img
+                        src={img}
+                        alt={name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
                     </div>
-                    <CardTitle className="text-sm font-semibold text-foreground">{amenityName}</CardTitle>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+                  )}
+                  <div className={`text-center ${img ? 'pt-2' : 'pt-5'} pb-4 px-3`}>
+                    <div className={`${isDetailed ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                      {IconComponent ? <IconComponent className={`${isDetailed ? 'w-7 h-7' : 'w-6 h-6'} text-primary`} /> : null}
+                    </div>
+                    <h3 className="text-sm font-semibold text-foreground leading-tight">{name}</h3>
+                    {desc && (
+                      <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed line-clamp-2">{desc}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
       {/* ==================== TESTIMONIALS SECTION ==================== */}
       {activeTestimonials.length > 0 && (
-        <section className="relative py-28 px-4 overflow-hidden">
+        <section id="testimonials" className="relative py-28 px-4 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/30 to-background pointer-events-none" />
           <div className="absolute top-10 right-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-10 left-10 w-80 h-80 bg-accent/8 rounded-full blur-3xl pointer-events-none" />
@@ -436,40 +684,63 @@ export default function HotelLandingPage() {
       )}
 
       {/* ==================== CTA SECTION ==================== */}
-      <section className="relative py-24 px-4">
+      <section className="relative py-28 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/5 to-primary/10 pointer-events-none" />
+        <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none animate-float-slow" />
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-accent/10 rounded-full blur-3xl pointer-events-none animate-float-slow" style={{ animationDelay: '2s' }} />
         <div className="relative max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-br from-primary/5 to-accent/5 rounded-3xl p-12 md:p-16 border border-primary/10 shadow-xl backdrop-blur-sm">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-brand flex items-center justify-center mx-auto mb-6">
+          <div className="bg-gradient-to-br from-primary/5 to-accent/5 rounded-3xl p-12 md:p-16 border border-primary/10 shadow-xl backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary/50" />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-brand flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20 animate-scale-pulse">
               <Sparkles className="w-8 h-8 text-white" />
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Ready for an Unforgettable Experience?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              {activeRooms.length > 0
+                ? `Ready for an Unforgettable Stay at ${hotel?.name || 'Our Hotel'}?`
+                : 'Ready for an Unforgettable Experience?'}
+            </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Book your stay today and immerse yourself in the beauty, culture, and hospitality that make our hotel truly special.
+              {activeRooms.length > 0
+                ? `Choose from our ${activeRooms.length} premium accommodation${activeRooms.length > 1 ? 's' : ''} and immerse yourself in the beauty, culture, and hospitality that make ${hotel?.name || 'our hotel'} truly special.`
+                : 'Book your stay today and immerse yourself in the beauty, culture, and hospitality that make our hotel truly special.'}
             </p>
-            <Button
-              size="lg"
-              className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground px-10 py-7 text-lg flex items-center gap-3 mx-auto rounded-2xl shadow-2xl shadow-primary/30 hover:shadow-primary/40 transition-all duration-300 hover:scale-105"
-              onClick={handleWhatsAppContact}
-            >
-              <WhatsAppIcon className="w-6 h-6" />
-              <span>Reserve Your Room Now</span>
-              <ArrowRight className="w-5 h-5" />
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Button
+                size="lg"
+                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground px-10 py-7 text-lg flex items-center gap-3 rounded-2xl shadow-2xl shadow-primary/30 hover:shadow-primary/40 transition-all duration-300 hover:scale-105"
+                onClick={handleWhatsAppContact}
+              >
+                <WhatsAppIcon className="w-6 h-6" />
+                <span>Reserve Your Room Now</span>
+                <ArrowRight className="w-5 h-5" />
+              </Button>
+              {activeRooms.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="px-8 py-7 text-lg flex items-center gap-2 rounded-2xl border-primary/30 hover:border-primary transition-all duration-300 hover:scale-105"
+                  onClick={() => document.getElementById('rooms')?.scrollIntoView({ behavior: 'smooth' })}
+                >
+                  <span>View Rooms</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ==================== FOOTER ==================== */}
       <footer id="contact" className="relative bg-gradient-to-br from-deep-navy via-[oklch(0.15_0.04_280)] to-deep-navy text-white py-20">
-        {/* Decorative top border */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+        <div className="absolute top-1/3 right-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/3 left-0 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12 mb-12">
             <div className="lg:col-span-1">
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-brand flex items-center justify-center shadow-lg shadow-primary/20">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="text-xl font-bold">{hotel?.name}</h3>
@@ -478,33 +749,25 @@ export default function HotelLandingPage() {
                 {websiteContent.footerDescription || 'Experience authentic Nepali hospitality in the heart of the Himalayas. Your gateway to adventure and tranquility.'}
               </p>
               <div className="space-y-3 text-sm">
-                {websiteContent.contactInfo?.address && (
+                {(websiteContent.contactInfo?.address || hotel?.address) && (
                   <div className="flex items-start gap-3 text-white/60 hover:text-white/80 transition-colors">
                     <MapPin className="w-4 h-4 mt-0.5 text-accent shrink-0" />
-                    <span>{websiteContent.contactInfo.address}</span>
+                    <span>{websiteContent.contactInfo.address || `${hotel?.address?.street || ''}${hotel?.address?.city ? ', ' + hotel.address.city : ''}`}</span>
                   </div>
                 )}
-                {websiteContent.contactInfo?.phone && (
+                {(websiteContent.contactInfo?.phone || hotel?.contact?.phone) && (
                   <div className="flex items-center gap-3 text-white/60 hover:text-white/80 transition-colors">
                     <Phone className="w-4 h-4 text-accent shrink-0" />
-                    <a href={`tel:${websiteContent.contactInfo.phone}`} className="hover:text-white transition-colors">
-                      {websiteContent.contactInfo.phone}
+                    <a href={`tel:${websiteContent.contactInfo.phone || hotel?.contact?.phone}`} className="hover:text-white transition-colors">
+                      {websiteContent.contactInfo.phone || hotel?.contact?.phone}
                     </a>
                   </div>
                 )}
-                {websiteContent.contactInfo?.email && (
+                {(websiteContent.contactInfo?.email || hotel?.contact?.email) && (
                   <div className="flex items-center gap-3 text-white/60 hover:text-white/80 transition-colors">
                     <Mail className="w-4 h-4 text-accent shrink-0" />
-                    <a href={`mailto:${websiteContent.contactInfo.email}`} className="hover:text-white transition-colors">
-                      {websiteContent.contactInfo.email}
-                    </a>
-                  </div>
-                )}
-                {hotel?.contact?.phone && !websiteContent.contactInfo?.phone && (
-                  <div className="flex items-center gap-3 text-white/60 hover:text-white/80 transition-colors">
-                    <Phone className="w-4 h-4 text-accent shrink-0" />
-                    <a href={`tel:${hotel.contact.phone}`} className="hover:text-white transition-colors">
-                      {hotel.contact.phone}
+                    <a href={`mailto:${websiteContent.contactInfo.email || hotel?.contact?.email}`} className="hover:text-white transition-colors">
+                      {websiteContent.contactInfo.email || hotel?.contact?.email}
                     </a>
                   </div>
                 )}
@@ -512,14 +775,6 @@ export default function HotelLandingPage() {
                   <div className="flex items-center gap-3 text-white/60">
                     <Phone className="w-4 h-4 text-accent shrink-0" />
                     <span>{hotel.contact.reception}</span>
-                  </div>
-                )}
-                {hotel?.contact?.email && !websiteContent.contactInfo?.email && (
-                  <div className="flex items-center gap-3 text-white/60 hover:text-white/80 transition-colors">
-                    <Mail className="w-4 h-4 text-accent shrink-0" />
-                    <a href={`mailto:${hotel.contact.email}`} className="hover:text-white transition-colors">
-                      {hotel.contact.email}
-                    </a>
                   </div>
                 )}
               </div>
@@ -532,6 +787,7 @@ export default function HotelLandingPage() {
                   { href: "#home", label: "Home" },
                   { href: "#rooms", label: "Rooms & Suites" },
                   { href: "#amenities", label: "Amenities" },
+                  ...(activeTestimonials.length > 0 ? [{ href: "#testimonials", label: "Guest Reviews" }] : []),
                   { href: "#contact", label: "Contact Us" },
                 ].map((link) => (
                   <li key={link.href}>
@@ -550,17 +806,21 @@ export default function HotelLandingPage() {
             <div>
               <h4 className="text-sm font-semibold text-white/90 uppercase tracking-wider mb-5">Services</h4>
               <ul className="space-y-3">
-                {[
-                  { icon: "BedDouble", label: "Premium Rooms" },
-                  { icon: "Utensils", label: "Restaurant" },
-                  { icon: "Shield", label: "24/7 Security" },
-                  { icon: "Wifi", label: "Free WiFi" },
-                ].map((service) => {
-                  const SvcIcon = lucideIcons[service.icon] || Star;
+                {(activeAmenities.length > 0 ? activeAmenities.slice(0, 6) : [
+                  { icon: 'BedDouble', name: 'Premium Rooms' },
+                  { icon: 'UtensilsCrossed', name: 'Restaurant' },
+                  { icon: 'Shield', name: '24/7 Security' },
+                  { icon: 'Wifi', name: 'Free WiFi' },
+                  { icon: 'Clock', name: 'Room Service' },
+                  { icon: 'Car', name: 'Parking' },
+                ]).map((service) => {
+                  const svgIcon = amenityIcon(service);
+                  const svgName = amenityName(service);
+                  const SvcIcon = lucideIcons[svgIcon] || Star;
                   return (
-                    <li key={service.label} className="flex items-center gap-3 text-white/50 text-sm">
-                      <SvcIcon className="w-3.5 h-3.5 text-accent" />
-                      {service.label}
+                    <li key={svgName} className="flex items-center gap-3 text-white/50 text-sm">
+                      <SvcIcon className="w-3.5 h-3.5 text-accent shrink-0" />
+                      {svgName}
                     </li>
                   );
                 })}
@@ -570,7 +830,9 @@ export default function HotelLandingPage() {
             <div>
               <h4 className="text-sm font-semibold text-white/90 uppercase tracking-wider mb-5">Book Your Stay</h4>
               <p className="text-white/50 text-sm mb-6 leading-relaxed">
-                Ready to experience the magic? Book your room today and start your adventure.
+                {activeRooms.length > 0
+                  ? `Choose from ${activeRooms.length} premium room${activeRooms.length > 1 ? 's' : ''} and experience the best of ${hotel?.name || 'Nepali hospitality'}.`
+                  : 'Ready to experience the magic? Book your room today and start your adventure.'}
               </p>
               <Button
                 size="lg"
@@ -588,7 +850,7 @@ export default function HotelLandingPage() {
               &copy; {new Date().getFullYear()} {hotel?.name}. All rights reserved.
             </p>
             <div className="flex items-center gap-6 text-white/30 text-xs">
-              <span>Crafted with care in the Himalayas</span>
+              <span>{activeRooms.length} Rooms · {activeAmenities.length} Amenities · {activeTestimonials.length} Reviews</span>
               {seo?.keywords?.length > 0 && (
                 <span className="hidden md:inline">{seo.keywords.slice(0, 3).join(' · ')}</span>
               )}

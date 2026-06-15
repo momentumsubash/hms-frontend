@@ -384,7 +384,7 @@ export default function ItemsPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[160px] max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              <input type="text" value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
+              <input data-cy="items-search" type="text" value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all" placeholder="Search items..." />
               {filters.search && (
                 <button onClick={() => handleFilterChange('search', '')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5">
@@ -392,23 +392,23 @@ export default function ItemsPage() {
                 </button>
               )}
             </div>
-            <select value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)}
+            <select data-cy="items-category-filter" value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)}
               className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[130px]">
               <option value="">All Categories</option>
               {categories.length === 0 ? <option disabled>Loading...</option> : categories.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
             </select>
-            <select value={filters.isAvailable} onChange={(e) => handleFilterChange('isAvailable', e.target.value)}
+            <select data-cy="items-availability-filter" value={filters.isAvailable} onChange={(e) => handleFilterChange('isAvailable', e.target.value)}
               className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px]">
               <option value="">All Items</option>
               <option value="true">Available</option>
               <option value="false">Unavailable</option>
             </select>
             {(filters.search || filters.category || filters.isAvailable) && (
-              <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0">
+              <button data-cy="items-clear-filters" onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0">
                 Clear
               </button>
             )}
-            <Button onClick={() => { resetForm(); setShowCreateModal(true); }} className="ml-auto shrink-0">
+            <Button data-cy="items-add-new" onClick={() => { resetForm(); setShowCreateModal(true); }} className="ml-auto shrink-0">
               <Plus className="w-4 h-4" />
               Add New
             </Button>
@@ -430,7 +430,7 @@ export default function ItemsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table data-cy="items-table" className="w-full">
               <thead>
                 <tr className="bg-muted/50">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
@@ -444,7 +444,7 @@ export default function ItemsPage() {
               <tbody className="divide-y divide-border">
                 {Array.isArray(items) && items.length > 0 ? (
                   items.map((item: Item) => (
-                    <tr key={item._id} className="hover:bg-muted/30 transition-colors">
+                    <tr key={item._id} data-cy={`items-row-${item._id}`} className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">{item.name}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <Badge variant="secondary" className="text-xs rounded px-2 py-0.5 font-normal">
@@ -470,10 +470,10 @@ export default function ItemsPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => openEditModal(item)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all">
+                          <button data-cy={`items-edit-btn-${item._id}`} onClick={() => openEditModal(item)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all">
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button onClick={() => openDeleteModal(item)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                          <button data-cy={`items-delete-btn-${item._id}`} onClick={() => openDeleteModal(item)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -506,23 +506,23 @@ export default function ItemsPage() {
       </div>
 
       <Modal show={showCreateModal} onClose={() => setShowCreateModal(false)} title="Add New Item">
-        <form onSubmit={(e) => { e.preventDefault(); createItem(); }} className="p-5 space-y-4">
+        <form data-cy="items-create-form" onSubmit={(e) => { e.preventDefault(); createItem(); }} className="p-5 space-y-4">
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Name</label>
-            <input type="text" required value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            <input data-cy="items-create-name" type="text" required value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.name ? 'border-destructive bg-destructive/5' : 'border-input'}`} />
             {formErrors.name && <p className="text-destructive text-xs mt-1">{formErrors.name}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Price (रु)</label>
-              <input type="number" required min="0" step="0.01" value={formData.price} onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+              <input data-cy="items-create-price" type="number" required min="0" step="0.01" value={formData.price} onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
                 className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.price ? 'border-destructive bg-destructive/5' : 'border-input'}`} />
               {formErrors.price && <p className="text-destructive text-xs mt-1">{formErrors.price}</p>}
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Category</label>
-              <select required value={formData.category} onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              <select data-cy="items-create-category" required value={formData.category} onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                 className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.category ? 'border-destructive bg-destructive/5' : 'border-input'}`}>
                 <option value="">Select</option>
                 {categories.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
@@ -532,56 +532,56 @@ export default function ItemsPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Profit Margin</label>
-            <input type="text" value={formData.profitMarginBand} onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
+            <input data-cy="items-create-profit-margin" type="text" value={formData.profitMarginBand} onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
               className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" placeholder="e.g. High, Medium, Low" />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Comment</label>
-            <input type="text" value={formData.comment} onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
+            <input data-cy="items-create-comment" type="text" value={formData.comment} onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
               className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" placeholder="Optional comment" />
           </div>
           <label className="flex items-center gap-2.5 text-sm cursor-pointer">
-            <input type="checkbox" checked={formData.inventory} onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
+            <input data-cy="items-create-inventory" type="checkbox" checked={formData.inventory} onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
               className="w-4 h-4 rounded border-input text-primary focus:ring-ring/30" />
             <span>Enable Inventory Tracking</span>
           </label>
           {formData.inventory && (
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Initial Stock</label>
-              <input type="number" min="0" value={formData.stock} onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+              <input data-cy="items-create-stock" type="number" min="0" value={formData.stock} onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
                 className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" />
             </div>
           )}
           <label className="flex items-center gap-2.5 text-sm cursor-pointer">
-            <input type="checkbox" checked={formData.isAvailable} onChange={(e) => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
+            <input data-cy="items-create-available" type="checkbox" checked={formData.isAvailable} onChange={(e) => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
               className="w-4 h-4 rounded border-input text-primary focus:ring-ring/30" />
             <span>Available</span>
           </label>
           <div className="flex justify-end gap-3 pt-2 border-t border-border">
             <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>Cancel</Button>
-            <Button type="submit">Create Item</Button>
+            <Button data-cy="items-create-submit" type="submit">Create Item</Button>
           </div>
         </form>
       </Modal>
 
       <Modal show={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Item">
-        <form onSubmit={(e) => { e.preventDefault(); updateItem(); }} className="p-5 space-y-4">
+        <form data-cy="items-edit-form" onSubmit={(e) => { e.preventDefault(); updateItem(); }} className="p-5 space-y-4">
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Name</label>
-            <input type="text" required value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            <input data-cy="items-edit-name" type="text" required value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.name ? 'border-destructive bg-destructive/5' : 'border-input'}`} />
             {formErrors.name && <p className="text-destructive text-xs mt-1">{formErrors.name}</p>}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Price (रु)</label>
-              <input type="number" required min="0" step="0.01" value={formData.price} onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+              <input data-cy="items-edit-price" type="number" required min="0" step="0.01" value={formData.price} onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
                 className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.price ? 'border-destructive bg-destructive/5' : 'border-input'}`} />
               {formErrors.price && <p className="text-destructive text-xs mt-1">{formErrors.price}</p>}
             </div>
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Category</label>
-              <select required value={formData.category} onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+              <select data-cy="items-edit-category" required value={formData.category} onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
                 className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.category ? 'border-destructive bg-destructive/5' : 'border-input'}`}>
                 <option value="">Select</option>
                 {categories.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
@@ -591,47 +591,47 @@ export default function ItemsPage() {
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Profit Margin</label>
-            <input type="text" value={formData.profitMarginBand} onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
+            <input data-cy="items-edit-profit-margin" type="text" value={formData.profitMarginBand} onChange={(e) => setFormData(prev => ({ ...prev, profitMarginBand: e.target.value }))}
               className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" />
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">Comment</label>
-            <input type="text" value={formData.comment} onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
+            <input data-cy="items-edit-comment" type="text" value={formData.comment} onChange={(e) => setFormData(prev => ({ ...prev, comment: e.target.value }))}
               className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" />
           </div>
           <label className="flex items-center gap-2.5 text-sm cursor-pointer">
-            <input type="checkbox" checked={formData.inventory} onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
+            <input data-cy="items-edit-inventory" type="checkbox" checked={formData.inventory} onChange={(e) => setFormData(prev => ({ ...prev, inventory: e.target.checked }))}
               className="w-4 h-4 rounded border-input text-primary focus:ring-ring/30" />
             <span>Enable Inventory Tracking</span>
           </label>
           {formData.inventory && (
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Current Stock</label>
-              <input type="number" min="0" value={formData.stock} onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
+              <input data-cy="items-edit-stock" type="number" min="0" value={formData.stock} onChange={(e) => setFormData(prev => ({ ...prev, stock: e.target.value }))}
                 className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all" />
             </div>
           )}
           <label className="flex items-center gap-2.5 text-sm cursor-pointer">
-            <input type="checkbox" checked={formData.isAvailable} onChange={(e) => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
+            <input data-cy="items-edit-available" type="checkbox" checked={formData.isAvailable} onChange={(e) => setFormData(prev => ({ ...prev, isAvailable: e.target.checked }))}
               className="w-4 h-4 rounded border-input text-primary focus:ring-ring/30" />
             <span>Available</span>
           </label>
           <div className="flex justify-end gap-3 pt-2 border-t border-border">
-            <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
-            <Button type="submit">Update Item</Button>
+            <Button data-cy="items-edit-cancel" type="button" variant="outline" onClick={() => setShowEditModal(false)}>Cancel</Button>
+            <Button data-cy="items-edit-submit" type="submit">Update Item</Button>
           </div>
         </form>
       </Modal>
 
       <Modal show={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Item">
-        <div className="p-5">
+        <div data-cy="items-delete-modal" className="p-5">
           <div className="flex items-start gap-3 mb-6 p-3 bg-destructive/5 border border-destructive/20 rounded-lg">
             <Trash2 className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
             <p className="text-sm text-foreground/80">Are you sure you want to delete <strong>{selectedItem?.name}</strong>? This cannot be undone.</p>
           </div>
           <div className="flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={deleteItem}>Delete Item</Button>
+            <Button data-cy="items-delete-confirm" variant="destructive" onClick={deleteItem}>Delete Item</Button>
           </div>
         </div>
       </Modal>
