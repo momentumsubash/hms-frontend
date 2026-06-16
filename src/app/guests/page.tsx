@@ -1886,34 +1886,56 @@ const handleAddNewGuest = async () => {
 
                     <div>
                       <label className="block text-sm font-medium mb-1">Select Rooms *</label>
-                      <select
-                        multiple
-                        value={formData.rooms}
-                        onChange={(e) => {
-                          const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-                          setFormData({ ...formData, rooms: selectedOptions });
-                        }}
-                        className="w-full border border-input rounded px-3 py-2 h-32 max-w-full truncate"
-                        required
-                        data-cy="guests-rooms"
-                      >
-                        {/* Show all rooms when editing, only available (unoccupied) rooms when creating */}
-                        {(editingGuest ? allRooms : availableRooms.filter(r => !r.isOccupied)).map((room) => (
-                          <option
-                            key={room._id}
-                            value={room._id}
-                            className={room.isOccupied && !formData.rooms.includes(room._id) ? 'text-gray-400' : ''}
-                          >
-                            {room.roomNumber} - {room.type} (रु{room.rate}/night)
-                            {room.isOccupied && !formData.rooms.includes(room._id) && ' - Occupied'}
-                            {formData.rooms.includes(room._id) && ' - Selected'}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="border border-input rounded max-h-60 sm:max-h-72 overflow-y-auto">
+                        {(editingGuest ? allRooms : availableRooms.filter(r => !r.isOccupied)).map((room) => {
+                          const isSelected = formData.rooms.includes(room._id);
+                          const isOccupiedElse = room.isOccupied && !formData.rooms.includes(room._id);
+                          return (
+                            <div
+                              key={room._id}
+                              onClick={() => {
+                                if (isOccupiedElse) return;
+                                setFormData(prev => ({
+                                  ...prev,
+                                  rooms: isSelected
+                                    ? prev.rooms.filter(id => id !== room._id)
+                                    : [...prev.rooms, room._id]
+                                }));
+                              }}
+                              data-cy="guests-rooms"
+                              className={`flex items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2.5 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors
+                                ${isSelected ? 'bg-blue-50 dark:bg-blue-950/30' : 'hover:bg-muted/50'}
+                                ${isOccupiedElse ? 'text-gray-400 cursor-not-allowed' : ''}
+                              `}
+                            >
+                              <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center flex-shrink-0
+                                ${isSelected ? 'bg-primary border-primary' : 'border-gray-300'}
+                                ${isOccupiedElse ? 'border-gray-200' : ''}
+                              `}>
+                                {isSelected && (
+                                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-baseline gap-1.5 sm:gap-2">
+                                  <span className="font-semibold text-sm sm:text-base">#{room.roomNumber}</span>
+                                  <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">{room.type}</span>
+                                  <span className="text-xs sm:text-sm text-muted-foreground ml-auto">रु{room.rate}/night</span>
+                                </div>
+                                <div className="text-xs text-muted-foreground sm:hidden">{room.type}</div>
+                              </div>
+                              {isOccupiedElse && (
+                                <span className="text-xs text-gray-400 flex-shrink-0">Occupied</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                       {formErrors.rooms && <p className="text-red-500 text-sm">{formErrors.rooms}</p>}
-                      <p className="text-sm text-muted-foreground mt-1">Hold Ctrl/Cmd to select multiple rooms</p>
+                      <p className="text-sm text-muted-foreground mt-1">Click to select/deselect rooms</p>
 
-                      {/* Show room status information */}
                       <div className="mt-2 text-sm text-muted-foreground">
                         {editingGuest && (
                           <p>

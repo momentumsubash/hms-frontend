@@ -867,7 +867,7 @@ const getPrinterStatusIndicator = () => {
                             </span>
                           </div>
                           {createForm.showRoomDropdown && (
-                            <div data-cy="orders-room-dropdown" className="absolute top-full left-0 right-0 border border-input rounded mt-1 bg-card z-10 max-h-48 overflow-y-auto">
+                            <div data-cy="orders-room-dropdown" className="absolute top-full left-0 right-0 border border-input rounded mt-1 bg-card z-10 max-h-60 sm:max-h-72 overflow-y-auto shadow-lg">
                               {occupiedRooms.map((room, index) => (
                                 <div
                                   key={room._id}
@@ -877,8 +877,8 @@ const getPrinterStatusIndicator = () => {
                                   }}
                                   className="px-3 py-2 hover:bg-blue-100 cursor-pointer border-b border-gray-100 last:border-b-0"
                                 >
-                                  <div className="font-semibold">Room {room.roomNumber}</div>
-                                  <div className="text-sm text-muted-foreground">{room.guestName || 'Guest'} (Check-in: {new Date(room.checkInDate).toLocaleDateString()})</div>
+                                  <div className="font-semibold text-sm sm:text-base">Room {room.roomNumber}</div>
+                                  <div className="text-xs sm:text-sm text-muted-foreground">{room.guestName || 'Guest'} (Check-in: {new Date(room.checkInDate).toLocaleDateString()})</div>
                                 </div>
                               ))}
                             </div>
