@@ -1469,7 +1469,10 @@ export default function HotelsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Phone</label>
-                    <Input type="text" value={newHotel.phone || ''} onChange={(e) => setNewHotel({...newHotel, phone: e.target.value})} placeholder="+1-555-123-4567" />
+                    <Input type="text" value={newHotel.contact?.phone || newHotel.phone || ''} onChange={(e) => {
+                      const phone = e.target.value;
+                      setNewHotel({...newHotel, phone, contact: {...newHotel.contact, phone}});
+                    }} placeholder="+1-555-123-4567" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Room Count</label>
@@ -1520,7 +1523,7 @@ export default function HotelsPage() {
                 <div>
                   <label className="block text-sm font-medium mb-1">Contact Information</label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input type="text" value={newHotel.contact?.phone || ''} onChange={(e) => setNewHotel({...newHotel, contact: {...newHotel.contact, phone: e.target.value}})} placeholder="Phone" />
+                    <div className="md:col-span-2 text-sm text-muted-foreground">Phone is managed in the field above and is synced across the system.</div>
                     <Input type="text" value={newHotel.contact?.reception || ''} onChange={(e) => setNewHotel({...newHotel, contact: {...newHotel.contact, reception: e.target.value}})} placeholder="Reception" />
                     <Input type="email" value={newHotel.contact?.email || ''} onChange={(e) => setNewHotel({...newHotel, contact: {...newHotel.contact, email: e.target.value}})} placeholder="Email" />
                     <Input type="url" value={newHotel.contact?.website || ''} onChange={(e) => setNewHotel({...newHotel, contact: {...newHotel.contact, website: e.target.value}})} placeholder="Website URL" />
@@ -1691,7 +1694,15 @@ export default function HotelsPage() {
                     </div>
                     <div>
                       <Label>Phone</Label>
-                      <Input value={selectedHotel.contact?.phone || selectedHotel.phone || ''} onChange={e => setSelectedHotel({...selectedHotel, contact: {...selectedHotel.contact, phone: e.target.value}})} />
+                      <Input value={selectedHotel.contact?.phone || selectedHotel.phone || ''} onChange={e => {
+                        const phone = e.target.value;
+                        setSelectedHotel({
+                          ...selectedHotel,
+                          phone,
+                          contact: {...selectedHotel.contact, phone},
+                          website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), phone}}
+                        });
+                      }} />
                     </div>
                     <div>
                       <Label>Room Count</Label>
@@ -2069,8 +2080,8 @@ export default function HotelsPage() {
                   <Card>
                     <CardHeader><CardTitle>Contact Info</CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Input value={selectedHotel.website?.contactInfo?.phone || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), phone: e.target.value}}})} placeholder="Phone" />
-                      <Input value={selectedHotel.website?.contactInfo?.email || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), email: e.target.value}}})} placeholder="Email" />
+                      <div className="md:col-span-2 text-sm text-muted-foreground">Phone is managed in Hotel Details tab and is synced across the system.</div>
+                      <Input value={selectedHotel.website?.contactInfo?.email || selectedHotel.contact?.email || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), email: e.target.value}}})} placeholder="Email" />
                       <Input value={selectedHotel.website?.contactInfo?.address || ''} onChange={e => setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), address: e.target.value}}})} placeholder="Address" className="md:col-span-2" />
                     </CardContent>
                   </Card>
@@ -2121,7 +2132,14 @@ export default function HotelsPage() {
                   <Button onClick={async () => {
                     if (!selectedHotel._id) return;
                     try {
-                      const updatedHotel = {...selectedHotel, nepaliLanguage: !!selectedHotel.nepaliLanguage};
+                      const phone = selectedHotel.contact?.phone || selectedHotel.phone || '';
+                      const updatedHotel = {
+                        ...selectedHotel,
+                        phone,
+                        contact: {...selectedHotel.contact, phone},
+                        website: {...(selectedHotel.website as any || {}), contactInfo: {...(selectedHotel.website?.contactInfo as any || {}), phone}},
+                        nepaliLanguage: !!selectedHotel.nepaliLanguage
+                      };
                       await updateHotel(selectedHotel._id, updatedHotel);
                       if (selectedHotel.website || selectedHotel.seo) {
                         try {
@@ -2141,7 +2159,13 @@ export default function HotelsPage() {
                               amenitiesDetailed: selectedHotel.website?.amenitiesDetailed || [],
                               experiences: selectedHotel.website?.experiences || [],
                               testimonials: selectedHotel.website?.testimonials || [],
-                              contactInfo: selectedHotel.website?.contactInfo || { phone: '', email: '', address: '' },
+                              contactInfo: {
+                                phone: selectedHotel.contact?.phone || selectedHotel.phone || '',
+                                email: selectedHotel.website?.contactInfo?.email || selectedHotel.contact?.email || '',
+                                address: selectedHotel.website?.contactInfo?.address || '',
+                                reception: selectedHotel.contact?.reception || '',
+                                website: selectedHotel.contact?.website || ''
+                              },
                               galleryImages: selectedHotel.website?.galleryImages || []
                             },
                             seo: selectedHotel.seo || { title: '', description: '', keywords: [] }

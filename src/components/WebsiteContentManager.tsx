@@ -992,17 +992,8 @@ const WebsiteContentManager: React.FC<WebsiteContentManagerProps> = ({ hotel, on
             <CardContent className="space-y-4">
               <div>
                 <Label>Phone</Label>
-                <Input
-                  value={websiteContent.contactInfo?.phone || ""}
-                  onChange={(e) => {
-                    console.log('Phone value changed:', e.target.value);
-                    updateField('contactInfo', {
-                      ...(websiteContent.contactInfo || { phone: '', email: '', address: '' }),
-                      phone: e.target.value
-                    });
-                  }}
-                  placeholder="Phone number"
-                />
+                <div className="text-sm text-muted-foreground bg-muted p-2 rounded">{websiteContent.contactInfo?.phone || '(not set)'}</div>
+                <p className="text-xs text-muted-foreground mt-1">Phone is managed in the hotel settings and is synced across the system.</p>
               </div>
               <div>
                 <Label>Email</Label>
