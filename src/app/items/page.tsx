@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, X, Eye, Edit, Trash2, Package } from "lucide-react";
+import { Plus, Search, X, Eye, Edit, Trash2, Package, Info, SlidersHorizontal } from "lucide-react";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
 interface CategoryObj {
@@ -93,6 +93,11 @@ export default function ItemsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const toggleRow = (id: string) => setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
 
   const [formData, setFormData] = useState({
     name: "",
@@ -381,7 +386,63 @@ export default function ItemsPage() {
         )}
 
         <div className="bg-card rounded-xl border border-border p-3">
-          <div className="flex items-center gap-3 flex-wrap">
+          {/* Mobile row: search + filter toggle + add button */}
+          <div className="flex items-center gap-2 md:hidden">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input data-cy="items-search" type="text" value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
+                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all" placeholder="Search items..." />
+              {filters.search && (
+                <button onClick={() => handleFilterChange('search', '')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-all shrink-0 ${showMobileFilters ? 'bg-primary text-white border-primary' : 'bg-muted/50 border-input text-muted-foreground hover:text-foreground'}`}
+              title="Filters"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+            <Button data-cy="items-add-new" onClick={() => { resetForm(); setShowCreateModal(true); }} className="shrink-0 h-9 px-3">
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Mobile filter panel */}
+          {showMobileFilters && (
+            <div className="mt-3 space-y-2 md:hidden">
+              <select data-cy="items-category-filter" value={filters.category} onChange={(e) => handleFilterChange('category', e.target.value)}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all">
+                <option value="">All Categories</option>
+                {categories.length === 0 ? <option disabled>Loading...</option> : categories.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
+              </select>
+              <select data-cy="items-availability-filter" value={filters.isAvailable} onChange={(e) => handleFilterChange('isAvailable', e.target.value)}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all">
+                <option value="">All Items</option>
+                <option value="true">Available</option>
+                <option value="false">Unavailable</option>
+              </select>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={() => setShowMobileSummary(!showMobileSummary)}
+                  className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  {showMobileSummary ? 'Hide' : 'Show'} Stats
+                </button>
+                {(filters.search || filters.category || filters.isAvailable) && (
+                  <button data-cy="items-clear-filters" onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0 ml-auto">
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Desktop: all filters in one row */}
+          <div className="hidden md:flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[160px] max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <input data-cy="items-search" type="text" value={filters.search} onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -422,6 +483,34 @@ export default function ItemsPage() {
           </div>
         )}
 
+        <div className="mt-6 flex items-center gap-2 mb-3">
+          <button
+            onClick={() => setShowMobileSummary(!showMobileSummary)}
+            className="h-8 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5"
+          >
+            <Info className="w-3.5 h-3.5" />
+            {showMobileSummary ? 'Hide Stats' : 'Show Stats'}
+          </button>
+        </div>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 ${showMobileSummary ? '' : 'hidden'} md:grid`}>
+          <div className="bg-card p-4 rounded-lg border border-border">
+            <div className="text-2xl font-bold text-primary">{pagination.total}</div>
+            <div className="text-sm text-muted-foreground">Total Items</div>
+          </div>
+          <div className="bg-card p-4 rounded-lg border border-border">
+            <div className="text-2xl font-bold text-emerald-600">{items.filter(i => i.isAvailable).length}</div>
+            <div className="text-sm text-muted-foreground">Available</div>
+          </div>
+          <div className="bg-card p-4 rounded-lg border border-border">
+            <div className="text-2xl font-bold text-destructive">{items.filter(i => !i.isAvailable).length}</div>
+            <div className="text-sm text-muted-foreground">Unavailable</div>
+          </div>
+          <div className="bg-card p-4 rounded-lg border border-border">
+            <div className="text-2xl font-bold text-indigo-600">{items.filter(i => i.inventory).length}</div>
+            <div className="text-sm text-muted-foreground">Tracked</div>
+          </div>
+        </div>
+
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="px-5 py-3 border-b border-border bg-muted/50 flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
@@ -434,25 +523,26 @@ export default function ItemsPage() {
               <thead>
                 <tr className="bg-muted/50">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Category</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Stock</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Available</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Stock</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Available</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {Array.isArray(items) && items.length > 0 ? (
                   items.map((item: Item) => (
-                    <tr key={item._id} data-cy={`items-row-${item._id}`} className="hover:bg-muted/30 transition-colors">
+                    <React.Fragment key={item._id}>
+                    <tr data-cy={`items-row-${item._id}`} onClick={() => toggleRow(item._id)} className="hover:bg-muted/30 transition-colors cursor-pointer md:cursor-auto">
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">{item.name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                         <Badge variant="secondary" className="text-xs rounded px-2 py-0.5 font-normal">
                           {typeof item.category === 'object' && item.category !== null ? item.category.name : item.category}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">रु{item.price}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                         {item.inventory ? (
                           <Badge variant={((item.stock ?? 0) <= 5) ? "destructive" : "default"} className="text-xs rounded px-2 py-0.5 font-normal">
                             {item.stock ?? 0} in stock
@@ -461,7 +551,7 @@ export default function ItemsPage() {
                           <Badge variant="secondary" className="text-xs rounded px-2 py-0.5 font-normal">N/A</Badge>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                         {item.isAvailable ? (
                           <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">Available</span>
                         ) : (
@@ -470,15 +560,27 @@ export default function ItemsPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-1">
-                          <button data-cy={`items-edit-btn-${item._id}`} onClick={() => openEditModal(item)} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all">
+                          <button data-cy={`items-edit-btn-${item._id}`} onClick={(e) => { e.stopPropagation(); openEditModal(item); }} className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all">
                             <Edit className="w-4 h-4" />
                           </button>
-                          <button data-cy={`items-delete-btn-${item._id}`} onClick={() => openDeleteModal(item)} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                          <button data-cy={`items-delete-btn-${item._id}`} onClick={(e) => { e.stopPropagation(); openDeleteModal(item); }} className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
                     </tr>
+                    {expandedRows[item._id] && (
+                      <tr className="md:hidden">
+                        <td colSpan={6} className="px-4 py-3 bg-muted/20">
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="break-words min-w-0"><span className="text-muted-foreground">Category:</span> {typeof item.category === 'object' && item.category !== null ? item.category.name : item.category}</div>
+                            <div className="break-words min-w-0"><span className="text-muted-foreground">Stock:</span> {item.inventory ? `${item.stock ?? 0} in stock` : 'N/A'}</div>
+                            <div className="break-words min-w-0"><span className="text-muted-foreground">Available:</span> {item.isAvailable ? 'Yes' : 'No'}</div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   ))
                 ) : (
                   <tr>

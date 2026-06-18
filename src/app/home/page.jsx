@@ -366,7 +366,7 @@ export default function HotelLandingPage() {
   const amenityImage = (a) => a.image || '';
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden w-full">
       <Navbar hotel={hotel} nepaliFlag={nepaliFlag} />
 
       {/* ==================== HERO SECTION ==================== */}
@@ -493,7 +493,7 @@ export default function HotelLandingPage() {
             </p>
           </div>
 
-          <div className={`grid gap-8 ${activeRooms.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : activeRooms.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
+          <div className={`grid gap-6 sm:gap-8 w-full ${activeRooms.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : activeRooms.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
             {activeRooms.map((room, index) => (
               <Card key={index} className="group overflow-hidden border-0 bg-card/80 backdrop-blur-sm shadow-card hover:shadow-card-hover transition-all duration-500 hover:-translate-y-2 rounded-2xl">
                 <div className="relative overflow-hidden aspect-[4/3] bg-gradient-to-br from-primary/20 to-accent/20">
@@ -572,7 +572,7 @@ export default function HotelLandingPage() {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{websiteContent.amenitiesDescription || 'Everything you need for a comfortable and memorable stay'}</p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 max-w-full">
             {activeAmenities.map((a, idx) => {
               const name = amenityName(a);
               const icon = amenityIcon(a);
@@ -583,10 +583,10 @@ export default function HotelLandingPage() {
               return (
                 <div
                   key={idx}
-                  className="group w-[180px] flex-shrink-0 border-0 bg-card/60 backdrop-blur-sm hover:bg-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 rounded-2xl overflow-hidden"
+                  className="group border-0 bg-card/60 backdrop-blur-sm hover:bg-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 rounded-2xl overflow-hidden min-w-0"
                 >
                   {img && (
-                    <div className="relative overflow-hidden h-20">
+                    <div className="relative overflow-hidden h-16 sm:h-20">
                       <img
                         src={img}
                         alt={name}
@@ -596,13 +596,13 @@ export default function HotelLandingPage() {
                       <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
                     </div>
                   )}
-                  <div className={`text-center ${img ? 'pt-2' : 'pt-5'} pb-4 px-3`}>
-                    <div className={`${isDetailed ? 'w-14 h-14' : 'w-12 h-12'} rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
-                      {IconComponent ? <IconComponent className={`${isDetailed ? 'w-7 h-7' : 'w-6 h-6'} text-primary`} /> : null}
+                  <div className={`text-center ${img ? 'pt-1.5 sm:pt-2' : 'pt-3 sm:pt-5'} pb-3 sm:pb-4 px-1.5 sm:px-3`}>
+                    <div className={`${isDetailed ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'} rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mx-auto mb-2 sm:mb-3 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                      {IconComponent ? <IconComponent className={`${isDetailed ? 'w-5 h-5 sm:w-7 sm:h-7' : 'w-4 h-4 sm:w-6 sm:h-6'} text-primary`} /> : null}
                     </div>
-                    <h3 className="text-sm font-semibold text-foreground leading-tight">{name}</h3>
+                    <h3 className="text-[11px] sm:text-sm font-semibold text-foreground leading-tight break-words">{name}</h3>
                     {desc && (
-                      <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed line-clamp-2">{desc}</p>
+                      <p className="hidden sm:block text-[11px] text-muted-foreground mt-1.5 leading-relaxed line-clamp-2">{desc}</p>
                     )}
                   </div>
                 </div>
@@ -689,7 +689,7 @@ export default function HotelLandingPage() {
         <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none animate-float-slow" />
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-accent/10 rounded-full blur-3xl pointer-events-none animate-float-slow" style={{ animationDelay: '2s' }} />
         <div className="relative max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-br from-primary/5 to-accent/5 rounded-3xl p-12 md:p-16 border border-primary/10 shadow-xl backdrop-blur-sm relative overflow-hidden">
+          <div className="bg-gradient-to-br from-primary/5 to-accent/5 rounded-3xl p-6 sm:p-12 md:p-16 border border-primary/10 shadow-xl backdrop-blur-sm relative overflow-hidden">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary/50" />
             <div className="w-16 h-16 rounded-2xl bg-gradient-brand flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary/20 animate-scale-pulse">
               <Sparkles className="w-8 h-8 text-white" />

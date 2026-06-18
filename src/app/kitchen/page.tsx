@@ -20,6 +20,7 @@ import {
   WifiOff,
   Cloud,
   Search,
+  SlidersHorizontal,
   X
 } from "lucide-react";
 import { format } from "date-fns";
@@ -143,6 +144,7 @@ export default function KitchenPage() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [hotel, setHotel] = useState<any>(null);
   const [showPrintWarnings, setShowPrintWarnings] = useState(true);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   
   // Sound alert for new orders
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -400,7 +402,7 @@ export default function KitchenPage() {
       : 'border-l-primary';
     
     return (
-      <Card className={`mb-4 hover:shadow-lg transition-shadow border-l-4 ${borderColor}`}>
+      <Card className={`hover:shadow-lg transition-shadow border-l-4 ${borderColor}`}>
         <CardContent className="p-4">
           {/* Header */}
           <div className="flex justify-between items-start mb-3">
@@ -583,6 +585,37 @@ export default function KitchenPage() {
             </div>
           </div>
         </div>
+
+        {/* Search & Filter */}
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+          <div className="relative flex-1 max-w-xs w-full">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search orders..."
+              className="w-full h-9 pl-8 pr-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-all shrink-0 ${showMobileFilters ? 'bg-primary text-white border-primary' : 'bg-muted/50 border-input text-muted-foreground hover:text-foreground'}`}
+              title="Filters"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Filter Panel */}
+        {showMobileFilters && (
+          <div className="mb-4 p-4 rounded-lg border border-border bg-card md:hidden space-y-3">
+            <div className="text-sm font-medium text-foreground">Filters</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="text-xs text-muted-foreground">Filter options</div>
+            </div>
+          </div>
+        )}
 
         {/* Printer Health Banner */}
         {printerHealth.status !== 'online' && (
@@ -787,9 +820,9 @@ export default function KitchenPage() {
           </TabsList>
 
           <TabsContent value="pending">
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {kots.pending.length === 0 ? (
-                <Card>
+                <Card className="col-span-full">
                   <CardContent className="text-center py-12">
                     <Clock className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
                     <p className="text-muted-foreground">No pending orders</p>
@@ -804,9 +837,9 @@ export default function KitchenPage() {
           </TabsContent>
 
           <TabsContent value="preparing">
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {kots.preparing.length === 0 ? (
-                <Card>
+                <Card className="col-span-full">
                   <CardContent className="text-center py-12">
                     <Flame className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
                     <p className="text-muted-foreground">No orders in preparation</p>
@@ -821,9 +854,9 @@ export default function KitchenPage() {
           </TabsContent>
 
           <TabsContent value="ready">
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {kots.ready.length === 0 ? (
-                <Card>
+                <Card className="col-span-full">
                   <CardContent className="text-center py-12">
                     <CheckCircle className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
                     <p className="text-muted-foreground">No ready orders</p>
@@ -838,9 +871,9 @@ export default function KitchenPage() {
           </TabsContent>
 
           <TabsContent value="served">
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {kots.served.length === 0 ? (
-                <Card>
+                <Card className="col-span-full">
                   <CardContent className="text-center py-12">
                     <CheckCircle className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
                     <p className="text-muted-foreground">No served orders</p>

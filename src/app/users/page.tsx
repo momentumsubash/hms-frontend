@@ -1,10 +1,10 @@
 "use client";
 import { getUsers, createUser, updateUser, deleteUser, getUserById, getHotels } from "@/lib/api";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { Search, X, Eye, Edit, Trash2, Plus } from "lucide-react";
+import { Search, X, Eye, Edit, Trash2, Plus, Info, SlidersHorizontal } from "lucide-react";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
 export default function UsersPage() {
@@ -46,6 +46,11 @@ export default function UsersPage() {
 
   // Form errors state
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
+
+  // Mobile responsive state
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const toggleRow = (id: string) => setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
 
   // Reset form errors
   const resetFormErrors = () => setFormErrors({});
@@ -403,7 +408,61 @@ export default function UsersPage() {
         )}
 
         <div className="bg-card rounded-xl border border-border p-3">
-          <div className="flex items-center gap-3 flex-wrap">
+
+          {/* Mobile row: search + filter toggle + action */}
+          <div className="flex items-center gap-2 md:hidden">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input type="text" value={filters.search} onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all" placeholder="Search users..." />
+              {filters.search && (
+                <button onClick={() => setFilters(prev => ({ ...prev, search: "" }))} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-all shrink-0 ${showMobileFilters ? 'bg-primary text-white border-primary' : 'bg-muted/50 border-input text-muted-foreground hover:text-foreground'}`}
+              title="Filters"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+            <button
+              onClick={openCreateModal}
+              className="shrink-0 h-9 px-3 bg-gradient-brand text-white font-medium rounded-lg hover:opacity-90 transition-all shadow-elevated shadow-primary/25 flex items-center gap-1.5 text-sm"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Mobile filter panel */}
+          {showMobileFilters && (
+            <div className="mt-3 space-y-2 md:hidden">
+              <select value={filters.role} onChange={(e) => setFilters(prev => ({ ...prev, role: e.target.value }))}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate">
+                <option value="">All Roles</option>
+                <option value="super_admin">Super Admin</option>
+                <option value="manager">Manager</option>
+                <option value="staff">Staff</option>
+                <option value="kitchen_staff">Kitchen Staff</option>
+              </select>
+              <select value={filters.active} onChange={(e) => setFilters(prev => ({ ...prev, active: e.target.value }))}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate">
+                <option value="">All Status</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+              {(filters.search || filters.role || filters.active) && (
+                <button onClick={() => setFilters({ role: "", active: "", search: "" })} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">
+                  Clear filters
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Desktop: all filters in one row */}
+          <div className="hidden md:flex items-center gap-3 flex-wrap">
             <div className="relative flex-1 min-w-[160px] max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <input type="text" value={filters.search} onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
@@ -450,9 +509,9 @@ export default function UsersPage() {
               <thead>
                 <tr className="bg-muted/50">
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Email</th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Role</th>
-                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Email</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Role</th>
+                  <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Status</th>
                   <th className="px-5 py-3.5 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>

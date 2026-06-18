@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { format } from "date-fns";
-import { Search, X, Edit, Trash2, Plus, DollarSign } from "lucide-react";
+import { Search, X, Edit, Trash2, Plus, DollarSign, SlidersHorizontal, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 
@@ -92,6 +92,9 @@ export default function ReferrersPage() {
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalReferrers, setTotalReferrers] = useState(0);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const toggleRow = (id: string) => setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
 
 
   const getRequestHeaders = (token: string) => {

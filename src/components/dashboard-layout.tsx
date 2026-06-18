@@ -58,7 +58,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const userRole = user?.role as string;
 
   const allLinks: NavLink[] = [
-    { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" />, roles: ["manager", "super_admin"] },
+    { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" />, roles: ["staff", "manager", "super_admin"] },
     { label: "Checkouts", href: "/checkouts", icon: <Receipt className="w-5 h-5" />, roles: ["staff", "manager", "super_admin"] },
     { label: "Guests", href: "/guests", icon: <Users className="w-5 h-5" />, roles: ["staff", "manager", "super_admin"] },
     { label: "Dues", href: "/dues", icon: <DollarSign className="w-5 h-5" />, roles: ["staff", "manager", "super_admin"] },
@@ -93,7 +93,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   if (!user) return <>{children}</>;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden w-full">
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
@@ -257,7 +257,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 animate-fade-in">
+        <main className="flex-1 animate-fade-in overflow-x-hidden">
           {children}
         </main>
       </div>

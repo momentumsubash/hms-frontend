@@ -4,7 +4,7 @@ import { getRooms, updateRoom, updateRoomMaintenance } from "@/lib/api";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import React, { useEffect, useState, useCallback } from "react";
-import { Bed, Users, Plus, Eye, Edit, Trash2, Search, X } from "lucide-react";
+import { Bed, Users, Plus, Eye, Edit, Trash2, Search, X, SlidersHorizontal, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -85,6 +85,10 @@ export default function RoomsPage() {
 
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
   const [editFormErrors, setEditFormErrors] = useState<{[key: string]: string}>({});
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
+  const toggleRow = (id: string) => setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
 
   const resetFormErrors = () => setFormErrors({});
   const resetEditFormErrors = () => setEditFormErrors({});
@@ -366,6 +370,13 @@ export default function RoomsPage() {
                 </button>
               )}
             </div>
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-all shrink-0 ${showMobileFilters ? 'bg-primary text-white border-primary' : 'bg-muted/50 border-input text-muted-foreground hover:text-foreground'}`}
+              title="Filters"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
             <select
               value={filters.type}
               onChange={(e) => handleFilterChange('type', e.target.value)}
@@ -400,6 +411,20 @@ export default function RoomsPage() {
           </div>
         </div>
 
+        {showMobileFilters && (
+          <div className="mt-3 space-y-2 md:hidden">
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                onClick={() => setShowMobileSummary(!showMobileSummary)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5"
+              >
+                <Info className="w-3.5 h-3.5" />
+                {showMobileSummary ? 'Hide' : 'Show'} Stats
+              </button>
+            </div>
+          </div>
+        )}
+
         {loading && (
           <div className="bg-primary/5 border border-primary/10 rounded-lg px-5 py-3 flex items-center gap-2.5">
             <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -413,23 +438,23 @@ export default function RoomsPage() {
               <thead>
                 <tr className="bg-muted/50">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Room #</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Amenities</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Capacity</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Guest Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Price</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Occupied</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Maintenance</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Amenities</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Capacity</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Guest Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Price</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Occupied</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Maintenance</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {Array.isArray(rooms) && rooms.length > 0 ? (
                   rooms.map((room: any) => (
-                    <tr key={room._id} className="hover:bg-muted/30 transition-colors" data-cy={`rooms-row-${room._id}`}>
+                    <tr key={room._id} onClick={() => toggleRow(room._id)} className="hover:bg-muted/30 transition-colors cursor-pointer md:cursor-auto" data-cy={`rooms-row-${room._id}`}>
                       <td className="px-4 py-3 whitespace-nowrap font-medium text-sm">{room.roomNumber}</td>
-                      <td className="px-4 py-3 whitespace-nowrap capitalize text-sm">{room.type}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap capitalize text-sm hidden md:table-cell">{room.type}</td>
+                      <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                         {room.amenities && room.amenities.length > 0 ? (
                           <div className="flex flex-wrap gap-1 max-w-[200px]">
                             {room.amenities.slice(0, 3).map((a: string, i: number) => (
@@ -441,17 +466,17 @@ export default function RoomsPage() {
                           </div>
                         ) : "-"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">{room.capacity}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm">{room.guestName || '-'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap font-medium text-sm">रु{room.rate}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm hidden md:table-cell">{room.capacity}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm hidden md:table-cell">{room.guestName || '-'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap font-medium text-sm hidden md:table-cell">रु{room.rate}</td>
+                      <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                         {room.isOccupied ? (
                           <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-destructive/10 text-destructive border border-destructive/20">Occupied</span>
                         ) : (
                           <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">Available</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                         {(room.maintenanceStatus || room.maintanenceStatus) ? (
                           <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-amber-100 text-amber-700 border border-amber-200">{(room.maintenanceStatus || room.maintanenceStatus)}</span>
                         ) : '-'}
