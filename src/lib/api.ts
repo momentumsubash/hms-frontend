@@ -251,7 +251,12 @@ export async function deactivateUser(id: string) {
 
 // ROOMS
 export async function getRooms(params: Record<string, any> = {}) {
+  // Only add limit if it's not already provided
+  if (!params.limit) {
+    params.limit = 20;
+  }
   const query = new URLSearchParams(params).toString();
+  
   const res = await fetch(`${API_URL}/rooms${query ? `?${query}` : ""}`,
     { headers: mergeHeaders({}, getAuthHeaders()) }
   );
