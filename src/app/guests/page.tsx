@@ -1954,7 +1954,7 @@ const handleAddNewGuest = async () => {
                 */}
 
 {/* Identity Documents */}
-<div className="border border-border rounded-lg p-4">
+{/* <div className="border border-border rounded-lg p-4">
   <h3 className="text-lg font-semibold mb-4">Identity Documents</h3>
 
   {guestDocuments.length > 0 && (
@@ -2030,7 +2030,7 @@ const handleAddNewGuest = async () => {
   <p className="text-sm text-muted-foreground mt-2">
     {documentFile ? 'Document will be uploaded when you save the guest.' : 'Select a document to upload with the guest.'}
   </p>
-</div>
+</div> */}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Basic Information */}
