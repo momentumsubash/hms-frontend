@@ -1,6 +1,6 @@
 "use client";
 
-import { getGuests, getRooms, updateGuest, addGuest as createGuest, getMe, getAvailableRooms } from "@/lib/api";
+import { getGuests, getRooms, updateGuest, addGuest as createGuest, getMe, getAvailableRooms, uploadGuestDocument, getGuestDocuments, deleteGuestDocument, ocrPreviewDocument } from "@/lib/api";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { format } from "date-fns";
@@ -72,6 +72,30 @@ interface Checkout {
   __v: number;
 }
 
+interface GuestDocument {
+  _id: string;
+  guest: string;
+  hotel: string;
+  documentType: 'passport' | 'license' | 'citizenship' | 'other';
+  fileName: string;
+  fileUrl: string;
+  fileKey: string;
+  signedUrl?: string;
+  mimeType: string;
+  fileSize: number;
+  ocrData?: {
+    firstName?: string;
+    lastName?: string;
+    idNo?: string;
+    citizenshipNo?: string;
+    address?: string;
+    phone?: string;
+    occupation?: string;
+  } | null;
+  createdBy: { _id: string; firstName: string; lastName: string };
+  createdAt: string;
+}
+
 interface Guest {
   _id: string;
   firstName: string;
@@ -89,6 +113,7 @@ interface Guest {
   referralStatus?: string;
   existingCustomer?: boolean;
   dueAmount?: number;
+  documents?: GuestDocument[];
   rooms: string[];
   checkInDate: string;
   checkOutDate?: string;
@@ -217,6 +242,17 @@ const PreviousStayModal = ({
   guest: Guest | null; 
   onClose: () => void;
 }) => {
+  const [documents, setDocuments] = useState<GuestDocument[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<GuestDocument | null>(null);
+
+  useEffect(() => {
+    if (guest?._id) {
+      getGuestDocuments(guest._id).then(res => {
+        if (res?.success && res.data) setDocuments(res.data);
+      }).catch(() => {});
+    }
+  }, [guest?._id]);
+
   if (!guest) return null;
 
   const formatDate = (dateString: string) => {
@@ -266,7 +302,7 @@ const PreviousStayModal = ({
 
         {/* Previous Stays List */}
         <h3 className="text-lg font-semibold mb-4">Stay History</h3>
-        <div className="space-y-4">
+        <div className="space-y-4 mb-6">
           {guest.checkouts && guest.checkouts.length > 0 ? (
             guest.checkouts.map((checkout) => (
               <div key={checkout._id} className="border rounded-lg p-4 hover:bg-muted/30">
@@ -364,6 +400,35 @@ const PreviousStayModal = ({
           )}
         </div>
 
+        {/* Documents Section */}
+        <div className="border-t pt-4">
+          <h3 className="text-lg font-semibold mb-4">Identity Documents</h3>
+          {documents.length > 0 ? (
+            <div className="space-y-2">
+              {documents.map(doc => (
+                <div key={doc._id} className="flex items-center justify-between bg-muted/30 rounded p-3 border">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                      doc.documentType === 'passport' ? 'bg-blue-100 text-blue-800' :
+                      doc.documentType === 'license' ? 'bg-orange-100 text-orange-800' :
+                      doc.documentType === 'citizenship' ? 'bg-green-100 text-green-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {doc.documentType}
+                    </span>
+                    <span className="text-sm truncate">{doc.fileName}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button type="button" onClick={() => setPreviewDoc(doc)} className="px-2 py-1 text-xs text-primary hover:underline">View</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No documents uploaded for this guest.</p>
+          )}
+        </div>
+
         <div className="mt-6 flex justify-end">
           <button
             onClick={onClose}
@@ -373,6 +438,42 @@ const PreviousStayModal = ({
           </button>
         </div>
       </div>
+
+      {/* Document Preview in Previous Stay Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4" onClick={() => setPreviewDoc(null)}>
+          <div className="bg-card rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-card z-10 flex items-center justify-between p-3 border-b">
+              <span className="text-sm font-medium truncate">{previewDoc.fileName}</span>
+              <button onClick={() => setPreviewDoc(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 flex flex-col items-center gap-4">
+              {previewDoc.mimeType?.startsWith('image/') ? (
+                <img
+                  src={previewDoc.signedUrl || previewDoc.fileUrl}
+                  alt={previewDoc.fileName}
+                  className="max-w-full h-auto rounded border"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                  <span className="text-4xl">📄</span>
+                  <p>Preview not available for this file type</p>
+                </div>
+              )}
+              <a
+                href={previewDoc.signedUrl || previewDoc.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm"
+              >
+                Open in new tab
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -398,7 +499,7 @@ export default function GuestsPage() {
   }, []);
 
   // Notification state
-  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning', message: string } | null>(null);
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -437,6 +538,13 @@ export default function GuestsPage() {
     checkOutDate: ""
   });
   const [formLoading, setFormLoading] = useState(false);
+
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentType, setDocumentType] = useState<string>('passport');
+  const [documentUploading, setDocumentUploading] = useState(false);
+  const [guestDocuments, setGuestDocuments] = useState<GuestDocument[]>([]);
+  const [previewDocument, setPreviewDocument] = useState<GuestDocument | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
 
   // User info
     const [user, setUser] = useState<any>(() => {
@@ -652,34 +760,36 @@ export default function GuestsPage() {
     };
   }, [searchDebounce]);
 
-  const resetForm = () => {
-    setFormData({
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      address: "",
-      idNo: "",
-      occupation: "",
-      vehicleNo: "",
-      noOfAdditionalGuests: "0",
-      additionalGuests: [],
-      purposeOfStay: "",
-      referrer: "",
-      existingCustomer: false,
-      rooms: [],
-      roomDiscount: "0",
-      advancePaid: "0",
-      checkInDate: getCurrentDateTimeLocal(),
-      checkOutDate: ""
-    });
-    setEditingGuest(null);
-    setExistingGuest(null);
-    setGuestSearchMessage("");
-    setShowForm(false);
-    setFormErrors({});
-  };
-
+const resetForm = () => {
+  setFormData({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    idNo: "",
+    occupation: "",
+    vehicleNo: "",
+    noOfAdditionalGuests: "0",
+    additionalGuests: [],
+    purposeOfStay: "",
+    referrer: "",
+    existingCustomer: false,
+    rooms: [],
+    roomDiscount: "0",
+    advancePaid: "0",
+    checkInDate: getCurrentDateTimeLocal(),
+    checkOutDate: ""
+  });
+  setEditingGuest(null);
+  setExistingGuest(null);
+  setGuestSearchMessage("");
+  setGuestDocuments([]);
+  setDocumentFile(null); // Clear the selected document file
+  setShowForm(false);
+  setFormErrors({});
+  setDocumentType('passport'); // Reset document type to default
+};
   // Phone search functionality
   const handlePhoneChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const phone = e.target.value;
@@ -710,7 +820,6 @@ export default function GuestsPage() {
           setExistingGuest(foundGuest);
           setGuestSearchMessage("Existing guest found! Auto-populating details...");
 
-          // Auto-populate form with existing guest data
           setFormData(prev => ({
             ...prev,
             firstName: foundGuest.firstName || "",
@@ -723,8 +832,9 @@ export default function GuestsPage() {
             purposeOfStay: foundGuest.purposeOfStay || "",
             referrer: foundGuest.referrer || "",
             existingCustomer: foundGuest.existingCustomer || false,
-            // Don't auto-populate room selection as it might be different
           }));
+
+          fetchGuestDocuments(foundGuest._id);
         } else {
           setGuestSearchMessage("New guest - please fill in details");
         }
@@ -755,7 +865,6 @@ export default function GuestsPage() {
           setExistingGuest(foundGuest);
           setGuestSearchMessage("Existing guest found! Auto-populating details...");
 
-          // Auto-populate form
           setFormData(prev => ({
             ...prev,
             firstName: foundGuest.firstName || "",
@@ -769,6 +878,8 @@ export default function GuestsPage() {
             referrer: foundGuest.referrer || "",
             existingCustomer: foundGuest.existingCustomer || false,
           }));
+
+          fetchGuestDocuments(foundGuest._id);
         } else {
           setGuestSearchMessage("New guest - please fill in details");
         }
@@ -783,7 +894,8 @@ export default function GuestsPage() {
   const clearGuestSearch = () => {
     setExistingGuest(null);
     setGuestSearchMessage("");
-    // Keep the phone number but reset other fields
+    setGuestDocuments([]);
+    setDocumentFile(null);
     setFormData(prev => ({
       ...prev,
       firstName: "",
@@ -796,6 +908,111 @@ export default function GuestsPage() {
       purposeOfStay: "",
       referrer: "",
     }));
+  };
+
+  const fetchGuestDocuments = async (guestId: string) => {
+    try {
+      const res = await getGuestDocuments(guestId);
+      if (res?.success && Array.isArray(res.data)) {
+        setGuestDocuments(res.data);
+      }
+    } catch (err) {
+      console.error('Error fetching guest documents:', err);
+    }
+  };
+
+  const handleDocumentUpload = async () => {
+    if (!documentFile || !editingGuest && !existingGuest) return;
+    const guestId = editingGuest?._id || existingGuest?._id;
+    if (!guestId) return;
+
+    setDocumentUploading(true);
+    try {
+      const res = await uploadGuestDocument(guestId, documentFile, documentType);
+      if (res?.success) {
+        if (res.data?.ocrData) {
+          const ocr = res.data.ocrData;
+          setFormData(prev => ({
+            ...prev,
+            ...(ocr.firstName && { firstName: ocr.firstName }),
+            ...(ocr.lastName && { lastName: ocr.lastName }),
+            ...(ocr.idNo && { idNo: ocr.idNo }),
+            ...(ocr.address && { address: ocr.address }),
+            ...(ocr.occupation && { occupation: ocr.occupation }),
+          }));
+        }
+        await fetchGuestDocuments(guestId);
+        setDocumentFile(null);
+        setNotification({ type: 'success', message: 'Document uploaded successfully' });
+      }
+    } catch (err: any) {
+      setNotification({ type: 'error', message: err.message || 'Failed to upload document' });
+    } finally {
+      setDocumentUploading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    const guestId = editingGuest?._id || existingGuest?._id;
+    if (!guestId) return;
+    try {
+      await deleteGuestDocument(guestId, docId);
+      setGuestDocuments(prev => prev.filter(d => d._id !== docId));
+      setNotification({ type: 'success', message: 'Document deleted' });
+    } catch (err: any) {
+      setNotification({ type: 'error', message: err.message || 'Failed to delete document' });
+    }
+  };
+
+  const handleOcrScan = async (file: File) => {
+    setOcrLoading(true);
+    try {
+      const res = await ocrPreviewDocument(file, documentType);
+      if (res?.success && res.data) {
+        const ocr = res.data;
+        const filled: string[] = [];
+        setFormData(prev => {
+          const upd: any = { ...prev };
+          if (ocr.firstName) { upd.firstName = ocr.firstName; filled.push('firstName'); }
+          if (ocr.lastName) { upd.lastName = ocr.lastName; filled.push('lastName'); }
+          if (ocr.idNo) { upd.idNo = ocr.idNo; filled.push('idNo'); }
+          if (ocr.citizenshipNo) { upd.citizenshipNo = ocr.citizenshipNo; filled.push('citizenshipNo'); }
+          if (ocr.address) { upd.address = ocr.address; filled.push('address'); }
+          if (ocr.phone) { upd.phone = ocr.phone; filled.push('phone'); }
+          if (ocr.occupation) { upd.occupation = ocr.occupation; filled.push('occupation'); }
+          return upd;
+        });
+        if (filled.length > 0) {
+          setNotification({ type: 'success', message: `Auto-filled: ${filled.join(', ')}. Review and edit if needed.` });
+        } else {
+          setNotification({ type: 'success', message: 'No data could be extracted. Please fill the form manually.' });
+        }
+      } else if (res?.debug?.text) {
+        setNotification({ type: 'error', message: `OCR raw text: "${res.debug.text.substring(0, 80)}...". Try a clearer image.` });
+      } else {
+        setNotification({ type: 'error', message: res?.message || 'Could not extract data. Please fill manually.' });
+      }
+    } catch (err: any) {
+      setNotification({ type: 'error', message: err.message || 'OCR failed. Check server console for details.' });
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  const applyOcrData = (doc: GuestDocument) => {
+    if (!doc.ocrData) return;
+    const ocr = doc.ocrData;
+    setFormData(prev => ({
+      ...prev,
+      ...(ocr.firstName && { firstName: ocr.firstName }),
+      ...(ocr.lastName && { lastName: ocr.lastName }),
+      ...(ocr.idNo && { idNo: ocr.idNo }),
+      ...(ocr.citizenshipNo && { citizenshipNo: ocr.citizenshipNo }),
+      ...(ocr.address && { address: ocr.address }),
+      ...(ocr.phone && { phone: ocr.phone }),
+      ...(ocr.occupation && { occupation: ocr.occupation }),
+    }));
+    setNotification({ type: 'success', message: 'Form auto-filled from document' });
   };
 
   // Handle view previous stays
@@ -814,6 +1031,7 @@ export default function GuestsPage() {
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
     const now = new Date();
+    const isAdmin = user?.role === 'manager' || user?.role === 'super_admin';
 
     if (!formData.checkInDate) {
       errors.checkInDate = "Check-in date is required";
@@ -821,7 +1039,14 @@ export default function GuestsPage() {
       const originalDate = new Date(formData.checkInDate);
       const checkInDate = new Date(originalDate.getTime() + (5 * 60 * 1000));
       if (!editingGuest && checkInDate < now) {
-        errors.checkInDate = "Check-in date cannot be in the past";
+        if (isAdmin) {
+          const oneWeekAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+          if (checkInDate < oneWeekAgo) {
+            errors.checkInDate = "Check-in date cannot be more than 7 days in the past";
+          }
+        } else {
+          errors.checkInDate = "Check-in date cannot be in the past";
+        }
       }
     }
 
@@ -864,219 +1089,260 @@ export default function GuestsPage() {
     return Object.keys(errors).length === 0;
   };
 
-  const handleFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleFormSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!validateForm()) {
-      setNotification({ type: 'error', message: 'Please fix the validation errors' });
-      return;
+  if (!validateForm()) {
+    setNotification({ type: 'error', message: 'Please fix the validation errors' });
+    return;
+  }
+
+  setFormLoading(true);
+  try {
+    let resp;
+
+    // FIXED: Completely safe additional guests filtering
+    const validAdditionalGuests: AdditionalGuest[] = [];
+
+    // Safely iterate through additional guests
+    if (formData.additionalGuests && Array.isArray(formData.additionalGuests)) {
+      for (const guest of formData.additionalGuests) {
+        // Check if guest exists and has the required properties
+        if (guest && typeof guest === 'object') {
+          const name = guest.name || '';
+          const relationship = guest.relationship || '';
+
+          // Only include if both name and relationship are not empty after trimming
+          if (typeof name === 'string' &&
+            typeof relationship === 'string' &&
+            name.trim() !== '' &&
+            relationship.trim() !== '') {
+            validAdditionalGuests.push({
+              name: name.trim(),
+              gender: guest.gender || 'male',
+              relationship: relationship.trim()
+            });
+          }
+        }
+      }
     }
 
-    setFormLoading(true);
-    try {
-      let resp;
+    const additionalGuestsCount = validAdditionalGuests.length;
 
-      // FIXED: Completely safe additional guests filtering
-      const validAdditionalGuests: AdditionalGuest[] = [];
+    if (editingGuest) {
+      const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
+      let hotelId = '';
 
-      // Safely iterate through additional guests
-      if (formData.additionalGuests && Array.isArray(formData.additionalGuests)) {
-        for (const guest of formData.additionalGuests) {
-          // Check if guest exists and has the required properties
-          if (guest && typeof guest === 'object') {
-            const name = guest.name || '';
-            const relationship = guest.relationship || '';
-
-            // Only include if both name and relationship are not empty after trimming
-            if (typeof name === 'string' &&
-              typeof relationship === 'string' &&
-              name.trim() !== '' &&
-              relationship.trim() !== '') {
-              validAdditionalGuests.push({
-                name: name.trim(),
-                gender: guest.gender || 'male',
-                relationship: relationship.trim()
-              });
-            }
-          }
-        }
-      }
-
-      const additionalGuestsCount = validAdditionalGuests.length;
-
-      if (editingGuest) {
-        const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
-        let hotelId = '';
-
-        // Try to get hotel ID from multiple sources with proper structure handling
-        try {
-          // First try the useAuth context user object
-          if (user?.hotel) {
-            // Handle both string ID and object with _id
-            hotelId = typeof user.hotel === 'string' ? user.hotel : user.hotel._id || user.hotel.id || '';
-          }
-
-          // If not found, try localStorage
-          if (!hotelId) {
-            const storedUser = localStorage.getItem('user');
-            if (storedUser) {
-              try {
-                const userData = JSON.parse(storedUser);
-                if (userData.hotel) {
-                  hotelId = typeof userData.hotel === 'string' ? userData.hotel : userData.hotel._id || userData.hotel.id || '';
-                }
-              } catch (parseError) {
-                console.error('Error parsing user data from localStorage:', parseError);
-              }
-            }
-          }
-
-          // If still not found, try to fetch current user data
-          if (!hotelId) {
-            console.warn('Hotel ID not found in context or localStorage, fetching fresh user data...');
-            try {
-              const freshUserData = await getMe();
-              if (freshUserData?.data?.hotel) {
-                const hotelField = freshUserData.data.hotel;
-                hotelId = typeof hotelField === 'string' ? hotelField : hotelField._id || hotelField.id || '';
-              }
-            } catch (fetchError) {
-              console.error('Error fetching user data:', fetchError);
-            }
-          }
-        } catch (e) {
-          console.error('Error retrieving hotel ID:', e);
+      // Try to get hotel ID from multiple sources with proper structure handling
+      try {
+        // First try the useAuth context user object
+        if (user?.hotel) {
+          // Handle both string ID and object with _id
+          hotelId = typeof user.hotel === 'string' ? user.hotel : user.hotel._id || user.hotel.id || '';
         }
 
+        // If not found, try localStorage
         if (!hotelId) {
-          throw new Error("Hotel ID is required. Please contact your administrator. Make sure you are logged in properly.");
-        }
-
-        const updatePayload: any = {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone,
-          address: formData.address,
-          idNo: formData.idNo || undefined,
-          occupation: formData.occupation || undefined,
-          vehicleNo: formData.vehicleNo || undefined,
-          noOfAdditionalGuests: additionalGuestsCount,
-          additionalGuests: validAdditionalGuests,
-          purposeOfStay: formData.purposeOfStay || undefined,
-          referrer: formData.referrer || undefined,
-          existingCustomer: formData.existingCustomer,
-          rooms: roomNumbers,
-          hotel: hotelId,
-          checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
-          roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
-          advancePaid: parseFloat(formData.advancePaid || '0') || 0,
-        };
-
-        // Handle email safely - only include if not empty
-        const emailValue = formData.email || '';
-        if (emailValue.trim() !== '') {
-          updatePayload.email = emailValue;
-        }
-
-        resp = await updateGuest(editingGuest._id, updatePayload);
-      } else {
-        const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
-        let hotelId = '';
-
-        // Try to get hotel ID from multiple sources with proper structure handling
-        try {
-          // First try the useAuth context user object
-          if (user?.hotel) {
-            // Handle both string ID and object with _id
-            hotelId = typeof user.hotel === 'string' ? user.hotel : user.hotel._id || user.hotel.id || '';
-          }
-
-          // If not found, try localStorage
-          if (!hotelId) {
-            const storedUser = localStorage.getItem('user');
-            if (storedUser) {
-              try {
-                const userData = JSON.parse(storedUser);
-                if (userData.hotel) {
-                  hotelId = typeof userData.hotel === 'string' ? userData.hotel : userData.hotel._id || userData.hotel.id || '';
-                }
-              } catch (parseError) {
-                console.error('Error parsing user data from localStorage:', parseError);
-              }
-            }
-          }
-
-          // If still not found, try to fetch current user data
-          if (!hotelId) {
-            console.warn('Hotel ID not found in context or localStorage, fetching fresh user data...');
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
             try {
-              const freshUserData = await getMe();
-              if (freshUserData?.data?.hotel) {
-                const hotelField = freshUserData.data.hotel;
-                hotelId = typeof hotelField === 'string' ? hotelField : hotelField._id || hotelField.id || '';
+              const userData = JSON.parse(storedUser);
+              if (userData.hotel) {
+                hotelId = typeof userData.hotel === 'string' ? userData.hotel : userData.hotel._id || userData.hotel.id || '';
               }
-            } catch (fetchError) {
-              console.error('Error fetching user data:', fetchError);
+            } catch (parseError) {
+              console.error('Error parsing user data from localStorage:', parseError);
             }
           }
-        } catch (e) {
-          console.error('Error retrieving hotel ID:', e);
         }
 
+        // If still not found, try to fetch current user data
         if (!hotelId) {
-          throw new Error("Hotel ID is required. Please contact your administrator. Make sure you are logged in properly.");
+          console.warn('Hotel ID not found in context or localStorage, fetching fresh user data...');
+          try {
+            const freshUserData = await getMe();
+            if (freshUserData?.data?.hotel) {
+              const hotelField = freshUserData.data.hotel;
+              hotelId = typeof hotelField === 'string' ? hotelField : hotelField._id || hotelField.id || '';
+            }
+          } catch (fetchError) {
+            console.error('Error fetching user data:', fetchError);
+          }
         }
-
-        const createPayload: any = {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          phone: formData.phone,
-          address: formData.address,
-          idNo: formData.idNo || undefined,
-          occupation: formData.occupation || undefined,
-          vehicleNo: formData.vehicleNo || undefined,
-          noOfAdditionalGuests: additionalGuestsCount,
-          additionalGuests: validAdditionalGuests,
-          purposeOfStay: formData.purposeOfStay || undefined,
-          referrer: formData.referrer || undefined,
-          existingCustomer: formData.existingCustomer,
-          rooms: roomNumbers,
-          hotel: hotelId,
-          checkInDate: new Date(formData.checkInDate).toISOString(),
-          checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
-          roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
-          advancePaid: parseFloat(formData.advancePaid || '0') || 0,
-        };
-
-        // Always include email, use "noemail@gmail.com" if empty
-        const emailValue = formData.email || '';
-        createPayload.email = emailValue.trim() !== '' ? emailValue : 'noemail@gmail.com';
-
-        resp = await createGuest(createPayload);
+      } catch (e) {
+        console.error('Error retrieving hotel ID:', e);
       }
 
-      // Refresh guests data
-      await loadData(true);
-      resetForm();
-      setNotification({ type: 'success', message: resp?.message || 'Operation successful' });
-    } catch (e: any) {
-      // Handle API validation errors
-      if (e.response && e.response.data && e.response.data.details) {
-        const errorDetails = e.response.data.details;
-        const fieldMatch = errorDetails.match(/\"(\w+)\"/);
-        if (fieldMatch) {
-          const fieldName = fieldMatch[1];
-          setFormErrors({ [fieldName]: errorDetails });
-        }
-        setNotification({ type: 'error', message: 'Validation error - please check the form' });
-      } else {
-        setError(e.message);
-        setNotification({ type: 'error', message: e.message || 'Operation failed' });
+      if (!hotelId) {
+        throw new Error("Hotel ID is required. Please contact your administrator. Make sure you are logged in properly.");
       }
-    } finally {
-      setFormLoading(false);
+
+      const updatePayload: any = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        address: formData.address,
+        idNo: formData.idNo || undefined,
+        occupation: formData.occupation || undefined,
+        vehicleNo: formData.vehicleNo || undefined,
+        noOfAdditionalGuests: additionalGuestsCount,
+        additionalGuests: validAdditionalGuests,
+        purposeOfStay: formData.purposeOfStay || undefined,
+        referrer: formData.referrer || undefined,
+        existingCustomer: formData.existingCustomer,
+        rooms: roomNumbers,
+        hotel: hotelId,
+        checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
+        roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
+        advancePaid: parseFloat(formData.advancePaid || '0') || 0,
+      };
+
+      // Handle email safely - only include if not empty
+      const emailValue = formData.email || '';
+      if (emailValue.trim() !== '') {
+        updatePayload.email = emailValue;
+      }
+
+      resp = await updateGuest(editingGuest._id, updatePayload);
+      
+      // Upload document if one is selected (for editing)
+      if (documentFile && resp?.data?._id) {
+        try {
+          setDocumentUploading(true);
+          const docRes = await uploadGuestDocument(resp.data._id, documentFile, documentType);
+          if (docRes?.success) {
+            setNotification({ type: 'success', message: 'Guest updated and document uploaded successfully!' });
+            setDocumentFile(null);
+            // Refresh documents list
+            await fetchGuestDocuments(resp.data._id);
+          }
+        } catch (docErr) {
+          console.error('Document upload failed:', docErr);
+          // Don't fail the whole operation if document upload fails
+          setNotification({ type: 'warning', message: 'Guest updated but document upload failed. You can try again.' });
+        } finally {
+          setDocumentUploading(false);
+        }
+      }
+    } else {
+      const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
+      let hotelId = '';
+
+      // Try to get hotel ID from multiple sources with proper structure handling
+      try {
+        // First try the useAuth context user object
+        if (user?.hotel) {
+          // Handle both string ID and object with _id
+          hotelId = typeof user.hotel === 'string' ? user.hotel : user.hotel._id || user.hotel.id || '';
+        }
+
+        // If not found, try localStorage
+        if (!hotelId) {
+          const storedUser = localStorage.getItem('user');
+          if (storedUser) {
+            try {
+              const userData = JSON.parse(storedUser);
+              if (userData.hotel) {
+                hotelId = typeof userData.hotel === 'string' ? userData.hotel : userData.hotel._id || userData.hotel.id || '';
+              }
+            } catch (parseError) {
+              console.error('Error parsing user data from localStorage:', parseError);
+            }
+          }
+        }
+
+        // If still not found, try to fetch current user data
+        if (!hotelId) {
+          console.warn('Hotel ID not found in context or localStorage, fetching fresh user data...');
+          try {
+            const freshUserData = await getMe();
+            if (freshUserData?.data?.hotel) {
+              const hotelField = freshUserData.data.hotel;
+              hotelId = typeof hotelField === 'string' ? hotelField : hotelField._id || hotelField.id || '';
+            }
+          } catch (fetchError) {
+            console.error('Error fetching user data:', fetchError);
+          }
+        }
+      } catch (e) {
+        console.error('Error retrieving hotel ID:', e);
+      }
+
+      if (!hotelId) {
+        throw new Error("Hotel ID is required. Please contact your administrator. Make sure you are logged in properly.");
+      }
+
+      const createPayload: any = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phone,
+        address: formData.address,
+        idNo: formData.idNo || undefined,
+        occupation: formData.occupation || undefined,
+        vehicleNo: formData.vehicleNo || undefined,
+        noOfAdditionalGuests: additionalGuestsCount,
+        additionalGuests: validAdditionalGuests,
+        purposeOfStay: formData.purposeOfStay || undefined,
+        referrer: formData.referrer || undefined,
+        existingCustomer: formData.existingCustomer,
+        rooms: roomNumbers,
+        hotel: hotelId,
+        checkInDate: new Date(formData.checkInDate).toISOString(),
+        checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
+        roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
+        advancePaid: parseFloat(formData.advancePaid || '0') || 0,
+      };
+
+      // Always include email, use "noemail@gmail.com" if empty
+      const emailValue = formData.email || '';
+      createPayload.email = emailValue.trim() !== '' ? emailValue : 'noemail@gmail.com';
+
+      resp = await createGuest(createPayload);
+
+      // Upload document if one is selected (for new guest)
+      if (documentFile && resp?.data?._id) {
+        try {
+          setDocumentUploading(true);
+          const docRes = await uploadGuestDocument(resp.data._id, documentFile, documentType);
+          if (docRes?.success) {
+            setNotification({ type: 'success', message: 'Guest created and document uploaded successfully!' });
+            setDocumentFile(null);
+          }
+        } catch (docErr) {
+          console.error('Document upload failed:', docErr);
+          // Don't fail the whole operation if document upload fails
+          setNotification({ type: 'warning', message: 'Guest created but document upload failed. You can try again.' });
+        } finally {
+          setDocumentUploading(false);
+        }
+      }
     }
-  };
+
+    await loadData(true);
+
+    // Reset form and show success message
+    resetForm();
+    if (!documentFile) {
+      setNotification({ type: 'success', message: editingGuest ? 'Guest updated successfully!' : 'Guest created successfully!' });
+    }
+  } catch (e: any) {
+    // Handle API validation errors
+    if (e.response && e.response.data && e.response.data.details) {
+      const errorDetails = e.response.data.details;
+      const fieldMatch = errorDetails.match(/\"(\w+)\"/);
+      if (fieldMatch) {
+        const fieldName = fieldMatch[1];
+        setFormErrors({ [fieldName]: errorDetails });
+      }
+      setNotification({ type: 'error', message: 'Validation error - please check the form' });
+    } else {
+      setError(e.message);
+      setNotification({ type: 'error', message: e.message || 'Operation failed' });
+    }
+  } finally {
+    setFormLoading(false);
+  }
+};
 
   const handleEdit = async (guest: Guest) => {
     try {
@@ -1139,6 +1405,11 @@ export default function GuestsPage() {
       // Fetch referrers for the dropdown
       await fetchReferrers();
 
+      // Fetch guest documents
+      if (guest._id) {
+        fetchGuestDocuments(guest._id);
+      }
+
       setShowForm(true);
     } catch (error) {
       console.error("Error in handleEdit:", error);
@@ -1170,6 +1441,8 @@ const handleAddNewGuest = async () => {
   setFormErrors({});
   setExistingGuest(null);
   setGuestSearchMessage("");
+  setGuestDocuments([]);
+  setDocumentFile(null);
   try {
     const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
     if (!token) throw new Error("No authentication token");
@@ -1362,191 +1635,191 @@ const handleAddNewGuest = async () => {
     <DashboardLayout>
       <div className="p-6">
 
-        <div className="bg-card rounded-xl border border-border p-3 mb-5">
+{/* Filter and Search Section */}
+<div className="bg-card rounded-xl border border-border p-3 mb-5">
+  {/* Mobile row: search + filter toggle + action */}
+  <div className="flex items-center gap-2 md:hidden">
+    <div className="relative flex-1 min-w-0">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+      <input
+        type="text"
+        value={filters.search}
+        onChange={(e) => handleFilterChange('search', e.target.value)}
+        className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+        placeholder="Search guests..."
+        data-cy="guests-search"
+      />
+      {filters.search && (
+        <button
+          onClick={() => handleFilterChange('search', '')}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+    <button
+      onClick={() => setShowMobileFilters(!showMobileFilters)}
+      className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-all shrink-0 ${showMobileFilters ? 'bg-primary text-white border-primary' : 'bg-muted/50 border-input text-muted-foreground hover:text-foreground'}`}
+      title="Filters"
+    >
+      <SlidersHorizontal className="w-4 h-4" />
+    </button>
+    <button
+      onClick={handleAddNewGuest}
+      className="shrink-0 h-9 px-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+      data-cy="guests-add-new"
+    >
+      <Plus className="w-4 h-4" />
+    </button>
+  </div>
 
-          {/* Mobile row: search + filter toggle + action */}
-          <div className="flex items-center gap-2 md:hidden">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              <input
-                type="text"
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
-                placeholder="Search guests..."
-                data-cy="guests-search"
-              />
-              {filters.search && (
-                <button
-                  onClick={() => handleFilterChange('search', '')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <button
-              onClick={() => setShowMobileFilters(!showMobileFilters)}
-              className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-all shrink-0 ${showMobileFilters ? 'bg-primary text-white border-primary' : 'bg-muted/50 border-input text-muted-foreground hover:text-foreground'}`}
-              title="Filters"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleAddNewGuest}
-              className="shrink-0 h-9 px-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
-              data-cy="guests-add-new"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
+  {/* Mobile filter panel */}
+  {showMobileFilters && (
+    <div className="mt-3 space-y-2 md:hidden">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={filters.roomNumber}
+          onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
+          className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm"
+          placeholder="Room #..."
+          data-cy="guests-room-filter"
+        />
+        {filters.roomNumber && (
+          <button
+            onClick={() => handleFilterChange('roomNumber', '')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      <select
+        value={filters.existingCustomer}
+        onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
+        className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
+        data-cy="guests-customer-filter"
+      >
+        <option value="">All Customers</option>
+        <option value="true">Existing</option>
+        <option value="false">New</option>
+      </select>
+      <select
+        value={filters.hasDue}
+        onChange={(e) => handleFilterChange('hasDue', e.target.value)}
+        className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
+        data-cy="guests-due-filter"
+      >
+        <option value="">Any Dues</option>
+        <option value="true">Has Due</option>
+        <option value="false">No Due</option>
+      </select>
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          onClick={() => setShowMobileSummary(!showMobileSummary)}
+          className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5"
+        >
+          <Info className="w-3.5 h-3.5" />
+          {showMobileSummary ? 'Hide' : 'Show'} Stats
+        </button>
+        {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
+          <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 ml-auto shrink-0" data-cy="guests-clear-filters">
+            Clear
+          </button>
+        )}
+      </div>
+    </div>
+  )}
 
-          {/* Mobile filter panel */}
-          {showMobileFilters && (
-            <div className="mt-3 space-y-2 md:hidden">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="text"
-                    value={filters.roomNumber}
-                    onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
-                    className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm"
-                    placeholder="Room #..."
-                    data-cy="guests-room-filter"
-                  />
-                {filters.roomNumber && (
-                  <button
-                    onClick={() => handleFilterChange('roomNumber', '')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-              <select
-                value={filters.existingCustomer}
-                onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
-                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
-                data-cy="guests-customer-filter"
-              >
-                <option value="">All Customers</option>
-                <option value="true">Existing</option>
-                <option value="false">New</option>
-              </select>
-              <select
-                value={filters.hasDue}
-                onChange={(e) => handleFilterChange('hasDue', e.target.value)}
-                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
-                data-cy="guests-due-filter"
-              >
-                <option value="">Any Dues</option>
-                <option value="true">Has Due</option>
-                <option value="false">No Due</option>
-              </select>
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={() => setShowMobileSummary(!showMobileSummary)}
-                  className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5"
-                >
-                  <Info className="w-3.5 h-3.5" />
-                  {showMobileSummary ? 'Hide' : 'Show'} Stats
-                </button>
-                {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
-                  <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 ml-auto shrink-0" data-cy="guests-clear-filters">
-                    Clear
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Desktop: all filters in one row */}
-          <div className="hidden md:flex items-start gap-3">
-            <div className="flex items-center gap-3 flex-nowrap overflow-x-auto flex-1 min-w-0">
-              <div className="relative flex-1 min-w-[160px] max-w-xs shrink-0">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange('search', e.target.value)}
-                  className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
-                  placeholder="Search guests..."
-                  data-cy="guests-search"
-                />
-                {filters.search && (
-                  <button
-                    onClick={() => handleFilterChange('search', '')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              <div className="relative min-w-[120px] shrink-0">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                <input
-                  type="text"
-                  value={filters.roomNumber}
-                  onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
-                  className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
-                  placeholder="Room #..."
-                  data-cy="guests-room-filter"
-                />
-                {filters.roomNumber && (
-                  <button
-                    onClick={() => handleFilterChange('roomNumber', '')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-              <select
-                value={filters.existingCustomer}
-                onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
-                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px] shrink-0"
-                data-cy="guests-customer-filter"
-              >
-                <option value="">All Customers</option>
-                <option value="true">Existing</option>
-                <option value="false">New</option>
-              </select>
-              <select
-                value={filters.hasDue}
-                onChange={(e) => handleFilterChange('hasDue', e.target.value)}
-                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[110px] shrink-0"
-                data-cy="guests-due-filter"
-              >
-                <option value="">Any Dues</option>
-                <option value="true">Has Due</option>
-                <option value="false">No Due</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                onClick={() => setShowMobileSummary(!showMobileSummary)}
-                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0"
-                title={showMobileSummary ? 'Hide Stats' : 'Show Stats'}
-              >
-                <Info className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">{showMobileSummary ? 'Hide' : 'Show'} Stats</span>
-              </button>
-              {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
-                <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 shrink-0 whitespace-nowrap" data-cy="guests-clear-filters">
-                  Clear
-                </button>
-              )}
-              <button
-                onClick={handleAddNewGuest}
-                className="shrink-0 h-9 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
-                data-cy="guests-add-new"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden lg:inline">Add Guest</span>
-              </button>
-            </div>
-          </div>
-        </div>
+  {/* Desktop: all filters in one row */}
+  <div className="hidden md:flex items-start gap-3">
+    <div className="flex items-center gap-3 flex-nowrap overflow-x-auto flex-1 min-w-0">
+      <div className="relative flex-1 min-w-[160px] max-w-xs shrink-0">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={filters.search}
+          onChange={(e) => handleFilterChange('search', e.target.value)}
+          className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+          placeholder="Search guests..."
+          data-cy="guests-search"
+        />
+        {filters.search && (
+          <button
+            onClick={() => handleFilterChange('search', '')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      <div className="relative min-w-[120px] shrink-0">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={filters.roomNumber}
+          onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
+          className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+          placeholder="Room #..."
+          data-cy="guests-room-filter"
+        />
+        {filters.roomNumber && (
+          <button
+            onClick={() => handleFilterChange('roomNumber', '')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      <select
+        value={filters.existingCustomer}
+        onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
+        className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px] shrink-0"
+        data-cy="guests-customer-filter"
+      >
+        <option value="">All Customers</option>
+        <option value="true">Existing</option>
+        <option value="false">New</option>
+      </select>
+      <select
+        value={filters.hasDue}
+        onChange={(e) => handleFilterChange('hasDue', e.target.value)}
+        className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[110px] shrink-0"
+        data-cy="guests-due-filter"
+      >
+        <option value="">Any Dues</option>
+        <option value="true">Has Due</option>
+        <option value="false">No Due</option>
+      </select>
+    </div>
+    <div className="flex items-center gap-3 shrink-0">
+      <button
+        onClick={() => setShowMobileSummary(!showMobileSummary)}
+        className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0"
+        title={showMobileSummary ? 'Hide Stats' : 'Show Stats'}
+      >
+        <Info className="w-3.5 h-3.5" />
+        <span className="hidden lg:inline">{showMobileSummary ? 'Hide' : 'Show'} Stats</span>
+      </button>
+      {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
+        <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 shrink-0 whitespace-nowrap" data-cy="guests-clear-filters">
+          Clear
+        </button>
+      )}
+      <button
+        onClick={handleAddNewGuest}
+        className="shrink-0 h-9 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+        data-cy="guests-add-new"
+      >
+        <Plus className="w-4 h-4" />
+        <span className="hidden lg:inline">Add Guest</span>
+      </button>
+    </div>
+  </div>
+</div>
 
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between mb-5">
@@ -1635,6 +1908,130 @@ const handleAddNewGuest = async () => {
               )}
 
               <form onSubmit={handleFormSubmit} className="space-y-4">
+
+                {/* Quick Scan OCR - disabled until OCR is stable
+                <div className="bg-purple-50 dark:bg-purple-950/10 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold mb-2">Quick Scan (Auto-fill Form)</h3>
+                  <p className="text-sm text-muted-foreground mb-3">Upload a document image. Form fields will auto-fill from OCR — you can edit them afterwards.</p>
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium mb-1">Select Document Image</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            await handleOcrScan(file);
+                          }
+                          e.target.value = '';
+                        }}
+                        className="w-full border border-input rounded px-3 py-2 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Type</label>
+                      <select
+                        value={documentType}
+                        onChange={(e) => setDocumentType(e.target.value)}
+                        className="border border-input rounded px-3 py-2 text-sm"
+                      >
+                        <option value="passport">Passport</option>
+                        <option value="license">License</option>
+                      </select>
+                    </div>
+                    <div className="shrink-0">
+                      <span className={`inline-flex items-center px-3 py-2 rounded text-sm ${ocrLoading ? 'bg-muted text-muted-foreground' : 'bg-purple-100 text-purple-700'}`}>
+                        {ocrLoading ? (
+                          <><span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-2"></span> Scanning...</>
+                        ) : (
+                          'Auto-fill via OCR'
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                */}
+
+{/* Identity Documents */}
+<div className="border border-border rounded-lg p-4">
+  <h3 className="text-lg font-semibold mb-4">Identity Documents</h3>
+
+  {guestDocuments.length > 0 && (
+    <div className="mb-4 space-y-2">
+      {guestDocuments.map(doc => (
+        <div key={doc._id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-muted/30 rounded p-3 border gap-2">
+          <div className="flex items-center gap-3 min-w-0 flex-wrap">
+            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium shrink-0 ${
+              doc.documentType === 'passport' ? 'bg-blue-100 text-blue-800' :
+              doc.documentType === 'license' ? 'bg-orange-100 text-orange-800' :
+              doc.documentType === 'citizenship' ? 'bg-green-100 text-green-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {doc.documentType}
+            </span>
+            <span className="text-sm truncate flex-1 min-w-0">{doc.fileName}</span>
+            {doc.ocrData && (
+              <button
+                type="button"
+                onClick={() => applyOcrData(doc)}
+                className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200 shrink-0"
+                title="Auto-fill form from this document"
+              >
+                Auto-fill
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
+            <button type="button" onClick={() => setPreviewDocument(doc)} className="px-2 py-1 text-xs text-primary hover:underline">View</button>
+            <button type="button" onClick={() => handleDeleteDocument(doc._id)} className="px-2 py-1 text-xs text-destructive hover:underline">Delete</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+    <div className="flex-1 w-full sm:w-auto">
+      <label className="block text-sm font-medium mb-1">Upload New Document</label>
+      <input
+        type="file"
+        accept="image/*,application/pdf"
+        onChange={(e) => {
+          const file = e.target.files?.[0] || null;
+          setDocumentFile(file);
+          // Auto-OCR scan when file is selected
+          if (file) {
+            handleOcrScan(file);
+          }
+        }}
+        className="w-full border border-input rounded px-3 py-2 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:text-sm file:cursor-pointer hover:file:bg-primary/90"
+      />
+      {documentFile && (
+        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+          ✓ File selected: {documentFile.name} (will be uploaded on save)
+        </p>
+      )}
+    </div>
+    <div className="w-full sm:w-auto sm:shrink-0">
+      <label className="block text-sm font-medium mb-1">Type</label>
+      <select
+        value={documentType}
+        onChange={(e) => setDocumentType(e.target.value)}
+        className="w-full sm:w-auto border border-input rounded px-3 py-2 text-sm"
+      >
+        <option value="passport">Passport</option>
+        <option value="license">License</option>
+        <option value="citizenship">Citizenship</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+  </div>
+  <p className="text-sm text-muted-foreground mt-2">
+    {documentFile ? 'Document will be uploaded when you save the guest.' : 'Select a document to upload with the guest.'}
+  </p>
+</div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Basic Information */}
                   <div className="space-y-4">
@@ -1803,81 +2200,83 @@ const handleAddNewGuest = async () => {
                   </div>
                 </div>
 
-                {/* Additional Guests Section */}
-                <div className="border-t pt-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">Additional Guests</h3>
-                    <button
-                      type="button"
-                      onClick={addAdditionalGuest}
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200"
-                    >
-                      + Add Guest
-                    </button>
-                  </div>
 
-                  <div className="text-sm text-muted-foreground mb-2">
-                    Total additional guests: {(formData.additionalGuests || []).filter(
-                      guest => guest != null &&
-                        typeof guest === 'object' &&
-                        (guest.name || '').trim() !== '' &&
-                        (guest.relationship || '').trim() !== ''
-                    ).length}
-                  </div>
+{/* Additional Guests Section */}
+<div className="border-t pt-4">
+  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+    <h3 className="text-lg font-semibold">Additional Guests</h3>
+    <button
+      type="button"
+      onClick={addAdditionalGuest}
+      className="w-full sm:w-auto px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition-colors"
+    >
+      + Add Guest
+    </button>
+  </div>
 
-                  {(formData.additionalGuests || []).map((guest, index) => {
-                    // Ensure guest object exists and has required properties
-                    const safeGuest = guest || { name: '', gender: 'male', relationship: '' };
-                    return (
-                      <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-3 border rounded">
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Name</label>
-                          <input
-                            type="text"
-                            value={safeGuest.name || ''}
-                            onChange={(e) => handleAdditionalGuestChange(index, 'name', e.target.value)}
-                            className="w-full border border-input rounded px-3 py-2"
-                            placeholder="Guest name"
-                          />
-                        </div>
+  <div className="text-sm text-muted-foreground mb-2">
+    Total additional guests: {(formData.additionalGuests || []).filter(
+      guest => guest != null &&
+        typeof guest === 'object' &&
+        (guest.name || '').trim() !== '' &&
+        (guest.relationship || '').trim() !== ''
+    ).length}
+  </div>
 
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Gender</label>
-                          <select
-                            value={safeGuest.gender || 'male'}
-                            onChange={(e) => handleAdditionalGuestChange(index, 'gender', e.target.value)}
-                            className="w-full border border-input rounded px-3 py-2 max-w-full truncate"
-                          >
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                            <option value="other">Other</option>
-                          </select>
-                        </div>
+  {(formData.additionalGuests || []).map((guest, index) => {
+    // Ensure guest object exists and has required properties
+    const safeGuest = guest || { name: '', gender: 'male', relationship: '' };
+    return (
+      <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4 p-3 border rounded">
+        <div>
+          <label className="block text-sm font-medium mb-1">Name</label>
+          <input
+            type="text"
+            value={safeGuest.name || ''}
+            onChange={(e) => handleAdditionalGuestChange(index, 'name', e.target.value)}
+            className="w-full border border-input rounded px-3 py-2 text-sm"
+            placeholder="Guest name"
+          />
+        </div>
 
-                        <div>
-                          <label className="block text-sm font-medium mb-1">Relationship</label>
-                          <input
-                            type="text"
-                            value={safeGuest.relationship || ''}
-                            onChange={(e) => handleAdditionalGuestChange(index, 'relationship', e.target.value)}
-                            className="w-full border border-input rounded px-3 py-2"
-                            placeholder="Relationship to main guest"
-                          />
-                        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Gender</label>
+          <select
+            value={safeGuest.gender || 'male'}
+            onChange={(e) => handleAdditionalGuestChange(index, 'gender', e.target.value)}
+            className="w-full border border-input rounded px-3 py-2 text-sm max-w-full truncate"
+          >
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
 
-                        <div className="md:col-span-3 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => removeAdditionalGuest(index)}
-                            className="text-destructive hover:text-destructive/80 text-sm"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:col-span-1">
+          <div className="flex-1">
+            <label className="block text-sm font-medium mb-1">Relationship</label>
+            <input
+              type="text"
+              value={safeGuest.relationship || ''}
+              onChange={(e) => handleAdditionalGuestChange(index, 'relationship', e.target.value)}
+              className="w-full border border-input rounded px-3 py-2 text-sm"
+              placeholder="Relationship"
+            />
+          </div>
+          <div className="flex items-end sm:items-center pb-0.5">
+            <button
+              type="button"
+              onClick={() => removeAdditionalGuest(index)}
+              className="w-full sm:w-auto px-3 py-2 text-destructive hover:text-destructive/80 text-sm font-medium border border-destructive/20 rounded hover:bg-destructive/5 transition-colors"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  })}
+</div>
 
                 {/* Room and Stay Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
@@ -2006,28 +2405,64 @@ const handleAddNewGuest = async () => {
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    className="px-4 py-2 border border-input rounded-lg hover:bg-muted/30"
-                    data-cy="guests-form-cancel"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={formLoading}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
-                    data-cy="guests-form-submit"
-                  >
-                    {formLoading ? "Saving..." : editingGuest ? "Update Guest" : "Add Guest"}
-                  </button>
-                </div>
+<div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t">
+  <button
+    type="button"
+    onClick={resetForm}
+    className="w-full sm:w-auto px-4 py-2 border border-input rounded-lg hover:bg-muted/30 transition-colors order-2 sm:order-1"
+    data-cy="guests-form-cancel"
+  >
+    Cancel
+  </button>
+  <button
+    type="submit"
+    disabled={formLoading}
+    className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors order-1 sm:order-2"
+    data-cy="guests-form-submit"
+  >
+    {formLoading ? "Saving..." : editingGuest ? "Update Guest" : "Add Guest"}
+  </button>
+</div>
               </form>
             </div>
           </div>
         </div>
+        )}
+
+        {/* Document Preview */}
+        {previewDocument && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4" onClick={() => setPreviewDocument(null)}>
+            <div className="bg-card rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+              <div className="sticky top-0 bg-card z-10 flex items-center justify-between p-3 border-b">
+                <span className="text-sm font-medium truncate">{previewDocument.fileName}</span>
+                <button onClick={() => setPreviewDocument(null)} className="text-muted-foreground hover:text-foreground">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 flex flex-col items-center gap-4">
+                {previewDocument.mimeType?.startsWith('image/') ? (
+                  <img
+                    src={previewDocument.signedUrl || previewDocument.fileUrl}
+                    alt={previewDocument.fileName}
+                    className="max-w-full h-auto rounded border"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                    <span className="text-4xl">📄</span>
+                    <p>Preview not available for this file type</p>
+                  </div>
+                )}
+                <a
+                  href={previewDocument.signedUrl || previewDocument.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm"
+                >
+                  Open in new tab
+                </a>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Previous Stay Modal */}
@@ -2039,11 +2474,15 @@ const handleAddNewGuest = async () => {
         )}
 
         {/* Notification Toast */}
-        {notification && (
-          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-            {notification.message}
-          </div>
-        )}
+{notification && (
+  <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${
+    notification.type === 'success' ? 'bg-green-600' : 
+    notification.type === 'warning' ? 'bg-yellow-600' : 
+    'bg-red-600'
+  }`}>
+    {notification.message}
+  </div>
+)}
 
         {/* Guests Table */}
         <div className="bg-card rounded-lg shadow overflow-hidden">

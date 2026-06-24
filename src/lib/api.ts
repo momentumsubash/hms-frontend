@@ -826,6 +826,74 @@ export async function recordGuestDueTransaction(guestId: string, transaction: an
   return res.json();
 }
 
+export async function uploadGuestDocument(guestId: string, file: File, documentType: string) {
+  const formData = new FormData();
+  formData.append('document', file);
+  formData.append('documentType', documentType);
+
+  const res = await fetch(`${API_URL}/guests/${guestId}/documents`, {
+    method: 'POST',
+    headers: mergeHeaders({}, getAuthHeaders()),
+    body: formData,
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Failed to upload document');
+  }
+  return res.json();
+}
+
+export async function getGuestDocuments(guestId: string) {
+  const res = await fetch(`${API_URL}/guests/${guestId}/documents`, {
+    headers: mergeHeaders({}, getAuthHeaders()),
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error('Failed to fetch documents');
+  return res.json();
+}
+
+export async function ocrPreviewDocument(file: File, documentType: string = 'passport') {
+  const formData = new FormData();
+  formData.append('document', file);
+  formData.append('documentType', documentType);
+
+  const res = await fetch(`${API_URL}/guests/documents/ocr-preview`, {
+    method: 'POST',
+    headers: mergeHeaders({}, getAuthHeaders()),
+    body: formData,
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error('OCR processing failed');
+  return res.json();
+}
+
+export async function deleteGuestDocument(guestId: string, docId: string) {
+  const res = await fetch(`${API_URL}/guests/${guestId}/documents/${docId}`, {
+    method: 'DELETE',
+    headers: mergeHeaders({}, getAuthHeaders()),
+  });
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error('Failed to delete document');
+  return res.json();
+}
+
 export async function updateGuest(id: string, guest: any) {
   const payload = {
     ...guest,
