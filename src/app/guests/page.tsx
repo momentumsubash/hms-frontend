@@ -234,6 +234,7 @@ const searchGuestByPhone = async (phone: string, token: string): Promise<Guest |
   }
 };
 
+
 // Previous Stay Modal Component
 const PreviousStayModal = ({ 
   guest, 
@@ -264,15 +265,20 @@ const PreviousStayModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]">
-      <div className="bg-card rounded-lg p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4 modal-overlay"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="bg-card rounded-lg p-4 sm:p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto modal-content modal-panel safe-bottom">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-foreground">
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">
             Previous Stay Details - {guest.firstName} {guest.lastName}
           </h2>
           <button
             onClick={onClose}
-            className="text-muted-foreground hover:text-gray-700 text-2xl font-semibold"
+            className="text-muted-foreground hover:text-gray-700 text-2xl font-semibold p-1 touch-target-sm"
           >
             ×
           </button>
@@ -280,7 +286,7 @@ const PreviousStayModal = ({
 
         {/* Guest Summary */}
         <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <p className="text-xs text-primary font-medium">Total Stays</p>
               <p className="text-xl font-bold text-foreground">{guest.checkouts?.length || 0}</p>
@@ -306,7 +312,7 @@ const PreviousStayModal = ({
           {guest.checkouts && guest.checkouts.length > 0 ? (
             guest.checkouts.map((checkout) => (
               <div key={checkout._id} className="border rounded-lg p-4 hover:bg-muted/30">
-                <div className="flex justify-between items-start mb-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
                   <div>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
                       Checkout ID: {checkout._id.slice(-6)}
@@ -406,9 +412,9 @@ const PreviousStayModal = ({
           {documents.length > 0 ? (
             <div className="space-y-2">
               {documents.map(doc => (
-                <div key={doc._id} className="flex items-center justify-between bg-muted/30 rounded p-3 border">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                <div key={doc._id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-muted/30 rounded p-3 border gap-2">
+                  <div className="flex items-center gap-3 min-w-0 flex-wrap">
+                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium shrink-0 ${
                       doc.documentType === 'passport' ? 'bg-blue-100 text-blue-800' :
                       doc.documentType === 'license' ? 'bg-orange-100 text-orange-800' :
                       doc.documentType === 'citizenship' ? 'bg-green-100 text-green-800' :
@@ -416,10 +422,10 @@ const PreviousStayModal = ({
                     }`}>
                       {doc.documentType}
                     </span>
-                    <span className="text-sm truncate">{doc.fileName}</span>
+                    <span className="text-sm truncate flex-1 min-w-0">{doc.fileName}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button type="button" onClick={() => setPreviewDoc(doc)} className="px-2 py-1 text-xs text-primary hover:underline">View</button>
+                    <button type="button" onClick={() => setPreviewDoc(doc)} className="px-2 py-1 text-xs text-primary hover:underline touch-target-sm">View</button>
                   </div>
                 </div>
               ))}
@@ -432,7 +438,7 @@ const PreviousStayModal = ({
         <div className="mt-6 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 touch-target"
           >
             Close
           </button>
@@ -441,11 +447,14 @@ const PreviousStayModal = ({
 
       {/* Document Preview in Previous Stay Modal */}
       {previewDoc && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4" onClick={() => setPreviewDoc(null)}>
-          <div className="bg-card rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4 modal-overlay" 
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div className="bg-card rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto modal-content" onClick={e => e.stopPropagation()}>
             <div className="sticky top-0 bg-card z-10 flex items-center justify-between p-3 border-b">
               <span className="text-sm font-medium truncate">{previewDoc.fileName}</span>
-              <button onClick={() => setPreviewDoc(null)} className="text-muted-foreground hover:text-foreground">
+              <button onClick={() => setPreviewDoc(null)} className="text-muted-foreground hover:text-foreground touch-target-sm">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -466,7 +475,7 @@ const PreviousStayModal = ({
                 href={previewDoc.signedUrl || previewDoc.fileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm"
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm touch-target"
               >
                 Open in new tab
               </a>
@@ -725,6 +734,24 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
     }
   }, [notification]);
 
+  useEffect(() => {
+    if (showForm || showPreviousStayModal) {
+      // Add class to html and body for global scroll lock
+      document.documentElement.classList.add('modal-open');
+      document.body.classList.add('modal-open');
+    } else {
+      // Remove scroll lock classes
+      document.documentElement.classList.remove('modal-open');
+      document.body.classList.remove('modal-open');
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.documentElement.classList.remove('modal-open');
+      document.body.classList.remove('modal-open');
+    };
+  }, [showForm, showPreviousStayModal]);
+
   // Initial data load
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -750,6 +777,8 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
   useEffect(() => {
     loadData(false);
   }, [page, loadData]);
+
+
 
   // Clean up debounce timeout
   useEffect(() => {
@@ -1856,578 +1885,7 @@ const handleAddNewGuest = async () => {
           </div>
         )}
 
-        {/* Guest Form Modal */}
-        {showForm && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4">
-            <div className="bg-card rounded-lg shadow-xl w-full max-w-4xl my-8 max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-card border-b px-4 sm:px-6 py-4 flex justify-between items-center z-10">
-                <h2 className="text-lg sm:text-xl font-semibold">
-                  {editingGuest ? "Edit Guest" : "Add New Guest"}
-                </h2>
-                <button
-                  onClick={resetForm}
-                  className="text-muted-foreground hover:text-gray-700 text-2xl font-semibold p-1"
-                >
-                  ×
-                </button>
-              </div>
-              <div className="p-4 sm:p-6">
-
-              {/* Existing Guest Notification */}
-              {existingGuest && (
-                <div className="bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800 rounded p-4 mb-4">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div>
-                      <p className="text-green-800 font-medium text-lg">
-                        Existing Guest Found
-                      </p>
-                      <p className="text-emerald-600 dark:text-emerald-400 text-sm">
-                        {existingGuest.firstName} {existingGuest.lastName} - 
-                        Previous stays: {existingGuest.checkouts?.length || 0} | 
-                        Total spent: रु{existingGuest.totalSpent?.toLocaleString() || 0}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleViewPreviousStays(existingGuest)}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                      >
-                        View Previous Stays
-                      </button>
-                      <button
-                        type="button"
-                        onClick={clearGuestSearch}
-                        className="px-4 py-2 border border-green-600 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-green-50 text-sm"
-                      >
-                        Clear & Start New
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <form onSubmit={handleFormSubmit} className="space-y-4">
-
-                {/* Quick Scan OCR - disabled until OCR is stable
-                <div className="bg-purple-50 dark:bg-purple-950/10 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold mb-2">Quick Scan (Auto-fill Form)</h3>
-                  <p className="text-sm text-muted-foreground mb-3">Upload a document image. Form fields will auto-fill from OCR — you can edit them afterwards.</p>
-                  <div className="flex items-end gap-3">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium mb-1">Select Document Image</label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            await handleOcrScan(file);
-                          }
-                          e.target.value = '';
-                        }}
-                        className="w-full border border-input rounded px-3 py-2 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Type</label>
-                      <select
-                        value={documentType}
-                        onChange={(e) => setDocumentType(e.target.value)}
-                        className="border border-input rounded px-3 py-2 text-sm"
-                      >
-                        <option value="passport">Passport</option>
-                        <option value="license">License</option>
-                      </select>
-                    </div>
-                    <div className="shrink-0">
-                      <span className={`inline-flex items-center px-3 py-2 rounded text-sm ${ocrLoading ? 'bg-muted text-muted-foreground' : 'bg-purple-100 text-purple-700'}`}>
-                        {ocrLoading ? (
-                          <><span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-2"></span> Scanning...</>
-                        ) : (
-                          'Auto-fill via OCR'
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                */}
-
-{/* Identity Documents */}
-{/* <div className="border border-border rounded-lg p-4">
-  <h3 className="text-lg font-semibold mb-4">Identity Documents</h3>
-
-  {guestDocuments.length > 0 && (
-    <div className="mb-4 space-y-2">
-      {guestDocuments.map(doc => (
-        <div key={doc._id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-muted/30 rounded p-3 border gap-2">
-          <div className="flex items-center gap-3 min-w-0 flex-wrap">
-            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium shrink-0 ${
-              doc.documentType === 'passport' ? 'bg-blue-100 text-blue-800' :
-              doc.documentType === 'license' ? 'bg-orange-100 text-orange-800' :
-              doc.documentType === 'citizenship' ? 'bg-green-100 text-green-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
-              {doc.documentType}
-            </span>
-            <span className="text-sm truncate flex-1 min-w-0">{doc.fileName}</span>
-            {doc.ocrData && (
-              <button
-                type="button"
-                onClick={() => applyOcrData(doc)}
-                className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded hover:bg-purple-200 shrink-0"
-                title="Auto-fill form from this document"
-              >
-                Auto-fill
-              </button>
-            )}
-          </div>
-          <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
-            <button type="button" onClick={() => setPreviewDocument(doc)} className="px-2 py-1 text-xs text-primary hover:underline">View</button>
-            <button type="button" onClick={() => handleDeleteDocument(doc._id)} className="px-2 py-1 text-xs text-destructive hover:underline">Delete</button>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-
-  <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-    <div className="flex-1 w-full sm:w-auto">
-      <label className="block text-sm font-medium mb-1">Upload New Document</label>
-      <input
-        type="file"
-        accept="image/*,application/pdf"
-        onChange={(e) => {
-          const file = e.target.files?.[0] || null;
-          setDocumentFile(file);
-          // Auto-OCR scan when file is selected
-          if (file) {
-            handleOcrScan(file);
-          }
-        }}
-        className="w-full border border-input rounded px-3 py-2 text-sm file:mr-3 file:py-1 file:px-3 file:rounded file:border-0 file:bg-primary file:text-white file:text-sm file:cursor-pointer hover:file:bg-primary/90"
-      />
-      {documentFile && (
-        <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-          ✓ File selected: {documentFile.name} (will be uploaded on save)
-        </p>
-      )}
-    </div>
-    <div className="w-full sm:w-auto sm:shrink-0">
-      <label className="block text-sm font-medium mb-1">Type</label>
-      <select
-        value={documentType}
-        onChange={(e) => setDocumentType(e.target.value)}
-        className="w-full sm:w-auto border border-input rounded px-3 py-2 text-sm"
-      >
-        <option value="passport">Passport</option>
-        <option value="license">License</option>
-        <option value="citizenship">Citizenship</option>
-        <option value="other">Other</option>
-      </select>
-    </div>
-  </div>
-  <p className="text-sm text-muted-foreground mt-2">
-    {documentFile ? 'Document will be uploaded when you save the guest.' : 'Select a document to upload with the guest.'}
-  </p>
-</div> */}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Basic Information */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Basic Information</h3>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Phone[Search for old Guest] *</label>
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={handlePhoneChange}
-                        onBlur={handlePhoneBlur}
-                        className="w-full border border-input rounded px-3 py-2"
-                        required
-                        disabled={isSearchingGuest || !!editingGuest}
-                        placeholder="Enter 10-digit phone number"
-                        data-cy="guests-form-phone"
-                      />
-                      {formErrors.phone && <p className="text-red-500 text-sm">{formErrors.phone}</p>}
-
-                      {/* Guest search status message */}
-                      {guestSearchMessage && (
-                        <p className={`text-sm mt-1 ${existingGuest ? 'text-emerald-600 dark:text-emerald-400' :
-                            isSearchingGuest ? 'text-primary' : 'text-muted-foreground'
-                          }`}>
-                          {isSearchingGuest && (
-                            <span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></span>
-                          )}
-                          {guestSearchMessage}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">First Name *</label>
-                      <input
-                        type="text"
-                        value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2"
-                        required
-                        data-cy="guests-form-first-name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Last Name *</label>
-                      <input
-                        type="text"
-                        value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2"
-                        required
-                        data-cy="guests-form-last-name"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Email</label>
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2"
-                        placeholder="Optional"
-                        data-cy="guests-form-email"
-                      />
-                      {formErrors.email && <p className="text-red-500 text-sm">{formErrors.email}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Address</label>
-                      <textarea
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2"
-                        rows={2}
-                        data-cy="guests-address"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Optional Fields */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Additional Information</h3>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">ID Number</label>
-                      <input
-                        type="text"
-                        value={formData.idNo}
-                        onChange={(e) => setFormData({ ...formData, idNo: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2"
-                        data-cy="guests-idno"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Occupation</label>
-                      <input
-                        type="text"
-                        value={formData.occupation}
-                        onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2"
-                        data-cy="guests-occupation"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Vehicle Number</label>
-                      <input
-                        type="text"
-                        value={formData.vehicleNo}
-                        onChange={(e) => setFormData({ ...formData, vehicleNo: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2"
-                        data-cy="guests-vehicleno"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Purpose of Stay</label>
-                      <input
-                        type="text"
-                        value={formData.purposeOfStay}
-                        onChange={(e) => setFormData({ ...formData, purposeOfStay: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2"
-                        data-cy="guests-purpose"
-                      />
-                    </div>
-
-                    {/* Referrer Field */}
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Referrer</label>
-                      <select
-                        value={formData.referrer}
-                        onChange={(e) => setFormData({ ...formData, referrer: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2 max-w-full truncate"
-                      >
-                        <option value="">Select a referrer (optional)</option>
-                        {loadingReferrers ? (
-                          <option disabled>Loading referrers...</option>
-                        ) : (
-                          referrers.map((referrer) => (
-                            <option key={referrer._id} value={referrer._id}>
-                              {referrer.fullName} - {referrer.taxiNo || 'No taxi'}
-                            </option>
-                          ))
-                        )}
-                      </select>
-                      {referrers.length === 0 && !loadingReferrers && (
-                        <p className="text-sm text-muted-foreground mt-1">No referrers available. Add referrers first.</p>
-                      )}
-                    </div>
-
-                    {/* Existing Customer Flag */}
-                    <div>
-                      <label className="flex items-center text-sm font-medium">
-                        <input
-                          type="checkbox"
-                          checked={formData.existingCustomer}
-                          onChange={(e) => setFormData({ ...formData, existingCustomer: e.target.checked })}
-                          className="mr-2 h-4 w-4 border-input rounded"
-                          data-cy="guests-existing-customer"
-                        />
-                        Existing Customer (Enable Due Management)
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-
-{/* Additional Guests Section */}
-<div className="border-t pt-4">
-  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-    <h3 className="text-lg font-semibold">Additional Guests</h3>
-    <button
-      type="button"
-      onClick={addAdditionalGuest}
-      className="w-full sm:w-auto px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition-colors"
-    >
-      + Add Guest
-    </button>
-  </div>
-
-  <div className="text-sm text-muted-foreground mb-2">
-    Total additional guests: {(formData.additionalGuests || []).filter(
-      guest => guest != null &&
-        typeof guest === 'object' &&
-        (guest.name || '').trim() !== '' &&
-        (guest.relationship || '').trim() !== ''
-    ).length}
-  </div>
-
-  {(formData.additionalGuests || []).map((guest, index) => {
-    // Ensure guest object exists and has required properties
-    const safeGuest = guest || { name: '', gender: 'male', relationship: '' };
-    return (
-      <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4 p-3 border rounded">
-        <div>
-          <label className="block text-sm font-medium mb-1">Name</label>
-          <input
-            type="text"
-            value={safeGuest.name || ''}
-            onChange={(e) => handleAdditionalGuestChange(index, 'name', e.target.value)}
-            className="w-full border border-input rounded px-3 py-2 text-sm"
-            placeholder="Guest name"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Gender</label>
-          <select
-            value={safeGuest.gender || 'male'}
-            onChange={(e) => handleAdditionalGuestChange(index, 'gender', e.target.value)}
-            className="w-full border border-input rounded px-3 py-2 text-sm max-w-full truncate"
-          >
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:col-span-1">
-          <div className="flex-1">
-            <label className="block text-sm font-medium mb-1">Relationship</label>
-            <input
-              type="text"
-              value={safeGuest.relationship || ''}
-              onChange={(e) => handleAdditionalGuestChange(index, 'relationship', e.target.value)}
-              className="w-full border border-input rounded px-3 py-2 text-sm"
-              placeholder="Relationship"
-            />
-          </div>
-          <div className="flex items-end sm:items-center pb-0.5">
-            <button
-              type="button"
-              onClick={() => removeAdditionalGuest(index)}
-              className="w-full sm:w-auto px-3 py-2 text-destructive hover:text-destructive/80 text-sm font-medium border border-destructive/20 rounded hover:bg-destructive/5 transition-colors"
-            >
-              Remove
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  })}
-</div>
-
-                {/* Room and Stay Information */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Room Information</h3>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Select Rooms *</label>
-                      <div className="border border-input rounded max-h-60 sm:max-h-72 overflow-y-auto">
-                        {(editingGuest ? allRooms : availableRooms.filter(r => !r.isOccupied)).map((room) => {
-                          const isSelected = formData.rooms.includes(room._id);
-                          const isOccupiedElse = room.isOccupied && !formData.rooms.includes(room._id);
-                          return (
-                            <div
-                              key={room._id}
-                              onClick={() => {
-                                if (isOccupiedElse) return;
-                                setFormData(prev => ({
-                                  ...prev,
-                                  rooms: isSelected
-                                    ? prev.rooms.filter(id => id !== room._id)
-                                    : [...prev.rooms, room._id]
-                                }));
-                              }}
-                              data-cy="guests-rooms"
-                              className={`flex items-center gap-2 sm:gap-3 px-3 py-2 sm:py-2.5 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors
-                                ${isSelected ? 'bg-blue-50 dark:bg-blue-950/30' : 'hover:bg-muted/50'}
-                                ${isOccupiedElse ? 'text-gray-400 cursor-not-allowed' : ''}
-                              `}
-                            >
-                              <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center flex-shrink-0
-                                ${isSelected ? 'bg-primary border-primary' : 'border-gray-300'}
-                                ${isOccupiedElse ? 'border-gray-200' : ''}
-                              `}>
-                                {isSelected && (
-                                  <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-baseline gap-1.5 sm:gap-2">
-                                  <span className="font-semibold text-sm sm:text-base">#{room.roomNumber}</span>
-                                  <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">{room.type}</span>
-                                  <span className="text-xs sm:text-sm text-muted-foreground ml-auto">रु{room.rate}/night</span>
-                                </div>
-                                <div className="text-xs text-muted-foreground sm:hidden">{room.type}</div>
-                              </div>
-                              {isOccupiedElse && (
-                                <span className="text-xs text-gray-400 flex-shrink-0">Occupied</span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {formErrors.rooms && <p className="text-red-500 text-sm">{formErrors.rooms}</p>}
-                      <p className="text-sm text-muted-foreground mt-1">Click to select/deselect rooms</p>
-
-                      <div className="mt-2 text-sm text-muted-foreground">
-                        {editingGuest && (
-                          <p>
-                            <span className="font-semibold">Note:</span> You can deselect rooms to de-allocate them from this guest.
-                            Grayed out rooms are currently occupied by other guests.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Room Discount (रु)</label>
-                      <input
-                        type="number"
-                        value={formData.roomDiscount}
-                        onChange={(e) => setFormData({ ...formData, roomDiscount: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2"
-                        min="0"
-                        step="0.01"
-                        data-cy="guests-roomdiscount"
-                      />
-                      {formErrors.roomDiscount && <p className="text-red-500 text-sm">{formErrors.roomDiscount}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Advance Paid (रु)</label>
-                      <input
-                        type="number"
-                        value={formData.advancePaid}
-                        onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
-                        className="w-full border border-input rounded px-3 py-2"
-                        min="0"
-                        step="0.01"
-                        data-cy="guests-advancepaid"
-                      />
-                      {formErrors.advancePaid && <p className="text-red-500 text-sm">{formErrors.advancePaid}</p>}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Stay Information</h3>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Check-in Date *</label>
-                      <input
-                        type="datetime-local"
-                        value={formData.checkInDate}
-                        onChange={handleCheckInDateChange}
-                        className="w-full border border-input rounded px-3 py-2"
-                        required
-                        data-cy="guests-checkin"
-                      />
-                      {formErrors.checkInDate && <p className="text-red-500 text-sm">{formErrors.checkInDate}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Check-out Date</label>
-                      <input
-                        type="datetime-local"
-                        value={formData.checkOutDate || ''}
-                        onChange={handleCheckOutDateChange}
-                        min={getMinCheckOutDateTime()}
-                        className="w-full border border-input rounded px-3 py-2"
-                        data-cy="guests-checkout"
-                      />
-                      {formErrors.checkOutDate && <p className="text-red-500 text-sm">{formErrors.checkOutDate}</p>}
-                    </div>
-                  </div>
-                </div>
-
-<div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t">
-  <button
-    type="button"
-    onClick={resetForm}
-    className="w-full sm:w-auto px-4 py-2 border border-input rounded-lg hover:bg-muted/30 transition-colors order-2 sm:order-1"
-    data-cy="guests-form-cancel"
-  >
-    Cancel
-  </button>
-  <button
-    type="submit"
-    disabled={formLoading}
-    className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors order-1 sm:order-2"
-    data-cy="guests-form-submit"
-  >
-    {formLoading ? "Saving..." : editingGuest ? "Update Guest" : "Add Guest"}
-  </button>
-</div>
-              </form>
-            </div>
-          </div>
-        </div>
-        )}
+{/* Guest Form Modal */}
 
         {/* Document Preview */}
         {previewDocument && (
