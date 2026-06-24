@@ -170,41 +170,15 @@ interface GuestForm {
   checkOutDate?: string;
 }
 
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
-}
-
 // Update the getCurrentDateTimeLocal function to add 5-minute buffer
 const getCurrentDateTimeLocal = () => {
   const now = new Date();
-  now.setMinutes(now.getMinutes() + 5); // Add 5-minute buffer
+  now.setMinutes(now.getMinutes() + 5);
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   const hours = String(now.getHours()).padStart(2, '0');
   const minutes = String(now.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
-
-// Add function to calculate default check-out time (next calendar day at 9:00 AM)
-const getDefaultCheckOutDateTime = (checkInDate: string) => {
-  if (!checkInDate) return '';
-
-  const checkIn = new Date(checkInDate);
-  // Set check-out to next calendar day at 9:00 AM (1 night)
-  const checkOut = new Date(checkIn);
-  checkOut.setDate(checkOut.getDate() + 1);
-  checkOut.setHours(9, 0, 0, 0);
-
-  const year = checkOut.getFullYear();
-  const month = String(checkOut.getMonth() + 1).padStart(2, '0');
-  const day = String(checkOut.getDate()).padStart(2, '0');
-  const hours = String(checkOut.getHours()).padStart(2, '0');
-  const minutes = String(checkOut.getMinutes()).padStart(2, '0');
-
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
@@ -223,7 +197,6 @@ const searchGuestByPhone = async (phone: string, token: string): Promise<Guest |
     const data = await response.json();
 
     if (data.success && data.data && data.data.length > 0) {
-      // Return the first matching guest
       return data.data[0];
     }
 
@@ -233,7 +206,6 @@ const searchGuestByPhone = async (phone: string, token: string): Promise<Guest |
     return null;
   }
 };
-
 
 // Previous Stay Modal Component
 const PreviousStayModal = ({ 
@@ -329,7 +301,6 @@ const PreviousStayModal = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Stay Period */}
                   <div>
                     <p className="text-xs text-muted-foreground">Stay Period</p>
                     <p className="text-sm font-medium text-foreground">
@@ -338,7 +309,6 @@ const PreviousStayModal = ({
                     <p className="text-xs text-muted-foreground mt-1">{checkout.nights} night(s)</p>
                   </div>
 
-                  {/* Rooms */}
                   <div>
                     <p className="text-xs text-muted-foreground">Rooms</p>
                     <div className="flex flex-wrap gap-1 mt-1">
@@ -353,7 +323,6 @@ const PreviousStayModal = ({
                     </div>
                   </div>
 
-                  {/* Billing */}
                   <div>
                     <p className="text-xs text-muted-foreground">Billing Summary</p>
                     <div className="space-y-1 mt-1">
@@ -387,7 +356,6 @@ const PreviousStayModal = ({
                   </div>
                 </div>
 
-                {/* Payment Details */}
                 <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
                   <div className="flex flex-wrap gap-3">
                     <span>Payment Method: {checkout.paymentMethod}</span>
@@ -406,7 +374,6 @@ const PreviousStayModal = ({
           )}
         </div>
 
-        {/* Documents Section */}
         <div className="border-t pt-4">
           <h3 className="text-lg font-semibold mb-4">Identity Documents</h3>
           {documents.length > 0 ? (
@@ -445,7 +412,6 @@ const PreviousStayModal = ({
         </div>
       </div>
 
-      {/* Document Preview in Previous Stay Modal */}
       {previewDoc && (
         <div 
           className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4 modal-overlay" 
@@ -496,7 +462,6 @@ export default function GuestsPage() {
     }
   }, []);
 
-  // Listen for localStorage changes (e.g., nepaliLanguage toggle)
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
       if (event.key === 'hotel') {
@@ -507,10 +472,8 @@ export default function GuestsPage() {
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
-  // Notification state
-const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning', message: string } | null>(null);
+  const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning', message: string } | null>(null);
 
-  // Pagination state
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
@@ -555,8 +518,7 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
   const [previewDocument, setPreviewDocument] = useState<GuestDocument | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
 
-  // User info
-    const [user, setUser] = useState<any>(() => {
+  const [user, setUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('user');
       return stored ? JSON.parse(stored) : null;
@@ -564,10 +526,8 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
     return null;
   });
 
-  // Form validation errors
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
-  // Filters with debouncing
   const [filters, setFilters] = useState({
     isCheckedOut: "",
     roomNumber: "",
@@ -577,12 +537,10 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
   });
   const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout | null>(null);
 
-  // Guest search states
   const [isSearchingGuest, setIsSearchingGuest] = useState(false);
   const [existingGuest, setExistingGuest] = useState<Guest | null>(null);
   const [guestSearchMessage, setGuestSearchMessage] = useState("");
 
-  // Previous stay modal state
   const [showPreviousStayModal, setShowPreviousStayModal] = useState(false);
   const [selectedGuestForHistory, setSelectedGuestForHistory] = useState<Guest | null>(null);
   const [showMobileSummary, setShowMobileSummary] = useState(false);
@@ -590,7 +548,6 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const toggleRow = (id: string) => setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
 
-  // Helper function to get standard headers
   const getRequestHeaders = (token: string) => {
     return {
       'Accept': 'application/json',
@@ -598,7 +555,6 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
     };
   };
 
-  // Function to fetch referrers
   const fetchReferrers = async () => {
     try {
       setLoadingReferrers(true);
@@ -622,23 +578,19 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
     }
   };
 
-  // Load data with server-side filtering and pagination
   const loadData = useCallback(async (resetPage = false, customFilters?: typeof filters) => {
     try {
       setLoading(true);
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (!token) throw new Error("No authentication token");
 
-      // Use custom filters if provided, otherwise use current filters
       const currentFilters = customFilters || filters;
       const currentPage = resetPage ? 1 : page;
 
-      // Build query parameters
       const queryParams = new URLSearchParams();
       queryParams.append('page', currentPage.toString());
       queryParams.append('limit', limit.toString());
 
-      // Add filters if they exist
       if (currentFilters.search) queryParams.append('search', currentFilters.search);
       if (currentFilters.roomNumber) queryParams.append('roomNumber', currentFilters.roomNumber);
       if (currentFilters.isCheckedOut !== "") queryParams.append('isCheckedOut', currentFilters.isCheckedOut);
@@ -656,7 +608,6 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
 
       const data = await response.json();
 
-      // Handle the expected response structure
       let guestsData: Guest[] = [];
       let totalCount = 0;
       let totalPagesCount = 0;
@@ -692,28 +643,23 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
     }
   }, [filters, page, limit]);
 
-  // Handle filter changes with debouncing
   const handleFilterChange = (filterKey: string, value: string) => {
     const newFilters = { ...filters, [filterKey]: value };
     setFilters(newFilters);
 
-    // Clear existing timeout
     if (searchDebounce) {
       clearTimeout(searchDebounce);
     }
 
-    // Set a new timeout to debounce the API call for search inputs
     if (filterKey === 'search' || filterKey === 'roomNumber') {
       setSearchDebounce(setTimeout(() => {
         loadData(true, newFilters);
       }, 500));
     } else {
-      // For other filters, apply immediately
       loadData(true, newFilters);
     }
   };
 
-  // Clear all filters
   const clearFilters = () => {
     const clearedFilters = {
       isCheckedOut: "",
@@ -726,7 +672,6 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
     loadData(true, clearedFilters);
   };
 
-  // Hide notification after 3s
   useEffect(() => {
     if (notification) {
       const t = setTimeout(() => setNotification(null), 3000);
@@ -736,23 +681,19 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
 
   useEffect(() => {
     if (showForm || showPreviousStayModal) {
-      // Add class to html and body for global scroll lock
       document.documentElement.classList.add('modal-open');
       document.body.classList.add('modal-open');
     } else {
-      // Remove scroll lock classes
       document.documentElement.classList.remove('modal-open');
       document.body.classList.remove('modal-open');
     }
 
-    // Cleanup on unmount
     return () => {
       document.documentElement.classList.remove('modal-open');
       document.body.classList.remove('modal-open');
     };
   }, [showForm, showPreviousStayModal]);
 
-  // Initial data load
   useEffect(() => {
     const fetchInitialData = async () => {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -762,9 +703,7 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
         return;
       }
       try {
-        // Load guests with initial filters
         await loadData();
-        // Load referrers
         await fetchReferrers();
       } catch (e: any) {
         setError(e.message);
@@ -773,14 +712,10 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
     fetchInitialData();
   }, []);
 
-  // Load data when page changes
   useEffect(() => {
     loadData(false);
   }, [page, loadData]);
 
-
-
-  // Clean up debounce timeout
   useEffect(() => {
     return () => {
       if (searchDebounce) {
@@ -789,48 +724,46 @@ const [notification, setNotification] = useState<{ type: 'success' | 'error' | '
     };
   }, [searchDebounce]);
 
-const resetForm = () => {
-  setFormData({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    address: "",
-    idNo: "",
-    occupation: "",
-    vehicleNo: "",
-    noOfAdditionalGuests: "0",
-    additionalGuests: [],
-    purposeOfStay: "",
-    referrer: "",
-    existingCustomer: false,
-    rooms: [],
-    roomDiscount: "0",
-    advancePaid: "0",
-    checkInDate: getCurrentDateTimeLocal(),
-    checkOutDate: ""
-  });
-  setEditingGuest(null);
-  setExistingGuest(null);
-  setGuestSearchMessage("");
-  setGuestDocuments([]);
-  setDocumentFile(null); // Clear the selected document file
-  setShowForm(false);
-  setFormErrors({});
-  setDocumentType('passport'); // Reset document type to default
-};
-  // Phone search functionality
+  const resetForm = () => {
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      address: "",
+      idNo: "",
+      occupation: "",
+      vehicleNo: "",
+      noOfAdditionalGuests: "0",
+      additionalGuests: [],
+      purposeOfStay: "",
+      referrer: "",
+      existingCustomer: false,
+      rooms: [],
+      roomDiscount: "0",
+      advancePaid: "0",
+      checkInDate: getCurrentDateTimeLocal(),
+      checkOutDate: ""
+    });
+    setEditingGuest(null);
+    setExistingGuest(null);
+    setGuestSearchMessage("");
+    setGuestDocuments([]);
+    setDocumentFile(null);
+    setShowForm(false);
+    setFormErrors({});
+    setDocumentType('passport');
+  };
+
   const handlePhoneChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const phone = e.target.value;
     setFormData({ ...formData, phone });
 
-    // Clear existing guest when phone changes
     if (existingGuest) {
       setExistingGuest(null);
       setGuestSearchMessage("");
     }
 
-    // Search when phone number is complete (e.g., 10 digits)
     if (phone.length >= 10) {
       setIsSearchingGuest(true);
       setGuestSearchMessage("Searching for existing guest...");
@@ -1044,19 +977,16 @@ const resetForm = () => {
     setNotification({ type: 'success', message: 'Form auto-filled from document' });
   };
 
-  // Handle view previous stays
   const handleViewPreviousStays = (guest: Guest) => {
     setSelectedGuestForHistory(guest);
     setShowPreviousStayModal(true);
   };
 
-  // Close previous stay modal
   const handleClosePreviousStayModal = () => {
     setShowPreviousStayModal(false);
     setSelectedGuestForHistory(null);
   };
 
-  // Validation function
   const validateForm = () => {
     const errors: { [key: string]: string } = {};
     const now = new Date();
@@ -1101,7 +1031,6 @@ const resetForm = () => {
       errors.advancePaid = "Advance paid must be a non-negative number";
     }
 
-    // Handle undefined/null email values safely
     const emailValue = formData.email || '';
     if (emailValue.trim() !== '') {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -1118,269 +1047,242 @@ const resetForm = () => {
     return Object.keys(errors).length === 0;
   };
 
-const handleFormSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  if (!validateForm()) {
-    setNotification({ type: 'error', message: 'Please fix the validation errors' });
-    return;
-  }
-
-  setFormLoading(true);
-  try {
-    let resp;
-
-    // FIXED: Completely safe additional guests filtering
-    const validAdditionalGuests: AdditionalGuest[] = [];
-
-    // Safely iterate through additional guests
-    if (formData.additionalGuests && Array.isArray(formData.additionalGuests)) {
-      for (const guest of formData.additionalGuests) {
-        // Check if guest exists and has the required properties
-        if (guest && typeof guest === 'object') {
-          const name = guest.name || '';
-          const relationship = guest.relationship || '';
-
-          // Only include if both name and relationship are not empty after trimming
-          if (typeof name === 'string' &&
-            typeof relationship === 'string' &&
-            name.trim() !== '' &&
-            relationship.trim() !== '') {
-            validAdditionalGuests.push({
-              name: name.trim(),
-              gender: guest.gender || 'male',
-              relationship: relationship.trim()
-            });
-          }
-        }
-      }
+    if (!validateForm()) {
+      setNotification({ type: 'error', message: 'Please fix the validation errors' });
+      return;
     }
 
-    const additionalGuestsCount = validAdditionalGuests.length;
+    setFormLoading(true);
+    try {
+      let resp;
 
-    if (editingGuest) {
-      const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
-      let hotelId = '';
+      const validAdditionalGuests: AdditionalGuest[] = [];
 
-      // Try to get hotel ID from multiple sources with proper structure handling
-      try {
-        // First try the useAuth context user object
-        if (user?.hotel) {
-          // Handle both string ID and object with _id
-          hotelId = typeof user.hotel === 'string' ? user.hotel : user.hotel._id || user.hotel.id || '';
-        }
+      if (formData.additionalGuests && Array.isArray(formData.additionalGuests)) {
+        for (const guest of formData.additionalGuests) {
+          if (guest && typeof guest === 'object') {
+            const name = guest.name || '';
+            const relationship = guest.relationship || '';
 
-        // If not found, try localStorage
-        if (!hotelId) {
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            try {
-              const userData = JSON.parse(storedUser);
-              if (userData.hotel) {
-                hotelId = typeof userData.hotel === 'string' ? userData.hotel : userData.hotel._id || userData.hotel.id || '';
-              }
-            } catch (parseError) {
-              console.error('Error parsing user data from localStorage:', parseError);
+            if (typeof name === 'string' &&
+              typeof relationship === 'string' &&
+              name.trim() !== '' &&
+              relationship.trim() !== '') {
+              validAdditionalGuests.push({
+                name: name.trim(),
+                gender: guest.gender || 'male',
+                relationship: relationship.trim()
+              });
             }
           }
         }
-
-        // If still not found, try to fetch current user data
-        if (!hotelId) {
-          console.warn('Hotel ID not found in context or localStorage, fetching fresh user data...');
-          try {
-            const freshUserData = await getMe();
-            if (freshUserData?.data?.hotel) {
-              const hotelField = freshUserData.data.hotel;
-              hotelId = typeof hotelField === 'string' ? hotelField : hotelField._id || hotelField.id || '';
-            }
-          } catch (fetchError) {
-            console.error('Error fetching user data:', fetchError);
-          }
-        }
-      } catch (e) {
-        console.error('Error retrieving hotel ID:', e);
       }
 
-      if (!hotelId) {
-        throw new Error("Hotel ID is required. Please contact your administrator. Make sure you are logged in properly.");
-      }
+      const additionalGuestsCount = validAdditionalGuests.length;
 
-      const updatePayload: any = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
-        address: formData.address,
-        idNo: formData.idNo || undefined,
-        occupation: formData.occupation || undefined,
-        vehicleNo: formData.vehicleNo || undefined,
-        noOfAdditionalGuests: additionalGuestsCount,
-        additionalGuests: validAdditionalGuests,
-        purposeOfStay: formData.purposeOfStay || undefined,
-        referrer: formData.referrer || undefined,
-        existingCustomer: formData.existingCustomer,
-        rooms: roomNumbers,
-        hotel: hotelId,
-        checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
-        roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
-        advancePaid: parseFloat(formData.advancePaid || '0') || 0,
-      };
+      if (editingGuest) {
+        const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
+        let hotelId = '';
 
-      // Handle email safely - only include if not empty
-      const emailValue = formData.email || '';
-      if (emailValue.trim() !== '') {
-        updatePayload.email = emailValue;
-      }
-
-      resp = await updateGuest(editingGuest._id, updatePayload);
-      
-      // Upload document if one is selected (for editing)
-      if (documentFile && resp?.data?._id) {
         try {
-          setDocumentUploading(true);
-          const docRes = await uploadGuestDocument(resp.data._id, documentFile, documentType);
-          if (docRes?.success) {
-            setNotification({ type: 'success', message: 'Guest updated and document uploaded successfully!' });
-            setDocumentFile(null);
-            // Refresh documents list
-            await fetchGuestDocuments(resp.data._id);
+          if (user?.hotel) {
+            hotelId = typeof user.hotel === 'string' ? user.hotel : user.hotel._id || user.hotel.id || '';
           }
-        } catch (docErr) {
-          console.error('Document upload failed:', docErr);
-          // Don't fail the whole operation if document upload fails
-          setNotification({ type: 'warning', message: 'Guest updated but document upload failed. You can try again.' });
-        } finally {
-          setDocumentUploading(false);
-        }
-      }
-    } else {
-      const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
-      let hotelId = '';
 
-      // Try to get hotel ID from multiple sources with proper structure handling
-      try {
-        // First try the useAuth context user object
-        if (user?.hotel) {
-          // Handle both string ID and object with _id
-          hotelId = typeof user.hotel === 'string' ? user.hotel : user.hotel._id || user.hotel.id || '';
-        }
-
-        // If not found, try localStorage
-        if (!hotelId) {
-          const storedUser = localStorage.getItem('user');
-          if (storedUser) {
-            try {
-              const userData = JSON.parse(storedUser);
-              if (userData.hotel) {
-                hotelId = typeof userData.hotel === 'string' ? userData.hotel : userData.hotel._id || userData.hotel.id || '';
+          if (!hotelId) {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+              try {
+                const userData = JSON.parse(storedUser);
+                if (userData.hotel) {
+                  hotelId = typeof userData.hotel === 'string' ? userData.hotel : userData.hotel._id || userData.hotel.id || '';
+                }
+              } catch (parseError) {
+                console.error('Error parsing user data from localStorage:', parseError);
               }
-            } catch (parseError) {
-              console.error('Error parsing user data from localStorage:', parseError);
             }
           }
+
+          if (!hotelId) {
+            console.warn('Hotel ID not found in context or localStorage, fetching fresh user data...');
+            try {
+              const freshUserData = await getMe();
+              if (freshUserData?.data?.hotel) {
+                const hotelField = freshUserData.data.hotel;
+                hotelId = typeof hotelField === 'string' ? hotelField : hotelField._id || hotelField.id || '';
+              }
+            } catch (fetchError) {
+              console.error('Error fetching user data:', fetchError);
+            }
+          }
+        } catch (e) {
+          console.error('Error retrieving hotel ID:', e);
         }
 
-        // If still not found, try to fetch current user data
         if (!hotelId) {
-          console.warn('Hotel ID not found in context or localStorage, fetching fresh user data...');
+          throw new Error("Hotel ID is required. Please contact your administrator. Make sure you are logged in properly.");
+        }
+
+        const updatePayload: any = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          address: formData.address,
+          idNo: formData.idNo || undefined,
+          occupation: formData.occupation || undefined,
+          vehicleNo: formData.vehicleNo || undefined,
+          noOfAdditionalGuests: additionalGuestsCount,
+          additionalGuests: validAdditionalGuests,
+          purposeOfStay: formData.purposeOfStay || undefined,
+          referrer: formData.referrer || undefined,
+          existingCustomer: formData.existingCustomer,
+          rooms: roomNumbers,
+          hotel: hotelId,
+          checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
+          roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
+          advancePaid: parseFloat(formData.advancePaid || '0') || 0,
+        };
+
+        const emailValue = formData.email || '';
+        if (emailValue.trim() !== '') {
+          updatePayload.email = emailValue;
+        }
+
+        resp = await updateGuest(editingGuest._id, updatePayload);
+        
+        if (documentFile && resp?.data?._id) {
           try {
-            const freshUserData = await getMe();
-            if (freshUserData?.data?.hotel) {
-              const hotelField = freshUserData.data.hotel;
-              hotelId = typeof hotelField === 'string' ? hotelField : hotelField._id || hotelField.id || '';
+            setDocumentUploading(true);
+            const docRes = await uploadGuestDocument(resp.data._id, documentFile, documentType);
+            if (docRes?.success) {
+              setNotification({ type: 'success', message: 'Guest updated and document uploaded successfully!' });
+              setDocumentFile(null);
+              await fetchGuestDocuments(resp.data._id);
             }
-          } catch (fetchError) {
-            console.error('Error fetching user data:', fetchError);
+          } catch (docErr) {
+            console.error('Document upload failed:', docErr);
+            setNotification({ type: 'warning', message: 'Guest updated but document upload failed. You can try again.' });
+          } finally {
+            setDocumentUploading(false);
           }
         }
-      } catch (e) {
-        console.error('Error retrieving hotel ID:', e);
-      }
+      } else {
+        const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
+        let hotelId = '';
 
-      if (!hotelId) {
-        throw new Error("Hotel ID is required. Please contact your administrator. Make sure you are logged in properly.");
-      }
-
-      const createPayload: any = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        phone: formData.phone,
-        address: formData.address,
-        idNo: formData.idNo || undefined,
-        occupation: formData.occupation || undefined,
-        vehicleNo: formData.vehicleNo || undefined,
-        noOfAdditionalGuests: additionalGuestsCount,
-        additionalGuests: validAdditionalGuests,
-        purposeOfStay: formData.purposeOfStay || undefined,
-        referrer: formData.referrer || undefined,
-        existingCustomer: formData.existingCustomer,
-        rooms: roomNumbers,
-        hotel: hotelId,
-        checkInDate: new Date(formData.checkInDate).toISOString(),
-        checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
-        roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
-        advancePaid: parseFloat(formData.advancePaid || '0') || 0,
-      };
-
-      // Always include email, use "noemail@gmail.com" if empty
-      const emailValue = formData.email || '';
-      createPayload.email = emailValue.trim() !== '' ? emailValue : 'noemail@gmail.com';
-
-      resp = await createGuest(createPayload);
-
-      // Upload document if one is selected (for new guest)
-      if (documentFile && resp?.data?._id) {
         try {
-          setDocumentUploading(true);
-          const docRes = await uploadGuestDocument(resp.data._id, documentFile, documentType);
-          if (docRes?.success) {
-            setNotification({ type: 'success', message: 'Guest created and document uploaded successfully!' });
-            setDocumentFile(null);
+          if (user?.hotel) {
+            hotelId = typeof user.hotel === 'string' ? user.hotel : user.hotel._id || user.hotel.id || '';
           }
-        } catch (docErr) {
-          console.error('Document upload failed:', docErr);
-          // Don't fail the whole operation if document upload fails
-          setNotification({ type: 'warning', message: 'Guest created but document upload failed. You can try again.' });
-        } finally {
-          setDocumentUploading(false);
+
+          if (!hotelId) {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+              try {
+                const userData = JSON.parse(storedUser);
+                if (userData.hotel) {
+                  hotelId = typeof userData.hotel === 'string' ? userData.hotel : userData.hotel._id || userData.hotel.id || '';
+                }
+              } catch (parseError) {
+                console.error('Error parsing user data from localStorage:', parseError);
+              }
+            }
+          }
+
+          if (!hotelId) {
+            console.warn('Hotel ID not found in context or localStorage, fetching fresh user data...');
+            try {
+              const freshUserData = await getMe();
+              if (freshUserData?.data?.hotel) {
+                const hotelField = freshUserData.data.hotel;
+                hotelId = typeof hotelField === 'string' ? hotelField : hotelField._id || hotelField.id || '';
+              }
+            } catch (fetchError) {
+              console.error('Error fetching user data:', fetchError);
+            }
+          }
+        } catch (e) {
+          console.error('Error retrieving hotel ID:', e);
+        }
+
+        if (!hotelId) {
+          throw new Error("Hotel ID is required. Please contact your administrator. Make sure you are logged in properly.");
+        }
+
+        const createPayload: any = {
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          phone: formData.phone,
+          address: formData.address,
+          idNo: formData.idNo || undefined,
+          occupation: formData.occupation || undefined,
+          vehicleNo: formData.vehicleNo || undefined,
+          noOfAdditionalGuests: additionalGuestsCount,
+          additionalGuests: validAdditionalGuests,
+          purposeOfStay: formData.purposeOfStay || undefined,
+          referrer: formData.referrer || undefined,
+          existingCustomer: formData.existingCustomer,
+          rooms: roomNumbers,
+          hotel: hotelId,
+          checkInDate: new Date(formData.checkInDate).toISOString(),
+          checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
+          roomDiscount: parseFloat(formData.roomDiscount || '0') || 0,
+          advancePaid: parseFloat(formData.advancePaid || '0') || 0,
+        };
+
+        const emailValue = formData.email || '';
+        createPayload.email = emailValue.trim() !== '' ? emailValue : 'noemail@gmail.com';
+
+        resp = await createGuest(createPayload);
+
+        if (documentFile && resp?.data?._id) {
+          try {
+            setDocumentUploading(true);
+            const docRes = await uploadGuestDocument(resp.data._id, documentFile, documentType);
+            if (docRes?.success) {
+              setNotification({ type: 'success', message: 'Guest created and document uploaded successfully!' });
+              setDocumentFile(null);
+            }
+          } catch (docErr) {
+            console.error('Document upload failed:', docErr);
+            setNotification({ type: 'warning', message: 'Guest created but document upload failed. You can try again.' });
+          } finally {
+            setDocumentUploading(false);
+          }
         }
       }
-    }
 
-    await loadData(true);
-
-    // Reset form and show success message
-    resetForm();
-    if (!documentFile) {
-      setNotification({ type: 'success', message: editingGuest ? 'Guest updated successfully!' : 'Guest created successfully!' });
-    }
-  } catch (e: any) {
-    // Handle API validation errors
-    if (e.response && e.response.data && e.response.data.details) {
-      const errorDetails = e.response.data.details;
-      const fieldMatch = errorDetails.match(/\"(\w+)\"/);
-      if (fieldMatch) {
-        const fieldName = fieldMatch[1];
-        setFormErrors({ [fieldName]: errorDetails });
+      await loadData(true);
+      resetForm();
+      if (!documentFile) {
+        setNotification({ type: 'success', message: editingGuest ? 'Guest updated successfully!' : 'Guest created successfully!' });
       }
-      setNotification({ type: 'error', message: 'Validation error - please check the form' });
-    } else {
-      setError(e.message);
-      setNotification({ type: 'error', message: e.message || 'Operation failed' });
+    } catch (e: any) {
+      if (e.response && e.response.data && e.response.data.details) {
+        const errorDetails = e.response.data.details;
+        const fieldMatch = errorDetails.match(/\"(\w+)\"/);
+        if (fieldMatch) {
+          const fieldName = fieldMatch[1];
+          setFormErrors({ [fieldName]: errorDetails });
+        }
+        setNotification({ type: 'error', message: 'Validation error - please check the form' });
+      } else {
+        setError(e.message);
+        setNotification({ type: 'error', message: e.message || 'Operation failed' });
+      }
+    } finally {
+      setFormLoading(false);
     }
-  } finally {
-    setFormLoading(false);
-  }
-};
+  };
 
   const handleEdit = async (guest: Guest) => {
     try {
       setEditingGuest(guest);
-
-      // Normalize room IDs for this guest
       const normalizedRooms = normalizeGuestRoomIds(guest);
 
-      // Basic guest info with safe email handling
       const formDataUpdate = {
         firstName: guest.firstName || "",
         lastName: guest.lastName || "",
@@ -1399,7 +1301,6 @@ const handleFormSubmit = async (e: React.FormEvent) => {
         rooms: normalizedRooms,
       };
 
-      // FIXED: Handle additional guests safely
       const additionalGuests = guest.additionalGuests || [];
       const noOfAdditionalGuests = additionalGuests.length.toString();
 
@@ -1412,7 +1313,6 @@ const handleFormSubmit = async (e: React.FormEvent) => {
 
       setFormErrors({});
 
-      // Fetch ALL rooms (not just available ones) for editing
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       if (token) {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?page=1&limit=100`, {
@@ -1431,10 +1331,8 @@ const handleFormSubmit = async (e: React.FormEvent) => {
         }
       }
 
-      // Fetch referrers for the dropdown
       await fetchReferrers();
 
-      // Fetch guest documents
       if (guest._id) {
         fetchGuestDocuments(guest._id);
       }
@@ -1446,77 +1344,74 @@ const handleFormSubmit = async (e: React.FormEvent) => {
     }
   };
 
-const handleAddNewGuest = async () => {
-  setFormData({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    address: "",
-    idNo: "",
-    occupation: "",
-    vehicleNo: "",
-    noOfAdditionalGuests: "0",
-    additionalGuests: [],
-    purposeOfStay: "",
-    referrer: "",
-    existingCustomer: false,
-    rooms: [],
-    roomDiscount: "0",
-    advancePaid: "0",
-    checkInDate: getCurrentDateTimeLocal(),
-    checkOutDate: ""
-  });
-  setFormErrors({});
-  setExistingGuest(null);
-  setGuestSearchMessage("");
-  setGuestDocuments([]);
-  setDocumentFile(null);
-  try {
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-    if (!token) throw new Error("No authentication token");
-    
-    // Fetch available rooms - FIXED with proper CORS headers
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/available`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Origin': window.location.origin  // Add the Origin header
-      },
-      credentials: 'include'  // Add credentials if needed
+  const handleAddNewGuest = async () => {
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      address: "",
+      idNo: "",
+      occupation: "",
+      vehicleNo: "",
+      noOfAdditionalGuests: "0",
+      additionalGuests: [],
+      purposeOfStay: "",
+      referrer: "",
+      existingCustomer: false,
+      rooms: [],
+      roomDiscount: "0",
+      advancePaid: "0",
+      checkInDate: getCurrentDateTimeLocal(),
+      checkOutDate: ""
     });
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error('Response error:', res.status, errorText);
-      throw new Error(`Failed to fetch available rooms: ${res.status}`);
-    }
-    
-    const response = await res.json();
-    console.log('Available rooms response:', response); // Debug log
+    setFormErrors({});
+    setExistingGuest(null);
+    setGuestSearchMessage("");
+    setGuestDocuments([]);
+    setDocumentFile(null);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) throw new Error("No authentication token");
+      
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms/available`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Origin': window.location.origin
+        },
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Response error:', res.status, errorText);
+        throw new Error(`Failed to fetch available rooms: ${res.status}`);
+      }
+      
+      const response = await res.json();
 
-    let availableRoomsData: Room[] = [];
-    if (response && response.data && response.data.rooms) {
-      availableRoomsData = Array.isArray(response.data.rooms) ? response.data.rooms : [];
-    } else if (response && isAPIResponse<Room[]>(response)) {
-      availableRoomsData = Array.isArray(response.data) ? response.data : [];
-    } else if (Array.isArray(response)) {
-      availableRoomsData = response;
-    }
-    setAvailableRooms(availableRoomsData);
+      let availableRoomsData: Room[] = [];
+      if (response && response.data && response.data.rooms) {
+        availableRoomsData = Array.isArray(response.data.rooms) ? response.data.rooms : [];
+      } else if (response && isAPIResponse<Room[]>(response)) {
+        availableRoomsData = Array.isArray(response.data) ? response.data : [];
+      } else if (Array.isArray(response)) {
+        availableRoomsData = response;
+      }
+      setAvailableRooms(availableRoomsData);
 
-    // Fetch referrers
-    await fetchReferrers();
-  } catch (e) {
-    console.error('Error fetching available rooms:', e);
-    setAvailableRooms([]);
-    setNotification({ type: 'error', message: 'Failed to load available rooms' });
-  }
-  setShowForm(true);
-};
+      await fetchReferrers();
+    } catch (e) {
+      console.error('Error fetching available rooms:', e);
+      setAvailableRooms([]);
+      setNotification({ type: 'error', message: 'Failed to load available rooms' });
+    }
+    setShowForm(true);
+  };
 
   const handleCheckInDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newCheckInDate = e.target.value;
@@ -1540,12 +1435,10 @@ const handleAddNewGuest = async () => {
   const handleAdditionalGuestChange = (index: number, field: keyof AdditionalGuest, value: string) => {
     const updatedGuests = [...(formData.additionalGuests || [])];
 
-    // Ensure the array is long enough
     while (updatedGuests.length <= index) {
       updatedGuests.push({ name: '', gender: 'male', relationship: '' });
     }
 
-    // Ensure the guest object exists
     if (!updatedGuests[index]) {
       updatedGuests[index] = { name: '', gender: 'male', relationship: '' };
     }
@@ -1588,13 +1481,6 @@ const handleAddNewGuest = async () => {
     }
     const room = allRooms.find(r => r._id === roomId);
     return room ? room.roomNumber : roomId;
-  };
-
-  const getRoomNumbersFromIds = (roomIds: string[]): string[] => {
-    return roomIds.map(roomId => {
-      const room = allRooms.find(r => r._id === roomId);
-      return room ? room.roomNumber : roomId;
-    });
   };
 
   const normalizeGuestRoomIds = (guest: Guest): string[] => {
@@ -1664,191 +1550,188 @@ const handleAddNewGuest = async () => {
     <DashboardLayout>
       <div className="p-6">
 
-{/* Filter and Search Section */}
-<div className="bg-card rounded-xl border border-border p-3 mb-5">
-  {/* Mobile row: search + filter toggle + action */}
-  <div className="flex items-center gap-2 md:hidden">
-    <div className="relative flex-1 min-w-0">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-      <input
-        type="text"
-        value={filters.search}
-        onChange={(e) => handleFilterChange('search', e.target.value)}
-        className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
-        placeholder="Search guests..."
-        data-cy="guests-search"
-      />
-      {filters.search && (
-        <button
-          onClick={() => handleFilterChange('search', '')}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
-    </div>
-    <button
-      onClick={() => setShowMobileFilters(!showMobileFilters)}
-      className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-all shrink-0 ${showMobileFilters ? 'bg-primary text-white border-primary' : 'bg-muted/50 border-input text-muted-foreground hover:text-foreground'}`}
-      title="Filters"
-    >
-      <SlidersHorizontal className="w-4 h-4" />
-    </button>
-    <button
-      onClick={handleAddNewGuest}
-      className="shrink-0 h-9 px-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
-      data-cy="guests-add-new"
-    >
-      <Plus className="w-4 h-4" />
-    </button>
-  </div>
+        {/* Filter and Search Section */}
+        <div className="bg-card rounded-xl border border-border p-3 mb-5">
+          <div className="flex items-center gap-2 md:hidden">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+                placeholder="Search guests..."
+                data-cy="guests-search"
+              />
+              {filters.search && (
+                <button
+                  onClick={() => handleFilterChange('search', '')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className={`h-9 w-9 flex items-center justify-center rounded-lg border transition-all shrink-0 ${showMobileFilters ? 'bg-primary text-white border-primary' : 'bg-muted/50 border-input text-muted-foreground hover:text-foreground'}`}
+              title="Filters"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleAddNewGuest}
+              className="shrink-0 h-9 px-3 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+              data-cy="guests-add-new"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
 
-  {/* Mobile filter panel */}
-  {showMobileFilters && (
-    <div className="mt-3 space-y-2 md:hidden">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-        <input
-          type="text"
-          value={filters.roomNumber}
-          onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
-          className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm"
-          placeholder="Room #..."
-          data-cy="guests-room-filter"
-        />
-        {filters.roomNumber && (
-          <button
-            onClick={() => handleFilterChange('roomNumber', '')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
-      <select
-        value={filters.existingCustomer}
-        onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
-        className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
-        data-cy="guests-customer-filter"
-      >
-        <option value="">All Customers</option>
-        <option value="true">Existing</option>
-        <option value="false">New</option>
-      </select>
-      <select
-        value={filters.hasDue}
-        onChange={(e) => handleFilterChange('hasDue', e.target.value)}
-        className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
-        data-cy="guests-due-filter"
-      >
-        <option value="">Any Dues</option>
-        <option value="true">Has Due</option>
-        <option value="false">No Due</option>
-      </select>
-      <div className="flex items-center gap-2 pt-1">
-        <button
-          onClick={() => setShowMobileSummary(!showMobileSummary)}
-          className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5"
-        >
-          <Info className="w-3.5 h-3.5" />
-          {showMobileSummary ? 'Hide' : 'Show'} Stats
-        </button>
-        {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
-          <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 ml-auto shrink-0" data-cy="guests-clear-filters">
-            Clear
-          </button>
-        )}
-      </div>
-    </div>
-  )}
+          {showMobileFilters && (
+            <div className="mt-3 space-y-2 md:hidden">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={filters.roomNumber}
+                  onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
+                  className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm"
+                  placeholder="Room #..."
+                  data-cy="guests-room-filter"
+                />
+                {filters.roomNumber && (
+                  <button
+                    onClick={() => handleFilterChange('roomNumber', '')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <select
+                value={filters.existingCustomer}
+                onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
+                data-cy="guests-customer-filter"
+              >
+                <option value="">All Customers</option>
+                <option value="true">Existing</option>
+                <option value="false">New</option>
+              </select>
+              <select
+                value={filters.hasDue}
+                onChange={(e) => handleFilterChange('hasDue', e.target.value)}
+                className="w-full h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm max-w-full truncate"
+                data-cy="guests-due-filter"
+              >
+                <option value="">Any Dues</option>
+                <option value="true">Has Due</option>
+                <option value="false">No Due</option>
+              </select>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={() => setShowMobileSummary(!showMobileSummary)}
+                  className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  {showMobileSummary ? 'Hide' : 'Show'} Stats
+                </button>
+                {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
+                  <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 ml-auto shrink-0" data-cy="guests-clear-filters">
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
-  {/* Desktop: all filters in one row */}
-  <div className="hidden md:flex items-start gap-3">
-    <div className="flex items-center gap-3 flex-nowrap overflow-x-auto flex-1 min-w-0">
-      <div className="relative flex-1 min-w-[160px] max-w-xs shrink-0">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-        <input
-          type="text"
-          value={filters.search}
-          onChange={(e) => handleFilterChange('search', e.target.value)}
-          className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
-          placeholder="Search guests..."
-          data-cy="guests-search"
-        />
-        {filters.search && (
-          <button
-            onClick={() => handleFilterChange('search', '')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-      <div className="relative min-w-[120px] shrink-0">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-        <input
-          type="text"
-          value={filters.roomNumber}
-          onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
-          className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
-          placeholder="Room #..."
-          data-cy="guests-room-filter"
-        />
-        {filters.roomNumber && (
-          <button
-            onClick={() => handleFilterChange('roomNumber', '')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
-      <select
-        value={filters.existingCustomer}
-        onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
-        className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px] shrink-0"
-        data-cy="guests-customer-filter"
-      >
-        <option value="">All Customers</option>
-        <option value="true">Existing</option>
-        <option value="false">New</option>
-      </select>
-      <select
-        value={filters.hasDue}
-        onChange={(e) => handleFilterChange('hasDue', e.target.value)}
-        className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[110px] shrink-0"
-        data-cy="guests-due-filter"
-      >
-        <option value="">Any Dues</option>
-        <option value="true">Has Due</option>
-        <option value="false">No Due</option>
-      </select>
-    </div>
-    <div className="flex items-center gap-3 shrink-0">
-      <button
-        onClick={() => setShowMobileSummary(!showMobileSummary)}
-        className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0"
-        title={showMobileSummary ? 'Hide Stats' : 'Show Stats'}
-      >
-        <Info className="w-3.5 h-3.5" />
-        <span className="hidden lg:inline">{showMobileSummary ? 'Hide' : 'Show'} Stats</span>
-      </button>
-      {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
-        <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 shrink-0 whitespace-nowrap" data-cy="guests-clear-filters">
-          Clear
-        </button>
-      )}
-      <button
-        onClick={handleAddNewGuest}
-        className="shrink-0 h-9 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
-        data-cy="guests-add-new"
-      >
-        <Plus className="w-4 h-4" />
-        <span className="hidden lg:inline">Add Guest</span>
-      </button>
-    </div>
-  </div>
-</div>
+          <div className="hidden md:flex items-start gap-3">
+            <div className="flex items-center gap-3 flex-nowrap overflow-x-auto flex-1 min-w-0">
+              <div className="relative flex-1 min-w-[160px] max-w-xs shrink-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+                  placeholder="Search guests..."
+                  data-cy="guests-search"
+                />
+                {filters.search && (
+                  <button
+                    onClick={() => handleFilterChange('search', '')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <div className="relative min-w-[120px] shrink-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <input
+                  type="text"
+                  value={filters.roomNumber}
+                  onChange={(e) => handleFilterChange('roomNumber', e.target.value)}
+                  className="w-full h-9 pl-8 pr-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+                  placeholder="Room #..."
+                  data-cy="guests-room-filter"
+                />
+                {filters.roomNumber && (
+                  <button
+                    onClick={() => handleFilterChange('roomNumber', '')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <select
+                value={filters.existingCustomer}
+                onChange={(e) => handleFilterChange('existingCustomer', e.target.value)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px] shrink-0"
+                data-cy="guests-customer-filter"
+              >
+                <option value="">All Customers</option>
+                <option value="true">Existing</option>
+                <option value="false">New</option>
+              </select>
+              <select
+                value={filters.hasDue}
+                onChange={(e) => handleFilterChange('hasDue', e.target.value)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[110px] shrink-0"
+                data-cy="guests-due-filter"
+              >
+                <option value="">Any Dues</option>
+                <option value="true">Has Due</option>
+                <option value="false">No Due</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={() => setShowMobileSummary(!showMobileSummary)}
+                className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-xs font-medium flex items-center gap-1.5 shrink-0"
+                title={showMobileSummary ? 'Hide Stats' : 'Show Stats'}
+              >
+                <Info className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">{showMobileSummary ? 'Hide' : 'Show'} Stats</span>
+              </button>
+              {(filters.search || filters.roomNumber || filters.existingCustomer || filters.hasDue) && (
+                <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 shrink-0 whitespace-nowrap" data-cy="guests-clear-filters">
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={handleAddNewGuest}
+                className="shrink-0 h-9 px-4 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+                data-cy="guests-add-new"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden lg:inline">Add Guest</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between mb-5">
@@ -1857,7 +1740,6 @@ const handleAddNewGuest = async () => {
           </div>
         )}
 
-        {/* Summary Section */}
         <div className={`grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5 ${showMobileSummary ? '' : 'hidden'} md:grid`}>
           <div className="bg-blue-100/60 rounded-lg p-3 text-center">
             <div className="text-blue-700 text-xs font-semibold">Total Guests</div>
@@ -1877,7 +1759,6 @@ const handleAddNewGuest = async () => {
           </div>
         </div>
 
-        {/* Loading indicator for filter changes */}
         {loading && (
           <div className="bg-primary/5 border border-primary/20 text-blue-700 px-4 py-3 rounded mb-4 flex items-center">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
@@ -1885,15 +1766,438 @@ const handleAddNewGuest = async () => {
           </div>
         )}
 
-{/* Guest Form Modal */}
+        {/* Guest Form Modal */}
+        {showForm && (
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center z-50 p-4 overflow-y-auto modal-overlay"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) resetForm();
+            }}
+          >
+            <div className="bg-card rounded-lg shadow-xl w-full max-w-4xl my-2 sm:my-8 max-h-[98vh] sm:max-h-[90vh] overflow-y-auto relative modal-content modal-panel safe-bottom">
+              <div className="sticky top-0 bg-card border-b px-4 sm:px-6 py-4 flex justify-between items-center z-10">
+                <h2 className="text-lg sm:text-xl font-semibold">
+                  {editingGuest ? "Edit Guest" : "Add New Guest"}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="text-muted-foreground hover:text-gray-700 text-2xl font-semibold p-1 touch-target-sm"
+                  aria-label="Close modal"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="p-4 sm:p-6 pb-8 sm:pb-6 safe-bottom">
+                {existingGuest && (
+                  <div className="bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800 rounded p-4 mb-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div>
+                        <p className="text-green-800 font-medium text-lg">
+                          Existing Guest Found
+                        </p>
+                        <p className="text-emerald-600 dark:text-emerald-400 text-sm">
+                          {existingGuest.firstName} {existingGuest.lastName} - 
+                          Previous stays: {existingGuest.checkouts?.length || 0} | 
+                          Total spent: रु{existingGuest.totalSpent?.toLocaleString() || 0}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleViewPreviousStays(existingGuest)}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm touch-target"
+                        >
+                          View Previous Stays
+                        </button>
+                        <button
+                          type="button"
+                          onClick={clearGuestSearch}
+                          className="px-4 py-2 border border-green-600 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-green-50 text-sm touch-target"
+                        >
+                          Clear & Start New
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <form onSubmit={handleFormSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Basic Information</h3>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Phone[Search for old Guest] *</label>
+                        <input
+                          type="tel"
+                          value={formData.phone}
+                          onChange={handlePhoneChange}
+                          onBlur={handlePhoneBlur}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          required
+                          disabled={isSearchingGuest || !!editingGuest}
+                          placeholder="Enter 10-digit phone number"
+                          data-cy="guests-form-phone"
+                        />
+                        {formErrors.phone && <p className="text-red-500 text-sm">{formErrors.phone}</p>}
+                        {guestSearchMessage && (
+                          <p className={`text-sm mt-1 ${existingGuest ? 'text-emerald-600 dark:text-emerald-400' :
+                              isSearchingGuest ? 'text-primary' : 'text-muted-foreground'
+                            }`}>
+                            {isSearchingGuest && (
+                              <span className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-current mr-1"></span>
+                            )}
+                            {guestSearchMessage}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">First Name *</label>
+                        <input
+                          type="text"
+                          value={formData.firstName}
+                          onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          required
+                          data-cy="guests-form-first-name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Last Name *</label>
+                        <input
+                          type="text"
+                          value={formData.lastName}
+                          onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          required
+                          data-cy="guests-form-last-name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          placeholder="Optional"
+                          data-cy="guests-form-email"
+                        />
+                        {formErrors.email && <p className="text-red-500 text-sm">{formErrors.email}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Address</label>
+                        <textarea
+                          value={formData.address}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base"
+                          rows={2}
+                          data-cy="guests-address"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Additional Information</h3>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">ID Number</label>
+                        <input
+                          type="text"
+                          value={formData.idNo}
+                          onChange={(e) => setFormData({ ...formData, idNo: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          data-cy="guests-idno"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Occupation</label>
+                        <input
+                          type="text"
+                          value={formData.occupation}
+                          onChange={(e) => setFormData({ ...formData, occupation: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          data-cy="guests-occupation"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Vehicle Number</label>
+                        <input
+                          type="text"
+                          value={formData.vehicleNo}
+                          onChange={(e) => setFormData({ ...formData, vehicleNo: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          data-cy="guests-vehicleno"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Purpose of Stay</label>
+                        <input
+                          type="text"
+                          value={formData.purposeOfStay}
+                          onChange={(e) => setFormData({ ...formData, purposeOfStay: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          data-cy="guests-purpose"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Referrer</label>
+                        <select
+                          value={formData.referrer}
+                          onChange={(e) => setFormData({ ...formData, referrer: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base max-w-full truncate touch-target"
+                        >
+                          <option value="">Select a referrer (optional)</option>
+                          {loadingReferrers ? (
+                            <option disabled>Loading referrers...</option>
+                          ) : (
+                            referrers.map((referrer) => (
+                              <option key={referrer._id} value={referrer._id}>
+                                {referrer.fullName} - {referrer.taxiNo || 'No taxi'}
+                              </option>
+                            ))
+                          )}
+                        </select>
+                        {referrers.length === 0 && !loadingReferrers && (
+                          <p className="text-sm text-muted-foreground mt-1">No referrers available. Add referrers first.</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="flex items-center text-sm font-medium">
+                          <input
+                            type="checkbox"
+                            checked={formData.existingCustomer}
+                            onChange={(e) => setFormData({ ...formData, existingCustomer: e.target.checked })}
+                            className="mr-2 h-4 w-4 border-input rounded touch-target"
+                            data-cy="guests-existing-customer"
+                          />
+                          Existing Customer (Enable Due Management)
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                      <h3 className="text-lg font-semibold">Additional Guests</h3>
+                      <button
+                        type="button"
+                        onClick={addAdditionalGuest}
+                        className="w-full sm:w-auto px-3 py-1.5 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition-colors touch-target"
+                      >
+                        + Add Guest
+                      </button>
+                    </div>
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Total additional guests: {(formData.additionalGuests || []).filter(
+                        guest => guest != null &&
+                          typeof guest === 'object' &&
+                          (guest.name || '').trim() !== '' &&
+                          (guest.relationship || '').trim() !== ''
+                      ).length}
+                    </div>
+                    {(formData.additionalGuests || []).map((guest, index) => {
+                      const safeGuest = guest || { name: '', gender: 'male', relationship: '' };
+                      return (
+                        <div key={index} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4 p-3 border rounded">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Name</label>
+                            <input
+                              type="text"
+                              value={safeGuest.name || ''}
+                              onChange={(e) => handleAdditionalGuestChange(index, 'name', e.target.value)}
+                              className="w-full border border-input rounded px-3 py-2 text-sm touch-target"
+                              placeholder="Guest name"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Gender</label>
+                            <select
+                              value={safeGuest.gender || 'male'}
+                              onChange={(e) => handleAdditionalGuestChange(index, 'gender', e.target.value)}
+                              className="w-full border border-input rounded px-3 py-2 text-sm max-w-full truncate touch-target"
+                            >
+                              <option value="male">Male</option>
+                              <option value="female">Female</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 lg:col-span-1">
+                            <div className="flex-1">
+                              <label className="block text-sm font-medium mb-1">Relationship</label>
+                              <input
+                                type="text"
+                                value={safeGuest.relationship || ''}
+                                onChange={(e) => handleAdditionalGuestChange(index, 'relationship', e.target.value)}
+                                className="w-full border border-input rounded px-3 py-2 text-sm touch-target"
+                                placeholder="Relationship"
+                              />
+                            </div>
+                            <div className="flex items-end sm:items-center pb-0.5">
+                              <button
+                                type="button"
+                                onClick={() => removeAdditionalGuest(index)}
+                                className="w-full sm:w-auto px-3 py-2 text-destructive hover:text-destructive/80 text-sm font-medium border border-destructive/20 rounded hover:bg-destructive/5 transition-colors touch-target"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Room Information</h3>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Select Rooms *</label>
+                        <div className="border border-input rounded max-h-60 sm:max-h-72 overflow-y-auto">
+                          {(editingGuest ? allRooms : availableRooms.filter(r => !r.isOccupied)).map((room) => {
+                            const isSelected = formData.rooms.includes(room._id);
+                            const isOccupiedElse = room.isOccupied && !formData.rooms.includes(room._id);
+                            return (
+                              <div
+                                key={room._id}
+                                onClick={() => {
+                                  if (isOccupiedElse) return;
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    rooms: isSelected
+                                      ? prev.rooms.filter(id => id !== room._id)
+                                      : [...prev.rooms, room._id]
+                                  }));
+                                }}
+                                data-cy="guests-rooms"
+                                className={`flex items-center gap-2 sm:gap-3 px-3 py-2.5 sm:py-2.5 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors touch-target
+                                  ${isSelected ? 'bg-blue-50 dark:bg-blue-950/30' : 'hover:bg-muted/50'}
+                                  ${isOccupiedElse ? 'text-gray-400 cursor-not-allowed' : ''}
+                                `}
+                              >
+                                <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded border-2 flex items-center justify-center flex-shrink-0
+                                  ${isSelected ? 'bg-primary border-primary' : 'border-gray-300'}
+                                  ${isOccupiedElse ? 'border-gray-200' : ''}
+                                `}>
+                                  {isSelected && (
+                                    <svg className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-baseline gap-1.5 sm:gap-2 flex-wrap">
+                                    <span className="font-semibold text-sm sm:text-base">#{room.roomNumber}</span>
+                                    <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">{room.type}</span>
+                                    <span className="text-xs sm:text-sm text-muted-foreground ml-auto">रु{room.rate}/night</span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground sm:hidden">{room.type}</div>
+                                </div>
+                                {isOccupiedElse && (
+                                  <span className="text-xs text-gray-400 flex-shrink-0">Occupied</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {formErrors.rooms && <p className="text-red-500 text-sm">{formErrors.rooms}</p>}
+                        <p className="text-sm text-muted-foreground mt-1">Click to select/deselect rooms</p>
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          {editingGuest && (
+                            <p>
+                              <span className="font-semibold">Note:</span> You can deselect rooms to de-allocate them from this guest.
+                              Grayed out rooms are currently occupied by other guests.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Room Discount (रु)</label>
+                        <input
+                          type="number"
+                          value={formData.roomDiscount}
+                          onChange={(e) => setFormData({ ...formData, roomDiscount: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          min="0"
+                          step="0.01"
+                          data-cy="guests-roomdiscount"
+                        />
+                        {formErrors.roomDiscount && <p className="text-red-500 text-sm">{formErrors.roomDiscount}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Advance Paid (रु)</label>
+                        <input
+                          type="number"
+                          value={formData.advancePaid}
+                          onChange={(e) => setFormData({ ...formData, advancePaid: e.target.value })}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          min="0"
+                          step="0.01"
+                          data-cy="guests-advancepaid"
+                        />
+                        {formErrors.advancePaid && <p className="text-red-500 text-sm">{formErrors.advancePaid}</p>}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold">Stay Information</h3>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Check-in Date *</label>
+                        <input
+                          type="datetime-local"
+                          value={formData.checkInDate}
+                          onChange={handleCheckInDateChange}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          required
+                          data-cy="guests-checkin"
+                        />
+                        {formErrors.checkInDate && <p className="text-red-500 text-sm">{formErrors.checkInDate}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Check-out Date</label>
+                        <input
+                          type="datetime-local"
+                          value={formData.checkOutDate || ''}
+                          onChange={handleCheckOutDateChange}
+                          min={getMinCheckOutDateTime()}
+                          className="w-full border border-input rounded px-3 py-2 text-sm sm:text-base touch-target"
+                          data-cy="guests-checkout"
+                        />
+                        {formErrors.checkOutDate && <p className="text-red-500 text-sm">{formErrors.checkOutDate}</p>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col-reverse sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t mt-4 sticky bottom-0 bg-card pb-2 sm:pb-0 safe-bottom">
+                    <button
+                      type="button"
+                      onClick={resetForm}
+                      className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-input rounded-lg hover:bg-muted/30 transition-colors text-sm font-medium touch-target"
+                      data-cy="guests-form-cancel"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={formLoading}
+                      className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm font-medium touch-target"
+                      data-cy="guests-form-submit"
+                    >
+                      {formLoading ? "Saving..." : editingGuest ? "Update Guest" : "Add Guest"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Document Preview */}
         {previewDocument && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4" onClick={() => setPreviewDocument(null)}>
-            <div className="bg-card rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4 modal-overlay" onClick={() => setPreviewDocument(null)}>
+            <div className="bg-card rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto modal-content" onClick={e => e.stopPropagation()}>
               <div className="sticky top-0 bg-card z-10 flex items-center justify-between p-3 border-b">
                 <span className="text-sm font-medium truncate">{previewDocument.fileName}</span>
-                <button onClick={() => setPreviewDocument(null)} className="text-muted-foreground hover:text-foreground">
+                <button onClick={() => setPreviewDocument(null)} className="text-muted-foreground hover:text-foreground touch-target-sm">
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -1914,7 +2218,7 @@ const handleAddNewGuest = async () => {
                   href={previewDocument.signedUrl || previewDocument.fileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm touch-target"
                 >
                   Open in new tab
                 </a>
@@ -1932,15 +2236,15 @@ const handleAddNewGuest = async () => {
         )}
 
         {/* Notification Toast */}
-{notification && (
-  <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${
-    notification.type === 'success' ? 'bg-green-600' : 
-    notification.type === 'warning' ? 'bg-yellow-600' : 
-    'bg-red-600'
-  }`}>
-    {notification.message}
-  </div>
-)}
+        {notification && (
+          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${
+            notification.type === 'success' ? 'bg-green-600' : 
+            notification.type === 'warning' ? 'bg-yellow-600' : 
+            'bg-red-600'
+          }`}>
+            {notification.message}
+          </div>
+        )}
 
         {/* Guests Table */}
         <div className="bg-card rounded-lg shadow overflow-hidden">
@@ -1948,39 +2252,17 @@ const handleAddNewGuest = async () => {
             <table className="min-w-full divide-y divide-border" data-cy="guests-table">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Guest Details
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                    Contact
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">
-                    Additional Info
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                    Room
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                    Stay Period
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                    Referrer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                    Due Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
-                    Bill
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Guest Details</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Contact</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Additional Info</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Room</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Stay Period</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Referrer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Customer</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Due Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Bill</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-card divide-y divide-border">
@@ -2002,7 +2284,6 @@ const handleAddNewGuest = async () => {
                           {guest.address && (
                             <div className="text-sm text-muted-foreground break-words">{guest.address}</div>
                           )}
-                          {/* Previous stays badge */}
                           {guest.checkouts && guest.checkouts.length > 0 && (
                             <button
                               onClick={() => handleViewPreviousStays(guest)}
@@ -2127,7 +2408,6 @@ const handleAddNewGuest = async () => {
             </table>
           </div>
 
-          {/* Pagination Controls */}
           <PaginationControls
             currentPage={page}
             totalPages={totalPages}
@@ -2142,7 +2422,6 @@ const handleAddNewGuest = async () => {
           )}
         </div>
 
-        {/* Summary Stats */}
         <div className="mt-6 flex items-center gap-2 mb-3">
           <button
             onClick={() => setShowMobileSummary(!showMobileSummary)}
