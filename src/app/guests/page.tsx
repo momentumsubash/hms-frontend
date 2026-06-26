@@ -1,6 +1,6 @@
 "use client";
 
-import { getGuests, getRooms, updateGuest, addGuest as createGuest, getMe, getAvailableRooms, uploadGuestDocument, getGuestDocuments, deleteGuestDocument, ocrPreviewDocument } from "@/lib/api";
+import { getGuests, getRooms, updateGuest, addGuest as createGuest, getMe, getAvailableRooms, uploadGuestDocument, getGuestDocuments, deleteGuestDocument } from "@/lib/api";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { format } from "date-fns";
@@ -516,7 +516,6 @@ export default function GuestsPage() {
   const [documentUploading, setDocumentUploading] = useState(false);
   const [guestDocuments, setGuestDocuments] = useState<GuestDocument[]>([]);
   const [previewDocument, setPreviewDocument] = useState<GuestDocument | null>(null);
-  const [ocrLoading, setOcrLoading] = useState(false);
 
   const [user, setUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
@@ -892,17 +891,6 @@ export default function GuestsPage() {
     try {
       const res = await uploadGuestDocument(guestId, documentFile, documentType);
       if (res?.success) {
-        if (res.data?.ocrData) {
-          const ocr = res.data.ocrData;
-          setFormData(prev => ({
-            ...prev,
-            ...(ocr.firstName && { firstName: ocr.firstName }),
-            ...(ocr.lastName && { lastName: ocr.lastName }),
-            ...(ocr.idNo && { idNo: ocr.idNo }),
-            ...(ocr.address && { address: ocr.address }),
-            ...(ocr.occupation && { occupation: ocr.occupation }),
-          }));
-        }
         await fetchGuestDocuments(guestId);
         setDocumentFile(null);
         setNotification({ type: 'success', message: 'Document uploaded successfully' });
@@ -924,57 +912,6 @@ export default function GuestsPage() {
     } catch (err: any) {
       setNotification({ type: 'error', message: err.message || 'Failed to delete document' });
     }
-  };
-
-  const handleOcrScan = async (file: File) => {
-    setOcrLoading(true);
-    try {
-      const res = await ocrPreviewDocument(file, documentType);
-      if (res?.success && res.data) {
-        const ocr = res.data;
-        const filled: string[] = [];
-        setFormData(prev => {
-          const upd: any = { ...prev };
-          if (ocr.firstName) { upd.firstName = ocr.firstName; filled.push('firstName'); }
-          if (ocr.lastName) { upd.lastName = ocr.lastName; filled.push('lastName'); }
-          if (ocr.idNo) { upd.idNo = ocr.idNo; filled.push('idNo'); }
-          if (ocr.citizenshipNo) { upd.citizenshipNo = ocr.citizenshipNo; filled.push('citizenshipNo'); }
-          if (ocr.address) { upd.address = ocr.address; filled.push('address'); }
-          if (ocr.phone) { upd.phone = ocr.phone; filled.push('phone'); }
-          if (ocr.occupation) { upd.occupation = ocr.occupation; filled.push('occupation'); }
-          return upd;
-        });
-        if (filled.length > 0) {
-          setNotification({ type: 'success', message: `Auto-filled: ${filled.join(', ')}. Review and edit if needed.` });
-        } else {
-          setNotification({ type: 'success', message: 'No data could be extracted. Please fill the form manually.' });
-        }
-      } else if (res?.debug?.text) {
-        setNotification({ type: 'error', message: `OCR raw text: "${res.debug.text.substring(0, 80)}...". Try a clearer image.` });
-      } else {
-        setNotification({ type: 'error', message: res?.message || 'Could not extract data. Please fill manually.' });
-      }
-    } catch (err: any) {
-      setNotification({ type: 'error', message: err.message || 'OCR failed. Check server console for details.' });
-    } finally {
-      setOcrLoading(false);
-    }
-  };
-
-  const applyOcrData = (doc: GuestDocument) => {
-    if (!doc.ocrData) return;
-    const ocr = doc.ocrData;
-    setFormData(prev => ({
-      ...prev,
-      ...(ocr.firstName && { firstName: ocr.firstName }),
-      ...(ocr.lastName && { lastName: ocr.lastName }),
-      ...(ocr.idNo && { idNo: ocr.idNo }),
-      ...(ocr.citizenshipNo && { citizenshipNo: ocr.citizenshipNo }),
-      ...(ocr.address && { address: ocr.address }),
-      ...(ocr.phone && { phone: ocr.phone }),
-      ...(ocr.occupation && { occupation: ocr.occupation }),
-    }));
-    setNotification({ type: 'success', message: 'Form auto-filled from document' });
   };
 
   const handleViewPreviousStays = (guest: Guest) => {
@@ -1153,22 +1090,21 @@ export default function GuestsPage() {
 
         resp = await updateGuest(editingGuest._id, updatePayload);
         
-        if (documentFile && resp?.data?._id) {
-          try {
-            setDocumentUploading(true);
-            const docRes = await uploadGuestDocument(resp.data._id, documentFile, documentType);
-            if (docRes?.success) {
-              setNotification({ type: 'success', message: 'Guest updated and document uploaded successfully!' });
-              setDocumentFile(null);
-              await fetchGuestDocuments(resp.data._id);
+          if (documentFile && resp?.data?._id) {
+            try {
+              setDocumentUploading(true);
+              const docRes = await uploadGuestDocument(resp.data._id, documentFile, documentType);
+              if (docRes?.success) {
+                setDocumentFile(null);
+                await fetchGuestDocuments(resp.data._id);
+              }
+            } catch (docErr) {
+              console.error('Document upload failed:', docErr);
+              setNotification({ type: 'warning', message: 'Guest updated but document upload failed. You can try again.' });
+            } finally {
+              setDocumentUploading(false);
             }
-          } catch (docErr) {
-            console.error('Document upload failed:', docErr);
-            setNotification({ type: 'warning', message: 'Guest updated but document upload failed. You can try again.' });
-          } finally {
-            setDocumentUploading(false);
           }
-        }
       } else {
         const roomNumbers = formData.rooms.map(resolveRoomNumberFromId);
         let hotelId = '';
@@ -1243,7 +1179,6 @@ export default function GuestsPage() {
             setDocumentUploading(true);
             const docRes = await uploadGuestDocument(resp.data._id, documentFile, documentType);
             if (docRes?.success) {
-              setNotification({ type: 'success', message: 'Guest created and document uploaded successfully!' });
               setDocumentFile(null);
             }
           } catch (docErr) {
@@ -1972,6 +1907,71 @@ export default function GuestsPage() {
                           />
                           Existing Customer (Enable Due Management)
                         </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-semibold mb-3">Documents</h3>
+                    <div className="space-y-3">
+                      {guestDocuments.length > 0 ? (
+                        <div className="space-y-2">
+                          {guestDocuments.map(doc => (
+                            <div key={doc._id} className="flex items-center justify-between bg-muted/30 rounded p-3 border gap-2">
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium shrink-0 ${
+                                  doc.documentType === 'passport' ? 'bg-blue-100 text-blue-800' :
+                                  doc.documentType === 'license' ? 'bg-orange-100 text-orange-800' :
+                                  doc.documentType === 'citizenship' ? 'bg-green-100 text-green-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {doc.documentType}
+                                </span>
+                                <span className="text-sm truncate">{doc.fileName}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button type="button" onClick={() => setPreviewDocument(doc)} className="px-2 py-1 text-xs text-primary hover:underline touch-target-sm">View</button>
+                                {(user?.role === 'super_admin' || user?.role === 'manager') && (
+                                  <button type="button" onClick={() => handleDeleteDocument(doc._id)} className="px-2 py-1 text-xs text-red-600 hover:underline touch-target-sm">Delete</button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+                      )}
+                      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                        <div className="flex-1 w-full">
+                          <label className="block text-sm font-medium mb-1">Upload Document</label>
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            onChange={(e) => setDocumentFile(e.target.files?.[0] || null)}
+                            className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:font-medium file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer touch-target"
+                          />
+                        </div>
+                        <div className="w-full sm:w-32">
+                          <label className="block text-sm font-medium mb-1">Type</label>
+                          <select
+                            value={documentType}
+                            onChange={(e) => setDocumentType(e.target.value)}
+                            className="w-full border border-input rounded px-3 py-2 text-sm touch-target"
+                          >
+                            <option value="passport">Passport</option>
+                            <option value="license">License</option>
+                            <option value="citizenship">Citizenship</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleDocumentUpload}
+                          disabled={!documentFile || documentUploading}
+                          className="w-full sm:w-auto px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 text-sm touch-target"
+                        >
+                          {documentUploading ? "Uploading..." : "Upload"}
+                        </button>
                       </div>
                     </div>
                   </div>
