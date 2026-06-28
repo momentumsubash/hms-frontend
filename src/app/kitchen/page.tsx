@@ -480,6 +480,7 @@ export default function KitchenPage() {
               <Button
                 onClick={() => updateKOTStatus(kot._id, 'preparing')}
                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-white"
+                data-cy={`kitchen-start-preparing-${kot.kotNumber}`}
               >
                 <Flame className="w-4 h-4 mr-2" />
                 Start Preparing
@@ -490,6 +491,7 @@ export default function KitchenPage() {
               <Button
                 onClick={() => updateKOTStatus(kot._id, 'ready')}
                 className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white"
+                data-cy={`kitchen-mark-ready-${kot.kotNumber}`}
               >
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Mark as Ready
@@ -501,6 +503,7 @@ export default function KitchenPage() {
                 <Button
                   onClick={() => updateKOTStatus(kot._id, 'served')}
                   className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                  data-cy={`kitchen-mark-served-${kot.kotNumber}`}
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Mark as Served
@@ -509,6 +512,7 @@ export default function KitchenPage() {
                   onClick={() => updateKOTStatus(kot._id, 'preparing')}
                   variant="outline"
                   className="flex-1"
+                  data-cy={`kitchen-back-to-preparing-${kot.kotNumber}`}
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Back to Preparing
@@ -521,6 +525,7 @@ export default function KitchenPage() {
                 onClick={() => updateKOTStatus(kot._id, 'ready')}
                 variant="outline"
                 className="flex-1"
+                data-cy={`kitchen-reopen-${kot.kotNumber}`}
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Reopen
@@ -533,6 +538,7 @@ export default function KitchenPage() {
                 variant="destructive"
                 size="sm"
                 className="ml-auto"
+                data-cy={`kitchen-cancel-${kot.kotNumber}`}
               >
                 <XCircle className="w-4 h-4 mr-1" />
                 Cancel
@@ -571,6 +577,7 @@ export default function KitchenPage() {
                 size="sm"
                 onClick={handleRefresh}
                 disabled={refreshing}
+                data-cy="kitchen-refresh"
               >
                 <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
                 Refresh
@@ -793,25 +800,25 @@ export default function KitchenPage() {
         {/* KOT Columns */}
         <Tabs defaultValue="pending" className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="pending" className="relative">
+            <TabsTrigger value="pending" className="relative" data-cy="kitchen-tab-pending">
               Pending
               {stats.pending > 0 && (
                 <Badge className="ml-2 bg-orange-500 text-white dark:bg-orange-600">{stats.pending}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="preparing">
+            <TabsTrigger value="preparing" data-cy="kitchen-tab-preparing">
               Preparing
               {stats.preparing > 0 && (
                 <Badge className="ml-2 bg-amber-500 text-white dark:bg-amber-600">{stats.preparing}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="ready">
+            <TabsTrigger value="ready" data-cy="kitchen-tab-ready">
               Ready
               {stats.ready > 0 && (
                 <Badge className="ml-2 bg-emerald-500 text-white dark:bg-emerald-600">{stats.ready}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="served">
+            <TabsTrigger value="served" data-cy="kitchen-tab-served">
               Served
               {stats.served > 0 && (
                 <Badge className="ml-2 bg-primary text-primary-foreground">{stats.served}</Badge>

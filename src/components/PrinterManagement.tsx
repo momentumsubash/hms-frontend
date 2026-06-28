@@ -406,7 +406,7 @@ export function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: Pr
                   value={newPrinter.printerType}
                   onValueChange={(value: any) => setNewPrinter({...newPrinter, printerType: value})}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select printer type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -466,7 +466,7 @@ export function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: Pr
                   value={newPrinter.assignedCategories[0] || ""}
                   onValueChange={(value) => setNewPrinter({...newPrinter, assignedCategories: [value]})}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select category (optional)" />
                   </SelectTrigger>
                   <SelectContent>

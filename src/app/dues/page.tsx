@@ -195,6 +195,7 @@ export default function DuesManagementPage() {
                 onChange={(e) => setFilters(f => ({ ...f, search: e.target.value }))}
                 className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
                 placeholder="Search guests..."
+                data-cy="dues-search"
               />
               {filters.search && (
                 <button
@@ -368,7 +369,7 @@ export default function DuesManagementPage() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <button onClick={() => openTransactionModal(guest)} className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
+                          <button onClick={() => openTransactionModal(guest)} data-cy="dues-record-payment" className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1">
                             <Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Record</span> Payment
                           </button>
                           <button onClick={() => openHistoryModal(guest)} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
@@ -449,7 +450,7 @@ export default function DuesManagementPage() {
             </div>
             <div className="flex justify-end gap-3 pt-2 border-t border-border">
               <Button type="button" variant="outline" onClick={() => setShowTransactionModal(false)}>Cancel</Button>
-              <Button type="submit">Save Payment</Button>
+              <Button type="submit" data-cy="dues-save-payment">Save Payment</Button>
             </div>
           </form>
         </Modal>

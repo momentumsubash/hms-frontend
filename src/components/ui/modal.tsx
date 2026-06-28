@@ -49,7 +49,7 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="overflow-y-auto scrollbar-thin flex-1">
+        <div className="overflow-y-auto overflow-x-hidden scrollbar-thin flex-1">
           {children}
         </div>
       </div>

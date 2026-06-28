@@ -834,7 +834,7 @@ const getPrinterStatusIndicator = () => {
                 >
                   {/* Notification Toast */}
                   {notification && (
-                    <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${
+                    <div data-cy={`toast-${notification.type}`} className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${
                       notification.type === 'success' ? 'bg-green-600' : 
                       notification.type === 'warning' ? 'bg-orange-600' : 'bg-red-600'
                     }`}>

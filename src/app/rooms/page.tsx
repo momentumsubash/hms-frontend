@@ -592,7 +592,7 @@ export default function RoomsPage() {
                 <option value="deluxe">Deluxe</option>
               </select>
             </FormField>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label="Rate" error={formErrors.rate}>
                 <input type="number" value={addForm.rate} onChange={e => setAddForm((f: any) => ({ ...f, rate: e.target.value }))}
                   className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${formErrors.rate ? 'border-destructive bg-destructive/5' : 'border-input'}`} required data-cy="rooms-add-rate" />
@@ -648,7 +648,7 @@ export default function RoomsPage() {
                 <option value="deluxe">Deluxe</option>
               </select>
             </FormField>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField label="Rate" error={editFormErrors.rate}>
                 <input type="number" value={editForm.rate} onChange={e => setEditForm((f: any) => ({ ...f, rate: e.target.value }))}
                   className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all ${editFormErrors.rate ? 'border-destructive bg-destructive/5' : 'border-input'}`} required />

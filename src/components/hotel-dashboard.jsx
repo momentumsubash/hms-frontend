@@ -196,8 +196,8 @@ export function HotelDashboard({ nepaliFlag = false }) {
 
   return (
     <div className="p-3 sm:p-6 max-w-[1600px] mx-auto space-y-4 sm:space-y-6 overflow-x-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div data-cy="dashboard-header" className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div data-cy="user-welcome-text">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Welcome back, <span className="text-gradient">{authUser?.firstName || authUser?.email || "User"}</span>
           </h1>
@@ -209,16 +209,17 @@ export function HotelDashboard({ nepaliFlag = false }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-1 sm:gap-4">
+      <div data-cy="dashboard-stats" className="grid grid-cols-4 gap-1 sm:gap-4">
         {statsCards.map((stat, i) => (
           <div
             key={stat.label}
+            data-cy={`stat-${stat.label.toLowerCase().replace(/\s+/g, '-')}`}
             className="bg-card rounded-xl border border-border p-1.5 sm:p-5 hover:shadow-card-hover transition-all duration-300 animate-slide-up"
             style={{ animationDelay: `${i * 80}ms` }}
           >
             <div className="flex flex-col sm:flex-row items-center sm:items-start sm:justify-between gap-0 sm:gap-2">
               <div className="text-center sm:text-left">
-                <p className="text-[10px] sm:text-sm text-muted-foreground font-medium leading-tight sm:leading-normal">{stat.label}</p>
+                <p className="text-[10px] sm:text-sm text-muted-foreground font-medium leading-tight sm:normal-case">{stat.label}</p>
                 <p className="text-sm sm:text-2xl font-bold text-foreground mt-0 sm:mt-1">{stat.value}</p>
               </div>
               <div className="hidden sm:flex w-11 h-11 rounded-lg bg-primary/10 items-center justify-center text-primary shrink-0">

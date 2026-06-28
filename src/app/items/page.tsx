@@ -373,13 +373,13 @@ export default function ItemsPage() {
       <div className="p-6 max-w-[1600px] mx-auto space-y-5">
 
         {error && (
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+          <div data-cy="toast-error" className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
             <span>{error}</span>
             <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors"><X className="w-4 h-4" /></button>
           </div>
         )}
         {success && (
-          <div className="bg-emerald-100 border border-emerald-200 text-emerald-700 text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+          <div data-cy="toast-success" className="bg-emerald-100 border border-emerald-200 text-emerald-700 text-sm px-5 py-3 rounded-lg flex items-center justify-between">
             <span>{success}</span>
             <button onClick={() => setSuccess("")} className="p-1 hover:bg-emerald-200 rounded transition-colors"><X className="w-4 h-4" /></button>
           </div>
@@ -615,7 +615,7 @@ export default function ItemsPage() {
               className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.name ? 'border-destructive bg-destructive/5' : 'border-input'}`} />
             {formErrors.name && <p className="text-destructive text-xs mt-1">{formErrors.name}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Price (रु)</label>
               <input data-cy="items-create-price" type="number" required min="0" step="0.01" value={formData.price} onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
@@ -674,7 +674,7 @@ export default function ItemsPage() {
               className={`w-full h-9 px-3 bg-muted/50 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 transition-all ${formErrors.name ? 'border-destructive bg-destructive/5' : 'border-input'}`} />
             {formErrors.name && <p className="text-destructive text-xs mt-1">{formErrors.name}</p>}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Price (रु)</label>
               <input data-cy="items-edit-price" type="number" required min="0" step="0.01" value={formData.price} onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}

@@ -707,7 +707,7 @@ export default function ReferrersPage() {
 
         {/* Notification */}
         {notification && (
-          <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-lg shadow-elevated flex items-center gap-3 animate-slide-up ${
+          <div data-cy={`toast-${notification.type}`} className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-lg shadow-elevated flex items-center gap-3 animate-slide-up ${
             notification.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-destructive text-destructive-foreground'
           }`}>
             <span className="text-sm font-medium flex-1">{notification.message}</span>

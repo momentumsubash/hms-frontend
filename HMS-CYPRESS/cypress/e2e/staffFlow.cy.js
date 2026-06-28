@@ -19,11 +19,7 @@ describe('Staff Flow - Simple Test', () => {
     cy.get('[data-cy="guests-form-first-name"]').type(guestFirstName, { force: true })
     cy.get('[data-cy="guests-form-last-name"]').type(guestLastName, { force: true })
     cy.get('[data-cy="guests-form-email"]').type(`stafftest${uniqueId}@example.com`, { force: true })
-    cy.get('[data-cy="guests-rooms"] option').then(($opts) => {
-      if ($opts.length && $opts.first().val()) {
-        cy.get('[data-cy="guests-rooms"]').select($opts.first().val(), { force: true })
-      }
-    })
+    cy.get('[data-cy="guests-rooms"]').first().click({ force: true })
     cy.get('[data-cy="guests-form-submit"]').click()
     cy.wait('@createGuest', { timeout: 10000 }).its('response.statusCode').should('be.eq', 201)
     cy.get('table', { timeout: 5000 }).should('contain.text', guestLastName)

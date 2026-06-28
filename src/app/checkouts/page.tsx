@@ -707,13 +707,14 @@ export default function CheckoutsPage() {
           <div className="flex items-center gap-2 md:hidden">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search by guest name or room..."
-                value={searchInput}
-                onChange={(e) => handleSearchInputChange(e.target.value)}
-                className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
-              />
+               <input
+                  type="text"
+                  placeholder="Search by guest name or room..."
+                  value={searchInput}
+                  onChange={(e) => handleSearchInputChange(e.target.value)}
+                  className="w-full h-9 pl-9 pr-8 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all"
+                  data-cy="checkouts-search"
+                />
               {searchInput && (
                 <button
                   type="button"
@@ -842,7 +843,7 @@ export default function CheckoutsPage() {
         </div>
 
         {error && (
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
+          <div data-cy="toast-error" className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-5 py-3 rounded-lg flex items-center justify-between">
             <span>{error}</span>
             <button onClick={() => setError("")} className="p-1 hover:bg-destructive/10 rounded transition-colors"><X className="w-4 h-4" /></button>
           </div>
@@ -1428,7 +1429,7 @@ export default function CheckoutsPage() {
                           return (
                             <div className="bg-card p-3 rounded-md my-3 border-2 border-orange-300">
                               <div className="grid grid-cols-1 gap-3 text-sm">
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                   <div>
                                     <label className="text-muted-foreground">Updated Amount to Pay</label>
                                     <p className="font-semibold">रु {summary.finalBill.toLocaleString()}</p>
@@ -1438,7 +1439,7 @@ export default function CheckoutsPage() {
                                     <p className="font-semibold">रु {summary.paymentAmount.toLocaleString()}</p>
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                   <div>
                                     <label className="text-muted-foreground">Remaining Checkout Due</label>
                                     <p className={`font-semibold ${summary.amountDueAfterPayment > 0 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400'}`}>

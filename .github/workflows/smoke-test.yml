@@ -1,0 +1,62 @@
+name: Smoke Test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Start frontend server
+        run: |
+          npm start &
+          npx wait-on http://localhost:30006 --timeout 60000
+
+      - name: Install Cypress dependencies
+        working-directory: HMS-CYPRESS
+        run: npm ci
+
+      - name: Run Cypress smoke test
+        working-directory: HMS-CYPRESS
+        run: npx cypress run --spec 'cypress/e2e/smoke.cy.js' --baseUrl http://localhost:30006 --env apiUrl=https://hms-api-eight.vercel.app
+
+      - name: Upload Cypress screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: HMS-CYPRESS/cypress/screenshots
+          if-no-files-found: ignore
+
+      - name: Upload Cypress videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-videos
+          path: HMS-CYPRESS/cypress/videos
+          if-no-files-found: ignore
+
+      - name: Upload mochawesome report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mochawesome-report
+          path: HMS-CYPRESS/mochawesome-report
+          if-no-files-found: ignore

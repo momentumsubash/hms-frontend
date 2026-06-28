@@ -135,7 +135,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-2.5 rounded-lg flex items-center gap-2">
+              <div data-cy="login-error" className="bg-destructive/10 border border-destructive/20 text-destructive text-sm px-4 py-2.5 rounded-lg flex items-center gap-2">
                 <Sparkles className="w-4 h-4 shrink-0" />
                 {error}
               </div>

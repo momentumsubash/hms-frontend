@@ -135,6 +135,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <Link
                 key={link.href}
                 href={link.href}
+                data-cy={`${link.label.toLowerCase()}-nav`}
                 onClick={() => setSidebarOpen(false)}
                 className={`flex items-center rounded-lg text-sm font-medium transition-all duration-200 ${
                   sidebarCollapsed
@@ -215,6 +216,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
               <div className="relative">
                 <button
+                  data-cy="user-menu-trigger"
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-secondary transition-colors"
                 >
@@ -244,6 +246,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       <p className="text-xs text-muted-foreground mt-0.5">{user?.email}</p>
                     </div>
                     <button
+                      data-cy="logout-button"
                       onClick={handleLogout}
                       className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm text-destructive hover:bg-destructive/5 transition-colors"
                     >

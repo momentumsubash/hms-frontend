@@ -1896,18 +1896,7 @@ export default function GuestsPage() {
                           <p className="text-sm text-muted-foreground mt-1">No referrers available. Add referrers first.</p>
                         )}
                       </div>
-                      <div>
-                        <label className="flex items-center text-sm font-medium">
-                          <input
-                            type="checkbox"
-                            checked={formData.existingCustomer}
-                            onChange={(e) => setFormData({ ...formData, existingCustomer: e.target.checked })}
-                            className="mr-2 h-4 w-4 border-input rounded touch-target"
-                            data-cy="guests-existing-customer"
-                          />
-                          Existing Customer (Enable Due Management)
-                        </label>
-                      </div>
+
                     </div>
                   </div>
 
@@ -2237,7 +2226,7 @@ export default function GuestsPage() {
 
         {/* Notification Toast */}
         {notification && (
-          <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${
+          <div data-cy={`toast-${notification.type}`} className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded shadow-elevated text-white transition-all ${
             notification.type === 'success' ? 'bg-green-600' : 
             notification.type === 'warning' ? 'bg-yellow-600' : 
             'bg-red-600'

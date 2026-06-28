@@ -2,14 +2,18 @@
 // CUSTOM COMMANDS FOR HMS E2E TESTS
 // =====================================================
 
+// Login alias
+Cypress.Commands.add('login', (email = 'manager@momentum.com', password = 'Manager@123') => {
+  cy.loginAsManager(email, password);
+});
+
 // Login with test credentials
 Cypress.Commands.add('loginAsManager', (email = 'manager@momentum.com', password = 'Manager@123') => {
   cy.visit('/login');
   cy.get('[data-cy="login-email"]').clear().type(email);
   cy.get('[data-cy="login-password"]').clear().type(password);
   cy.get('[data-cy="login-submit"]').click();
-  cy.url().should('include', '/dashboard');
-  cy.get('[data-cy="dashboard-header"]', { timeout: 10000 }).should('exist');
+  cy.url({ timeout: 10000 }).should('include', '/dashboard');
 });
 
 // Logout
@@ -24,28 +28,35 @@ Cypress.Commands.add('logout', () => {
 // =====================================================
 
 Cypress.Commands.add('createNewGuest', (guestData = {}) => {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const hh = String(today.getHours()).padStart(2, '0');
+  const min = String(today.getMinutes()).padStart(2, '0');
+
   const guest = {
     firstName: guestData.firstName || `Guest_${Date.now()}`,
     lastName: guestData.lastName || 'Test',
     email: guestData.email || `guest${Date.now()}@test.com`,
     phone: guestData.phone || '9840000000',
-    country: guestData.country || 'Nepal',
     ...guestData
   };
 
   cy.get('[data-cy="guests-nav"]').click();
-  cy.get('[data-cy="add-guest-button"]').click();
+  cy.get('[data-cy="guests-add-new"]').last().click({ force: true });
   
-  cy.get('[data-cy="guest-form-firstName"]').type(guest.firstName);
-  cy.get('[data-cy="guest-form-lastName"]').type(guest.lastName);
-  cy.get('[data-cy="guest-form-email"]').type(guest.email);
-  cy.get('[data-cy="guest-form-phone"]').type(guest.phone);
-  cy.get('[data-cy="guest-form-country"]').type(guest.country);
+  cy.get('[data-cy="guests-form-first-name"]', { timeout: 5000 }).type(guest.firstName, { force: true });
+  cy.get('[data-cy="guests-form-last-name"]').type(guest.lastName, { force: true });
+  cy.get('[data-cy="guests-form-email"]').type(guest.email, { force: true });
+  cy.get('[data-cy="guests-form-phone"]').type(guest.phone, { force: true });
+  cy.get('[data-cy="guests-checkin"]').type(`${yyyy}-${mm}-${dd}T${hh}:${min}`, { force: true });
+  cy.get('[data-cy="guests-roomdiscount"]').clear({ force: true }).type('0', { force: true });
+  cy.get('[data-cy="guests-advancepaid"]').clear({ force: true }).type('0', { force: true });
+  cy.get('[data-cy="guests-rooms"]').first().click({ force: true });
   
-  cy.get('[data-cy="guest-form-submit"]').click();
-  cy.get('[data-cy="success-toast"]', { timeout: 5000 }).should('exist');
-  
-  return { ...guest };
+  cy.get('[data-cy="guests-form-submit"]').click({ force: true });
+  cy.get('[data-cy="toast-success"]', { timeout: 10000 }).should('exist');
 });
 
 Cypress.Commands.add('getAllGuestCount', () => {

@@ -115,7 +115,7 @@ export async function getMyHotel() {
   return res.json();
 }
 // Copied from design/hms-ui-v2/lib/api.ts
-export const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+export const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:30005";
 export const GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:4000/api";
 
 function getToken() {

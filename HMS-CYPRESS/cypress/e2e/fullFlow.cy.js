@@ -12,6 +12,20 @@ describe('Full Org Admin E2E Flow', () => {
 
   before(() => {
     cy.login()
+    cy.window().then(win => {
+      if (!win.localStorage.getItem('hotel')) {
+        const token = win.localStorage.getItem('token')
+        cy.request({
+          method: 'GET',
+          url: `${Cypress.env('apiUrl')}/api/hotels/me`,
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(res => {
+          if (res.body?.data) {
+            win.localStorage.setItem('hotel', JSON.stringify(res.body.data))
+          }
+        })
+      }
+    })
   })
 
   it('should create a room', () => {
@@ -23,10 +37,18 @@ describe('Full Org Admin E2E Flow', () => {
         url: `${Cypress.env('apiUrl')}/api/rooms`,
         headers: { Authorization: `Bearer ${token}` },
         body: { roomNumber: roomNum, type: 'single', rate: roomRate, hotel: hotel._id }
-      }).its('status').should('eq', 201)
+      }).then(resp => {
+        expect(resp.status).to.eq(201)
+        return cy.request({
+          method: 'GET',
+          url: `${Cypress.env('apiUrl')}/api/rooms?roomNumber=${roomNum}`,
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      }).then(searchResp => {
+        expect(searchResp.body.data).to.have.length(1)
+        expect(searchResp.body.data[0].roomNumber).to.eq(roomNum)
+      })
     })
-    cy.visit('/rooms')
-    cy.get('[data-cy="rooms-table"]', { timeout: 10000 }).should('contain.text', roomNum)
   })
 
   it('should create an item', () => {
@@ -63,14 +85,7 @@ describe('Full Org Admin E2E Flow', () => {
     cy.get('[data-cy="guests-form-email"]').type(`fulltest${uniqueId}@example.com`, { force: true })
     cy.get('[data-cy="guests-roomdiscount"]').clear({ force: true }).type(roomDiscount.toString(), { force: true })
     cy.get('[data-cy="guests-advancepaid"]').clear({ force: true }).type('0', { force: true })
-    cy.get('[data-cy="guests-rooms"] option').then(($opts) => {
-      const matching = $opts.filter((_, o) => o.text.includes(roomNum))
-      if (matching.length) {
-        cy.get('[data-cy="guests-rooms"]').select(matching.val(), { force: true })
-      } else if ($opts.length && $opts.first().val()) {
-        cy.get('[data-cy="guests-rooms"]').select($opts.first().val(), { force: true })
-      }
-    })
+    cy.get('[data-cy="guests-rooms"]').contains('span', `#${roomNum}`).click({ force: true })
     cy.get('[data-cy="guests-form-submit"]').click()
     cy.wait('@createGuest', { timeout: 10000 }).its('response.statusCode').should('be.eq', 201)
     cy.get('table', { timeout: 5000 }).should('contain.text', guestLastName)

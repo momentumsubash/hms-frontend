@@ -42,11 +42,11 @@ function getToken() {
   return localStorage.getItem("token") || sessionStorage.getItem("token");
 }
 
-const AccordionSection = ({ title, count, defaultExpanded = true, children }) => {
+const AccordionSection = ({ title, count, defaultExpanded = true, children, ...props }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
-    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden" {...props}>
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-muted/30 transition-colors"

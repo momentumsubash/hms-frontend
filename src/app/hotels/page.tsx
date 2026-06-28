@@ -583,7 +583,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
             </DialogHeader>
 
             <div className="space-y-5 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="col-span-2 md:col-span-1">
                   <Label htmlFor="printer-name">Printer Name *</Label>
                   <Input
@@ -601,7 +601,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
                     value={newPrinter.printerType}
                     onValueChange={(value: 'network' | 'system' | 'usb' | 'serial' | 'file') => setNewPrinter({...newPrinter, printerType: value})}
                   >
-                    <SelectTrigger className="mt-1">
+                    <SelectTrigger className="w-full mt-1">
                       <SelectValue placeholder="Select printer type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -662,7 +662,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
     </div>
     
     {/* IP Address and Port */}
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div className="col-span-2 md:col-span-1">
         <Label htmlFor="network-address">IP Address *</Label>
         <Input
@@ -698,7 +698,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
       setNewPrinter({...newPrinter, printerSubtype: value})
     }
   >
-    <SelectTrigger className="mt-1">
+    <SelectTrigger className="w-full mt-1">
       <SelectValue placeholder="Select printer type" />
     </SelectTrigger>
     <SelectContent>
@@ -765,7 +765,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
         assignedCategories: value === "none" ? [] : [value]
       })}
     >
-      <SelectTrigger className="mt-1">
+      <SelectTrigger className="w-full mt-1">
         <SelectValue placeholder="Select category (optional)" />
       </SelectTrigger>
       <SelectContent>
@@ -787,7 +787,7 @@ function PrinterManagement({ hotelId, hotelName, open, onOpenChange }: PrinterMa
                   Printer Settings
                 </h4>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="copies">Number of Copies</Label>
                     <Input
@@ -1768,7 +1768,7 @@ export default function HotelsPage() {
                   </div>
                   <div className="border rounded-lg p-4">
                     <h4 className="font-medium mb-3">Main Images</h4>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                       {selectedHotel.images?.filter(url => isValidUrl(url)).map((image, index) => (
                         <div key={index} className="relative w-full h-24">
                           <img src={image} alt={`Hotel ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
@@ -1780,7 +1780,7 @@ export default function HotelsPage() {
                   </div>
                   <div className="border rounded-lg p-4">
                     <h4 className="font-medium mb-3">Gallery Images</h4>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                       {selectedHotel.gallery?.filter(url => isValidUrl(url)).map((image, index) => (
                         <div key={index} className="relative w-full h-24">
                           <img src={image} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover rounded-lg" />
@@ -1792,7 +1792,7 @@ export default function HotelsPage() {
                   </div>
                   <div className="border rounded-lg p-4">
                     <h4 className="font-medium mb-3">Hero Videos</h4>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                       {selectedHotel.videos?.filter(url => isValidUrl(url)).map((video, index) => (
                         <div key={index} className="relative w-full h-28">
                           <video src={video} className="w-full h-full object-cover rounded-lg" muted />
@@ -1863,7 +1863,7 @@ export default function HotelsPage() {
                               setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), rooms}});
                             }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <Input value={room.title || ''} onChange={e => {
                               const rooms = [...(selectedHotel.website?.rooms || [])];
                               rooms[idx] = {...rooms[idx], title: e.target.value};
@@ -1920,7 +1920,7 @@ export default function HotelsPage() {
                               setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
                             }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <Input value={amenity.name || ''} onChange={e => {
                               const arr = [...(selectedHotel.website?.amenitiesDetailed || [])];
                               arr[idx] = {...arr[idx], name: e.target.value};
@@ -1931,7 +1931,7 @@ export default function HotelsPage() {
                               arr[idx] = {...arr[idx], icon: v};
                               setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), amenitiesDetailed: arr}});
                             }}>
-                              <SelectTrigger><SelectValue placeholder="Select icon" /></SelectTrigger>
+                              <SelectTrigger className="w-full"><SelectValue placeholder="Select icon" /></SelectTrigger>
                               <SelectContent className="max-h-64">
                                 <SelectItem value="Star"><span className="flex items-center gap-2"><Star className="w-4 h-4" /> Star</span></SelectItem>
                                 <SelectItem value="Wifi"><span className="flex items-center gap-2"><Wifi className="w-4 h-4" /> WiFi</span></SelectItem>
@@ -2001,7 +2001,7 @@ export default function HotelsPage() {
                               setSelectedHotel({...selectedHotel, website: {...(selectedHotel.website as any || {}), testimonials: arr}});
                             }}><Trash2 className="w-4 h-4 text-red-500" /></Button>
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <Input value={t.name || ''} onChange={e => {
                               const arr = [...(selectedHotel.website?.testimonials || [])];
                               arr[idx] = {...arr[idx], name: e.target.value};
@@ -2227,7 +2227,7 @@ export default function HotelsPage() {
             </DialogHeader>
             <div className="space-y-4">
               <Select value={domainType} onValueChange={(value: "whitelistedDomains" | "customDomains") => setDomainType(value)}>
-                <SelectTrigger><SelectValue placeholder="Select domain type" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select domain type" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="whitelistedDomains">Whitelisted Domains</SelectItem>
                   <SelectItem value="customDomains">Custom Domains</SelectItem>
@@ -2368,7 +2368,7 @@ export default function HotelsPage() {
             value={newRecipient.role}
             onValueChange={(value) => setNewRecipient({ ...newRecipient, role: value })}
           >
-            <SelectTrigger id="recipient-role">
+            <SelectTrigger id="recipient-role" className="w-full">
               <SelectValue placeholder="Role" />
             </SelectTrigger>
             <SelectContent>
@@ -2507,13 +2507,13 @@ export default function HotelsPage() {
           value={testNotificationData.type}
           onValueChange={(value) => setTestNotificationData({...testNotificationData, type: value})}
         >
-          <SelectTrigger id="test-type">
-            <SelectValue placeholder="Select type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="daily_report">Daily Report</SelectItem>
-            <SelectItem value="license_expiry">License Expiry Alert</SelectItem>
-          </SelectContent>
+          <SelectTrigger id="test-type" className="w-full">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily_report">Daily Report</SelectItem>
+              <SelectItem value="license_expiry">License Expiry Alert</SelectItem>
+            </SelectContent>
         </Select>
       </div>
 
@@ -2705,7 +2705,7 @@ export default function HotelsPage() {
           value={newExpenditure.category}
           onValueChange={(value) => setNewExpenditure(prev => ({ ...prev, category: value as any }))}
         >
-          <SelectTrigger id="expenditure-category">
+          <SelectTrigger id="expenditure-category" className="w-full">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -2782,7 +2782,7 @@ export default function HotelsPage() {
                 value={selected.itemId}
                 onValueChange={(value) => setSelectedInventoryItems(prev => prev.map((item, idx) => idx === index ? { ...item, itemId: value } : item))}
               >
-                <SelectTrigger id={`inventory-item-${index}`}>
+                <SelectTrigger id={`inventory-item-${index}`} className="w-full">
                   <SelectValue placeholder="Choose item" />
                 </SelectTrigger>
                 <SelectContent>

@@ -29,12 +29,13 @@ hms-cypress/node_modules/
 *.pem
 
 # cypress artifacts
-cypress/screenshots/
-cypress/videos/
+**/cypress/screenshots/
+**/cypress/videos/
+**/mochawesome-report/
+**/cypress/debug-*.json
 
 # temp files
 tmp/
-progress.md
 
 # debug
 npm-debug.log*

@@ -12,25 +12,25 @@ describe('Items Page - CRUD Operations', () => {
   })
 
   it('should search items', () => {
-    cy.get('[data-cy="items-search"]').type('test', { force: true })
+    cy.get('[data-cy="items-search"]').first().type('test', { force: true })
     cy.wait(1500)
-    cy.get('[data-cy="items-search"]').clear({ force: true })
+    cy.get('[data-cy="items-search"]').first().clear({ force: true })
   })
 
   it('should filter by category', () => {
-    cy.get('[data-cy="items-category-filter"]').then(($el) => {
+    cy.get('[data-cy="items-category-filter"]').first().then(($el) => {
       if ($el.find('option').length > 1) {
         cy.wrap($el).select($el.find('option:not([value=""])').first().val(), { force: true })
         cy.wait(1500)
       }
     })
-    cy.get('[data-cy="items-category-filter"]').select('', { force: true })
+    cy.get('[data-cy="items-category-filter"]').first().select('', { force: true })
   })
 
   it('should filter by availability', () => {
-    cy.get('[data-cy="items-availability-filter"]').select('true', { force: true })
+    cy.get('[data-cy="items-availability-filter"]').first().select('true', { force: true })
     cy.wait(1500)
-    cy.get('[data-cy="items-availability-filter"]').select('', { force: true })
+    cy.get('[data-cy="items-availability-filter"]').first().select('', { force: true })
   })
 
   it('should create a new item', () => {
