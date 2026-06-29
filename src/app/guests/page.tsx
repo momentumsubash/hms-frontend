@@ -162,7 +162,6 @@ interface GuestForm {
   additionalGuests: AdditionalGuest[];
   purposeOfStay: string;
   referrer: string;
-  existingCustomer: boolean;
   rooms: string[];
   roomDiscount: string;
   advancePaid: string;
@@ -502,11 +501,10 @@ export default function GuestsPage() {
     additionalGuests: [],
     purposeOfStay: "",
     referrer: "",
-    existingCustomer: false,
     rooms: [],
     roomDiscount: "0",
     advancePaid: "0",
-    checkInDate: "",
+    checkInDate: getCurrentDateTimeLocal(),
     checkOutDate: ""
   });
   const [formLoading, setFormLoading] = useState(false);
@@ -737,7 +735,6 @@ export default function GuestsPage() {
       additionalGuests: [],
       purposeOfStay: "",
       referrer: "",
-      existingCustomer: false,
       rooms: [],
       roomDiscount: "0",
       advancePaid: "0",
@@ -792,7 +789,6 @@ export default function GuestsPage() {
             vehicleNo: foundGuest.vehicleNo || "",
             purposeOfStay: foundGuest.purposeOfStay || "",
             referrer: foundGuest.referrer || "",
-            existingCustomer: foundGuest.existingCustomer || false,
           }));
 
           fetchGuestDocuments(foundGuest._id);
@@ -837,7 +833,6 @@ export default function GuestsPage() {
             vehicleNo: foundGuest.vehicleNo || "",
             purposeOfStay: foundGuest.purposeOfStay || "",
             referrer: foundGuest.referrer || "",
-            existingCustomer: foundGuest.existingCustomer || false,
           }));
 
           fetchGuestDocuments(foundGuest._id);
@@ -1075,7 +1070,6 @@ export default function GuestsPage() {
           additionalGuests: validAdditionalGuests,
           purposeOfStay: formData.purposeOfStay || undefined,
           referrer: formData.referrer || undefined,
-          existingCustomer: formData.existingCustomer,
           rooms: roomNumbers,
           hotel: hotelId,
           checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
@@ -1160,7 +1154,6 @@ export default function GuestsPage() {
           additionalGuests: validAdditionalGuests,
           purposeOfStay: formData.purposeOfStay || undefined,
           referrer: formData.referrer || undefined,
-          existingCustomer: formData.existingCustomer,
           rooms: roomNumbers,
           hotel: hotelId,
           checkInDate: new Date(formData.checkInDate).toISOString(),
@@ -1293,7 +1286,6 @@ export default function GuestsPage() {
       additionalGuests: [],
       purposeOfStay: "",
       referrer: "",
-      existingCustomer: false,
       rooms: [],
       roomDiscount: "0",
       advancePaid: "0",
