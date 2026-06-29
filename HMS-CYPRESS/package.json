@@ -7,8 +7,11 @@
     "test": "cypress run --spec 'cypress/e2e/**/*.cy.js'",
     "test:local": "cypress run --baseUrl http://localhost:30006 --spec 'cypress/e2e/**/*.cy.js'",
     "test:open": "cypress open --baseUrl http://localhost:30006",
-    "test:production": "cypress run --baseUrl https://digitalhms-momentum.vercel.app --env apiUrl=https://hms-api-eight.vercel.app --spec 'cypress/e2e/smoke.cy.js'",
-    "test:production:open": "cypress open --baseUrl https://digitalhms-momentum.vercel.app --env apiUrl=https://hms-api-eight.vercel.app",
+    "test:production": "cypress run --baseUrl http://digitalhms-momentum.vercel.app --env apiUrl=https://hms-api-eight.vercel.app --spec 'cypress/e2e/smoke.cy.js'",
+    "test:production:open": "cypress open --baseUrl http://digitalhms-momentum.vercel.app --env apiUrl=https://hms-api-eight.vercel.app",
+    "test:production:all": "cypress run --baseUrl http://digitalhms-momentum.vercel.app --env apiUrl=https://hms-api-eight.vercel.app --spec 'cypress/e2e/*.cy.js'",
+    "test:production:documents": "cypress run --baseUrl http://digitalhms-momentum.vercel.app --env apiUrl=https://hms-api-eight.vercel.app --spec 'cypress/e2e/document-upload.cy.js'",
+    "test:production:smoke": "cypress run --baseUrl http://digitalhms-momentum.vercel.app --env apiUrl=https://hms-api-eight.vercel.app --spec 'cypress/e2e/smoke.cy.js'",
     "test:reports": "open mochawesome-report/mochawesome.html"
   },
   "keywords": [],
