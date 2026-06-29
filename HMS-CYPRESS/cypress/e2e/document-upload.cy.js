@@ -6,8 +6,11 @@
  *
  * Selector notes:
  * - There are TWO buttons with data-cy="guests-add-new". The first (in DOM
- *   order) is always visible and works on both mobile & desktop. The second is
- *   wrapped in `hidden md:flex` and hidden on mobile. Always use `.first()`.
+ *   order) is inside a mobile-only container (`md:hidden`). The second is
+ *   inside a desktop-only container (`hidden md:flex`). On desktop (≥768px)
+ *   the first is hidden, the second is visible. On mobile (<768px) the first
+ *   is visible, the second is hidden. Use `.last()` on desktop, `.first()`
+ *   on mobile.
  * - Document upload is done via the Edit flow (click Edit on a guest row to
  *   open the modal with editingGuest set), because the Upload button requires
  *   editingGuest or existingGuest to be truthy.
@@ -42,26 +45,13 @@ before(() => {
 });
 
 // ============================================================================
-//  HELPER: open edit modal for the guest created in this suite
-// ============================================================================
-function openEditModal(nameFragment) {
-  // Search for the guest by name
-  cy.get('[data-cy="guests-search"]', { timeout: 5000 }).clear().type(nameFragment);
-  cy.wait(1000);
-  // Find the row containing the name and click Edit
-  cy.contains('[data-cy^="guests-row"]', nameFragment).within(() => {
-    cy.get('[title="Edit"]').click();
-  });
-}
-
-// ============================================================================
 //  DESKTOP — Guest creation + document upload
 // ============================================================================
 describe('Desktop — Document Upload', { viewportWidth: 1200, viewportHeight: 800 }, () => {
   it('should create guest and verify no existingCustomer checkbox', () => {
     cy.login('manager@momentum.com', 'Manager@123');
     cy.visit('/guests');
-    cy.get('[data-cy="guests-add-new"]', { timeout: 10000 }).first().click();
+    cy.get('[data-cy="guests-add-new"]', { timeout: 10000 }).last().click();
 
     // Verify no "existing customer" checkbox is in the form
     cy.get('.fixed.inset-0.z-50').within(() => {
@@ -73,7 +63,8 @@ describe('Desktop — Document Upload', { viewportWidth: 1200, viewportHeight: 8
     cy.get('[data-cy="guests-form-first-name"]').type(FIRST, { force: true });
     cy.get('[data-cy="guests-form-last-name"]').type(LAST, { force: true });
 
-    cy.get('[data-cy="guests-rooms"]', { timeout: 10000 }).should('exist');
+    // Wait for rooms to load before selecting
+    cy.get('[data-cy="guests-rooms"]', { timeout: 15000 }).should('have.length.greaterThan', 0);
     cy.get('[data-cy="guests-rooms"]').first().click();
 
     cy.get('[data-cy="guests-form-submit"]').click();
@@ -83,8 +74,12 @@ describe('Desktop — Document Upload', { viewportWidth: 1200, viewportHeight: 8
   it('should upload a document via the edit modal', () => {
     cy.login('manager@momentum.com', 'Manager@123');
     cy.visit('/guests');
-    // Open edit modal for the guest created above
-    openEditModal(FIRST);
+    // Use last() for search on desktop (first is in md:hidden container)
+    cy.get('[data-cy="guests-search"]', { timeout: 5000 }).last().clear().type(FIRST);
+    cy.wait(1500);
+    cy.contains('[data-cy^="guests-row"]', FIRST).within(() => {
+      cy.get('[title="Edit"]').click();
+    });
 
     // Verify the documents section is visible
     cy.get('[data-cy="guests-documents-section"]', { timeout: 5000 }).should('be.visible');
@@ -103,7 +98,7 @@ describe('Desktop — Document Upload', { viewportWidth: 1200, viewportHeight: 8
   it('should auto-populate documents when returning guest enters phone', () => {
     cy.login('manager@momentum.com', 'Manager@123');
     cy.visit('/guests');
-    cy.get('[data-cy="guests-add-new"]', { timeout: 10000 }).first().click();
+    cy.get('[data-cy="guests-add-new"]', { timeout: 10000 }).last().click();
     cy.get('[data-cy="guests-form-phone"]', { timeout: 5000 }).type(PHONE, { force: true });
     cy.wait(2000);
 
@@ -139,7 +134,8 @@ describe('Mobile — Document Upload', { viewportWidth: 375, viewportHeight: 667
     cy.get('[data-cy="guests-form-first-name"]').type(mFirst, { force: true });
     cy.get('[data-cy="guests-form-last-name"]').type('MobileTest', { force: true });
 
-    cy.get('[data-cy="guests-rooms"]', { timeout: 10000 }).first().click();
+    cy.get('[data-cy="guests-rooms"]', { timeout: 15000 }).should('have.length.greaterThan', 0);
+    cy.get('[data-cy="guests-rooms"]').first().click();
     cy.get('[data-cy="guests-form-submit"]').click();
     cy.contains(mFirst, { timeout: 15000 }).should('exist');
   });
