@@ -60,7 +60,7 @@ export default function QROrderPage() {
     if (!roomId || !token) return;
     (async () => {
       try {
-        const res = await fetch(`${API_URL}/api/public/menu/${roomId}/${token}`);
+        const res = await fetch(`${API_URL}/public/menu/${roomId}/${token}`);
         if (!res.ok) {
           const data = await res.json();
           throw new Error(data.error || 'Failed to load menu');
@@ -151,7 +151,7 @@ export default function QROrderPage() {
         body.lat = userLocation.lat;
         body.lng = userLocation.lng;
       }
-      const res = await fetch(`${API_URL}/api/public/orders/${roomId}/${token}`, {
+      const res = await fetch(`${API_URL}/public/orders/${roomId}/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
