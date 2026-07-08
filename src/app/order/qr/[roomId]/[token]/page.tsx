@@ -1,8 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState, useRef, useCallback } from "react";
-import { Minus, Plus, ShoppingCart, MapPin, Loader2, AlertCircle, X, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { Minus, Plus, ShoppingCart, MapPin, Loader2, AlertCircle, X, ChevronUp, Check, Search } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:30005";
 
@@ -49,12 +49,12 @@ export default function QROrderPage() {
   const [success, setSuccess] = useState(false);
   const [locationStatus, setLocationStatus] = useState<'idle' | 'requesting' | 'granted' | 'denied'>('idle');
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [cartExpanded, setCartExpanded] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
   const [showPhoneDialog, setShowPhoneDialog] = useState(false);
   const [phoneError, setPhoneError] = useState("");
-  const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!roomId || !token) return;
@@ -114,15 +114,19 @@ export default function QROrderPage() {
     });
   }, []);
 
+  const clearCart = useCallback(() => setCart({}), []);
+
   const getItemQuantity = useCallback((itemId: string): number => {
     return cart[itemId] || 0;
   }, [cart]);
 
-  const cartItemsList = Object.entries(cart).map(([itemId, qty]) => {
-    const item = items.find((i) => i._id === itemId);
-    return item ? { ...item, quantity: qty, total: item.price * qty } : null;
-  }).filter(Boolean);
-
+  const cartItemsList = useMemo(() =>
+    Object.entries(cart).map(([itemId, qty]) => {
+      const item = items.find((i) => i._id === itemId);
+      return item ? { ...item, quantity: qty, total: item.price * qty } : null;
+    }).filter(Boolean),
+    [cart, items]
+  );
   const cartTotal = cartItemsList.reduce((sum, item) => sum + (item?.total || 0), 0);
   const cartCount = cartItemsList.reduce((sum, item) => sum + (item?.quantity || 0), 0);
 
@@ -160,7 +164,6 @@ export default function QROrderPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to place order');
       setSuccess(true);
       setCart({});
-      setCartExpanded(false);
       setShowPhoneDialog(false);
     } catch (e: any) {
       setError(e.message || 'Failed to place order');
@@ -178,9 +181,28 @@ export default function QROrderPage() {
     placeOrder();
   };
 
-  const scrollToCategory = (catId: string) => {
-    setActiveCategory(catId);
-    categoryRefs.current[catId]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Group items by category and filter by search + active tab
+  const groupedItems = useMemo(() => {
+    const filtered = searchQuery.trim()
+      ? items.filter((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      : items;
+
+    const activeItems = activeTab === 'all'
+      ? filtered
+      : filtered.filter((i) => i.category === activeTab);
+
+    return categories
+      .map((cat) => ({ ...cat, items: activeItems.filter((i) => i.category === cat._id) }))
+      .filter((g) => g.items.length > 0);
+  }, [items, categories, searchQuery, activeTab]);
+
+  const allFilteredCount = searchQuery.trim()
+    ? items.filter((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase())).length
+    : items.length;
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    searchRef.current?.focus();
   };
 
   if (loading) {
@@ -227,17 +249,14 @@ export default function QROrderPage() {
     );
   }
 
-  const groupedItems = categories.map((cat) => ({
-    ...cat,
-    items: items.filter((i) => i.category === cat._id),
-  })).filter((g) => g.items.length > 0);
+  const tabs = [{ _id: 'all', name: `All (${allFilteredCount})` }, ...categories];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 to-gray-900 flex flex-col" data-cy="qr-order-page">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 safe-top">
         <div className="max-w-2xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-2">
             <div className="min-w-0 flex-1">
               <h1 className="text-base sm:text-lg font-bold text-white truncate">{hotel?.name}</h1>
               <p className="text-xs sm:text-sm text-gray-400">Room {room?.roomNumber}</p>
@@ -258,30 +277,46 @@ export default function QROrderPage() {
               </span>
             ) : null}
           </div>
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search menu items..."
+              className="w-full pl-9 pr-8 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+              data-cy="qr-search-input"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Category pills (mobile quick nav) */}
-      {groupedItems.length > 1 && (
-        <div className="sticky top-[57px] z-10 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 overflow-x-auto hide-scrollbar" data-cy="qr-category-nav">
-          <div className="flex gap-2 px-4 py-2.5 max-w-2xl mx-auto">
-            {groupedItems.map((group) => (
-              <button
-                key={group._id}
-                onClick={() => scrollToCategory(group._id)}
-                className={`shrink-0 px-3.5 py-2 text-xs font-medium rounded-full whitespace-nowrap min-h-[36px] transition-colors ${
-                  activeCategory === group._id
-                    ? 'bg-amber-500 text-black'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
-                data-cy={`qr-cat-pill-${group._id}`}
-              >
-                {group.name}
-              </button>
-            ))}
-          </div>
+      {/* Tabs */}
+      <div className="sticky top-[105px] z-10 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 overflow-x-auto hide-scrollbar" data-cy="qr-category-tabs">
+        <div className="flex gap-1 px-4 py-2 max-w-2xl mx-auto">
+          {tabs.map((tab) => (
+            <button
+              key={tab._id}
+              onClick={() => handleTabChange(tab._id)}
+              className={`shrink-0 px-3.5 py-2 text-xs font-medium rounded-lg whitespace-nowrap min-h-[36px] transition-colors ${
+                activeTab === tab._id
+                  ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
+                  : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+              }`}
+              data-cy={`qr-tab-${tab._id}`}
+            >
+              {tab.name}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* Error banner */}
       {error && (
@@ -296,70 +331,68 @@ export default function QROrderPage() {
         </div>
       )}
 
-      {/* Menu items */}
-      <div className="flex-1 max-w-2xl mx-auto px-4 py-4 space-y-6 pb-32">
+      {/* Items grid */}
+      <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 pb-36">
         {groupedItems.length === 0 ? (
-          <div className="text-center py-12" data-cy="qr-no-items">
-            <p className="text-gray-500">No menu items available</p>
+          <div className="text-center py-16" data-cy="qr-no-items">
+            <p className="text-gray-500 text-sm">
+              {searchQuery ? `No items match "${searchQuery}"` : 'No menu items available'}
+            </p>
           </div>
         ) : (
-          groupedItems.map((group) => (
-            <section
-              key={group._id}
-              ref={(el) => { categoryRefs.current[group._id] = el; }}
-              data-cy={`qr-category-${group._id}`}
-            >
-              <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider mb-1">{group.name}</h2>
-              {group.description && (
-                <p className="text-xs text-gray-500 mb-3">{group.description}</p>
-              )}
-              <div className="space-y-2">
-                {group.items.map((item) => {
-                  const qty = getItemQuantity(item._id);
-                  return (
-                    <div key={item._id} className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-4 py-3.5 active:bg-gray-850 transition-colors" data-cy={`qr-item-${item._id}`}>
-                      <div className="flex-1 min-w-0 pr-2">
-                        <p className="text-sm font-medium text-white truncate">{item.name}</p>
-                        {item.description && (
-                          <p className="text-xs text-gray-500 truncate mt-0.5">{item.description}</p>
-                        )}
-                        <p className="text-sm font-bold text-amber-400 mt-1">Rs {item.price}</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {qty > 0 ? (
-                          <div className="flex items-center gap-2 bg-gray-800 rounded-full px-1 py-1">
-                            <button
-                              onClick={() => removeFromCart(item._id)}
-                              className="w-9 h-9 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center active:scale-90 transition-all min-h-[44px] min-w-[44px]"
-                              data-cy={`qr-item-dec-${item._id}`}
-                            >
-                              <Minus className="w-4 h-4 text-white" />
-                            </button>
-                            <span className="w-7 text-center text-sm font-bold text-white" data-cy={`qr-item-qty-${item._id}`}>{qty}</span>
-                            <button
-                              onClick={() => addToCart(item._id)}
-                              className="w-9 h-9 rounded-full bg-amber-500 hover:bg-amber-600 flex items-center justify-center active:scale-90 transition-all min-h-[44px] min-w-[44px]"
-                              data-cy={`qr-item-inc-${item._id}`}
-                            >
-                              <Plus className="w-4 h-4 text-black" />
-                            </button>
-                          </div>
-                        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {groupedItems.flatMap((group) =>
+              group.items.map((item) => {
+                const qty = getItemQuantity(item._id);
+                return (
+                  <div
+                    key={item._id}
+                    className={`flex flex-col bg-gray-900 border rounded-xl p-3.5 transition-all ${
+                      qty > 0 ? 'border-amber-500/40 shadow-sm shadow-amber-500/10' : 'border-gray-800'
+                    }`}
+                    data-cy={`qr-item-${item._id}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white leading-snug line-clamp-2">{item.name}</p>
+                      {item.description && (
+                        <p className="text-xs text-gray-500 line-clamp-1 mt-1">{item.description}</p>
+                      )}
+                      <p className="text-sm font-bold text-amber-400 mt-2">Rs {item.price}</p>
+                    </div>
+                    <div className="mt-3">
+                      {qty > 0 ? (
+                        <div className="flex items-center justify-between gap-1">
+                          <button
+                            onClick={() => removeFromCart(item._id)}
+                            className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center active:scale-90 transition-all min-h-[36px] min-w-[36px]"
+                            data-cy={`qr-item-dec-${item._id}`}
+                          >
+                            <Minus className="w-3.5 h-3.5 text-white" />
+                          </button>
+                          <span className="text-sm font-bold text-white min-w-[20px] text-center" data-cy={`qr-item-qty-${item._id}`}>{qty}</span>
                           <button
                             onClick={() => addToCart(item._id)}
-                            className="px-4 py-2.5 text-sm font-medium rounded-xl bg-amber-500 hover:bg-amber-600 text-black active:scale-95 transition-all min-h-[44px]"
-                            data-cy={`qr-item-add-${item._id}`}
+                            className="w-9 h-9 rounded-lg bg-amber-500 hover:bg-amber-600 flex items-center justify-center active:scale-90 transition-all min-h-[36px] min-w-[36px]"
+                            data-cy={`qr-item-inc-${item._id}`}
                           >
-                            Add
+                            <Plus className="w-3.5 h-3.5 text-black" />
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => addToCart(item._id)}
+                          className="w-full py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-black active:scale-95 transition-all min-h-[36px]"
+                          data-cy={`qr-item-add-${item._id}`}
+                        >
+                          Add
+                        </button>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            </section>
-          ))
+                  </div>
+                );
+              })
+            )}
+          </div>
         )}
       </div>
 
@@ -367,48 +400,44 @@ export default function QROrderPage() {
       {cartCount > 0 && room?.isOccupied && (
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-gray-900/98 backdrop-blur-md border-t border-gray-800 safe-bottom" data-cy="qr-cart-bar">
           <div className="max-w-2xl mx-auto">
-            {/* Expandable cart items */}
-            {cartExpanded && (
-              <div className="max-h-48 overflow-y-auto border-b border-gray-800 bg-gray-900" data-cy="qr-cart-items">
-                <div className="px-4 py-2 space-y-1.5">
-                  {cartItemsList.map((item) => (
-                    <div key={item!._id} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-300 truncate flex-1">
-                        <span className="text-amber-400 font-medium mr-1.5">{item!.quantity}x</span>
-                        {item!.name}
-                      </span>
-                      <span className="text-white font-medium ml-2 shrink-0">Rs {item!.total}</span>
-                    </div>
-                  ))}
-                </div>
+            {/* Items summary */}
+            <div className="max-h-48 overflow-y-auto border-b border-gray-800 bg-gray-900/95">
+              <div className="px-4 py-2 space-y-1.5">
+                {cartItemsList.map((item) => (
+                  <div key={item!._id} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-300 truncate flex-1">
+                      <span className="text-amber-400 font-medium mr-1.5">{item!.quantity}x</span>
+                      {item!.name}
+                    </span>
+                    <span className="text-white font-medium ml-2 shrink-0">Rs {item!.total}</span>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
+            {/* Actions */}
             <div className="px-4 py-3 flex items-center justify-between gap-3">
               <button
-                onClick={() => setCartExpanded(!cartExpanded)}
-                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white min-h-[44px]"
-                data-cy="qr-cart-toggle"
+                onClick={clearCart}
+                className="text-xs text-gray-500 hover:text-red-400 transition-colors min-h-[36px] px-2"
+                data-cy="qr-cart-clear"
               >
-                {cartExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-                <span>{cartCount} item{cartCount !== 1 ? 's' : ''}</span>
+                Clear
               </button>
-              <div className="flex items-center gap-3">
-                <p className="text-base sm:text-lg font-bold text-white whitespace-nowrap">Rs {cartTotal.toLocaleString()}</p>
-                <button
-                  onClick={placeOrder}
-                  disabled={submitting}
-                  className="px-6 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-xl transition-colors flex items-center gap-2 active:scale-95 min-h-[48px] text-sm sm:text-base"
-                  data-cy="qr-place-order-btn"
-                >
-                  {submitting ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <ShoppingCart className="w-5 h-5" />
-                  )}
-                  <span className="hidden sm:inline">{submitting ? 'Placing...' : 'Place Order'}</span>
-                  <span className="sm:hidden">{submitting ? 'Placing...' : 'Order'}</span>
-                </button>
-              </div>
+              <p className="text-base sm:text-lg font-bold text-white whitespace-nowrap">Rs {cartTotal.toLocaleString()}</p>
+              <button
+                onClick={placeOrder}
+                disabled={submitting}
+                className="px-6 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-xl transition-colors flex items-center gap-2 active:scale-95 min-h-[48px] text-sm sm:text-base"
+                data-cy="qr-place-order-btn"
+              >
+                {submitting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <ShoppingCart className="w-5 h-5" />
+                )}
+                <span className="hidden sm:inline">{submitting ? 'Placing...' : 'Place Order'}</span>
+                <span className="sm:hidden">{submitting ? 'Placing...' : 'Order'}</span>
+              </button>
             </div>
           </div>
         </div>
