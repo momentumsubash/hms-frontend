@@ -367,39 +367,39 @@ export default function QROrderPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-3">
             {groupedItems.flatMap((group) =>
               group.items.map((item) => {
                 const qty = getItemQuantity(item._id);
                 return (
                   <div
                     key={item._id}
-                    className={`flex flex-col bg-gray-900 border rounded-xl p-3 transition-all ${
+                    className={`flex flex-col bg-gray-900 border rounded-xl p-2.5 sm:p-3 transition-all min-w-0 ${
                       qty > 0 ? 'border-amber-500/40 shadow-sm shadow-amber-500/10' : 'border-gray-800'
                     }`}
                     data-cy={`qr-item-${item._id}`}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-white leading-snug line-clamp-2">{item.name}</p>
+                      <p className="text-[11px] sm:text-sm font-medium text-white leading-tight line-clamp-2 break-words">{item.name}</p>
                       {item.description && (
-                        <p className="text-[10px] sm:text-xs text-gray-500 line-clamp-1 mt-0.5">{item.description}</p>
+                        <p className="text-[10px] sm:text-xs text-gray-500 truncate mt-0.5">{item.description}</p>
                       )}
                       <p className="text-xs sm:text-sm font-bold text-amber-400 mt-1.5">Rs {item.price}</p>
                     </div>
-                    <div className="mt-2.5">
+                    <div className="mt-2">
                       {qty > 0 ? (
                         <div className="flex items-center justify-center gap-0.5">
                           <button
                             onClick={() => removeFromCart(item._id)}
-                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center active:scale-90 transition-all"
+                            className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center active:scale-90 transition-all"
                             data-cy={`qr-item-dec-${item._id}`}
                           >
                             <Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                           </button>
-                          <span className="text-xs sm:text-sm font-bold text-white w-5 text-center" data-cy={`qr-item-qty-${item._id}`}>{qty}</span>
+                          <span className="text-xs sm:text-sm font-bold text-white w-5 text-center shrink-0" data-cy={`qr-item-qty-${item._id}`}>{qty}</span>
                           <button
                             onClick={() => addToCart(item._id)}
-                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-amber-500 hover:bg-amber-600 flex items-center justify-center active:scale-90 transition-all"
+                            className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-amber-500 hover:bg-amber-600 flex items-center justify-center active:scale-90 transition-all"
                             data-cy={`qr-item-inc-${item._id}`}
                           >
                             <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-black" />
@@ -408,7 +408,7 @@ export default function QROrderPage() {
                       ) : (
                         <button
                           onClick={() => addToCart(item._id)}
-                          className="w-full py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-black active:scale-95 transition-all"
+                          className="w-full py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-black active:scale-95 transition-all"
                           data-cy={`qr-item-add-${item._id}`}
                         >
                           Add
