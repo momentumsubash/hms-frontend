@@ -1,10 +1,10 @@
 "use client";
 
-import { getRooms, updateRoom, updateRoomMaintenance } from "@/lib/api";
+import { getRooms, updateRoom, updateRoomMaintenance, generateRoomQR, getRoomQR } from "@/lib/api";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import React, { useEffect, useState, useCallback } from "react";
-import { Bed, Users, Plus, Eye, Edit, Trash2, Search, X, SlidersHorizontal, Info } from "lucide-react";
+import { Bed, Users, Plus, Eye, Edit, Trash2, Search, X, SlidersHorizontal, Info, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -79,6 +79,11 @@ export default function RoomsPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState<any>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [qrRoom, setQrRoom] = useState<any>(null);
+  const [qrImage, setQrImage] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
   const [showDetails, setShowDetails] = useState(false);
   const [roomDetails, setRoomDetails] = useState<any>(null);
@@ -493,6 +498,19 @@ export default function RoomsPage() {
                           }} title="Edit" data-cy={`rooms-edit-btn-${room._id}`}>
                             <Edit className="w-4 h-4" />
                           </button>
+                          <button className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all" onClick={async () => {
+                            setQrRoom(room);
+                            setQrImage(null);
+                            setShowQRModal(true);
+                            try {
+                              setQrLoading(true);
+                              const res = await getRoomQR(room.roomNumber);
+                              if (res.qrCode) setQrImage(res.qrCode);
+                            } catch { /* no existing QR */ }
+                            setQrLoading(false);
+                          }} title="QR Code" data-cy={`rooms-qr-btn-${room._id}`}>
+                            <QrCode className="w-4 h-4" />
+                          </button>
                           <button className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all" onClick={() => { setRoomToDelete(room); setShowDeleteConfirm(true); }} title="Delete" data-cy={`rooms-delete-btn-${room._id}`}>
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -678,6 +696,52 @@ export default function RoomsPage() {
               </Button>
             </div>
           </form>
+        </Modal>
+
+        <Modal show={showQRModal} onClose={() => { setShowQRModal(false); setQrRoom(null); setQrImage(null); }} title={`QR Code - ${qrRoom?.roomNumber || ''}`}>
+          <div className="p-5 space-y-4">
+            {qrLoading ? (
+              <div className="flex items-center justify-center py-8" data-cy="qr-modal-loading">
+                <span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : qrImage ? (
+              <div className="flex flex-col items-center gap-4" data-cy="qr-modal-existing">
+                <img src={qrImage} alt={`QR for room ${qrRoom?.roomNumber}`} className="w-48 h-48" data-cy="qr-modal-image" />
+                <p className="text-xs text-muted-foreground text-center">Scan to order food & beverages</p>
+                <Button onClick={async () => {
+                  try {
+                    setQrLoading(true);
+                    const res = await generateRoomQR(qrRoom.roomNumber);
+                    setQrImage(res.qrCode);
+                    showToast('New QR code generated and uploaded', 'success');
+                  } catch (e: any) {
+                    showToast(e.message || 'Failed to generate QR', 'error');
+                  }
+                  setQrLoading(false);
+                }} disabled={qrLoading} data-cy="qr-modal-regenerate">
+                  {qrLoading ? 'Generating...' : 'Regenerate QR'}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-4 py-4" data-cy="qr-modal-empty">
+                <QrCode className="w-12 h-12 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">No QR code generated yet</p>
+                <Button onClick={async () => {
+                  try {
+                    setQrLoading(true);
+                    const res = await generateRoomQR(qrRoom.roomNumber);
+                    setQrImage(res.qrCode);
+                    showToast('QR code generated successfully', 'success');
+                  } catch (e: any) {
+                    showToast(e.message || 'Failed to generate QR', 'error');
+                  }
+                  setQrLoading(false);
+                }} disabled={qrLoading} data-cy="qr-modal-generate">
+                  {qrLoading ? 'Generating...' : 'Generate QR Code'}
+                </Button>
+              </div>
+            )}
+          </div>
         </Modal>
 
         <Modal show={showDeleteConfirm} onClose={() => { setShowDeleteConfirm(false); setRoomToDelete(null); }} title="Confirm Delete">

@@ -42,6 +42,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from 'sonner';
 import WebsiteContentManager from "@/components/WebsiteContentManager";
 import { Hotel } from "@/types/hotel";
+import dynamic from "next/dynamic";
+
+const MapPicker = dynamic(() => import("@/components/MapPicker"), { ssr: false });
 
 // ==================== IMAGE PICKER COMPONENT ====================
 function ImagePicker({ images, value, onChange, label }: { images: string[]; value: string; onChange: (url: string) => void; label?: string }) {
@@ -1670,10 +1673,11 @@ export default function HotelsPage() {
             </DialogHeader>
             {selectedHotel && (
               <Tabs defaultValue="basic" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="basic">Basic Info</TabsTrigger>
                   <TabsTrigger value="images">Images</TabsTrigger>
                   <TabsTrigger value="website">Website Content</TabsTrigger>
+                  <TabsTrigger value="geo">QR & Geo</TabsTrigger>
                 </TabsList>
 
                 {/* === TAB 1: BASIC INFO === */}
@@ -2122,6 +2126,65 @@ export default function HotelsPage() {
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span>Selected: {(selectedHotel.website?.galleryImages || []).length} images</span>
                       </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* === TAB 4: QR & GEO === */}
+                <TabsContent value="geo" className="space-y-6 mt-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>QR Code Ordering</CardTitle>
+                      <CardDescription>Enable guests to order food & beverages by scanning a QR code in their room.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-base">QR Ordering</Label>
+                          <p className="text-sm text-muted-foreground">Allow guests to place orders via QR code</p>
+                        </div>
+                        <Switch
+                          checked={!!selectedHotel.qrEnabled}
+                          onCheckedChange={(v) => setSelectedHotel({...selectedHotel, qrEnabled: v})}
+                        />
+                      </div>
+                      {selectedHotel.qrEnabled && (
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-sm text-amber-700 dark:text-amber-300">
+                          <p>Generate QR codes from the <strong>Rooms</strong> page. Each room can have its own unique QR code linking to this hotel's menu.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Geo-Location Restriction</CardTitle>
+                      <CardDescription>Restrict QR orders to guests physically within the hotel premises using GPS.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-base">Enable Geo-Fence</Label>
+                          <p className="text-sm text-muted-foreground">Validate order location against hotel coordinates</p>
+                        </div>
+                        <Switch
+                          checked={!!selectedHotel.geoEnabled}
+                          onCheckedChange={(v) => setSelectedHotel({...selectedHotel, geoEnabled: v})}
+                        />
+                      </div>
+
+                      {selectedHotel.geoEnabled && (
+                        <>
+                          <p className="text-sm text-muted-foreground">Drag the marker or click on the map to set your hotel location. The circle shows the delivery radius.</p>
+                          <MapPicker
+                            lat={selectedHotel.geoLocation?.lat || 27.7172}
+                            lng={selectedHotel.geoLocation?.lng || 85.3240}
+                            radius={selectedHotel.geoRadius || 100}
+                            onLocationChange={(lat, lng) => setSelectedHotel({...selectedHotel, geoLocation: { lat, lng }})}
+                            onRadiusChange={(meters) => setSelectedHotel({...selectedHotel, geoRadius: meters})}
+                          />
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>

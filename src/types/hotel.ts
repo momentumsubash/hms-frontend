@@ -149,4 +149,10 @@ export interface Hotel {
 
   // Language setting
   nepaliLanguage?: boolean;
+
+  // QR & Geo-location settings
+  qrEnabled?: boolean;
+  geoEnabled?: boolean;
+  geoLocation?: { lat: number; lng: number };
+  geoRadius?: number;
 }

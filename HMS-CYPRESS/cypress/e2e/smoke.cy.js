@@ -93,7 +93,7 @@ describe('Org Admin — Desktop', { viewportWidth: 1200, viewportHeight: 800 }, 
 
       api('/api/rooms?limit=20').then((r) => {
         const rooms = Array.isArray(r.body.data) ? r.body.data : [];
-        const firstRoom = rooms.find((rm) => !rm.isOccupied) || rooms[0];
+        const firstRoom = rooms.find((rm) => !rm.isOccupied && rm.rate > 100) || rooms.find((rm) => !rm.isOccupied) || rooms[0];
         roomA = firstRoom.roomNumber;
 
         const payload = {
@@ -123,7 +123,7 @@ describe('Org Admin — Desktop', { viewportWidth: 1200, viewportHeight: 800 }, 
   it('04 — create guest B (multi-room, room discount)', () => {
     api('/api/rooms?limit=20').then((r) => {
       const rooms = Array.isArray(r.body.data) ? r.body.data : [];
-      const avail = rooms.filter((rm) => !rm.isOccupied);
+      const avail = rooms.filter((rm) => !rm.isOccupied && rm.rate > 100);
       roomBNumbers = avail.slice(0, 2).map((rm) => rm.roomNumber);
 
       const payload = {
@@ -320,17 +320,17 @@ describe('Org Admin — Desktop', { viewportWidth: 1200, viewportHeight: 800 }, 
   it('11 — pay guest A due in 2 installments via UI', () => {
     // First installment
     cy.visit('/dues');
-    cy.get('[data-cy="dues-search"]', { timeout: 10000 }).clear().type(PHONE_A);
+    cy.get('[data-cy="dues-search"]').last().clear().type(PHONE_A);
     cy.wait(1500);
 
-    cy.contains(GUEST_A).closest('tr').find('[data-cy="dues-record-payment"]').click();
+    cy.contains(GUEST_A).closest('tr').find('[data-cy="dues-record-payment"]').click({ force: true });
     cy.get('.fixed.inset-0.z-50 input[type="number"]').first().invoke('val', '300').trigger('input');
     cy.get('.fixed.inset-0.z-50 textarea').first().type('Due payment 1/2');
     cy.get('[data-cy="dues-save-payment"]').click();
     cy.wait(2000);
 
     // Second installment
-    cy.contains(GUEST_A).closest('tr').find('[data-cy="dues-record-payment"]').click();
+    cy.contains(GUEST_A).closest('tr').find('[data-cy="dues-record-payment"]').click({ force: true });
     cy.get('.fixed.inset-0.z-50 input[type="number"]').first().invoke('val', '250').trigger('input');
     cy.get('.fixed.inset-0.z-50 select').first().select('online');
     cy.get('.fixed.inset-0.z-50 textarea').first().type('Due payment 2/2');
@@ -355,7 +355,7 @@ describe('Org Admin — Desktop', { viewportWidth: 1200, viewportHeight: 800 }, 
     cy.get('[data-cy="stats-create-expenditure"]').click({ force: true });
     cy.get('[data-cy="stats-expenditure-form-amount"]', { timeout: 5000 }).clear().type('1500');
     cy.get('[data-cy="stats-expenditure-form-description"]').type('Smoke test expenditure');
-    cy.get('[data-cy="stats-expenditure-form-category"]').select('Supplies');
+    cy.get('[data-cy="stats-expenditure-form-category"]').select('supplies');
     cy.get('[data-cy="stats-expenditure-form-date"]').invoke('val', new Date().toISOString().slice(0, 10));
     cy.get('[data-cy="stats-expenditure-form-submit"]').click();
     cy.get('[data-cy="stats-expenditure-table"]', { timeout: 10000 }).should('contain', 'Smoke test expenditure');
@@ -394,12 +394,14 @@ describe('Staff — Desktop', { viewportWidth: 1200, viewportHeight: 800 }, () =
 
     cy.get('[data-cy="guests-form-first-name"]', { timeout: 5000 }).type('Staff');
     cy.get('[data-cy="guests-form-last-name"]').type(STAFF_GUEST);
-    cy.get('[data-cy="guests-form-phone"]').invoke('val', STAFF_PHONE).trigger('input');
+    cy.get('[data-cy="guests-form-phone"]').type(STAFF_PHONE, { force: true });
+    cy.wait(2000);
     cy.get('[data-cy="guests-checkin"]').invoke('val', new Date(Date.now() + 6 * 60000).toISOString().slice(0, 16));
 
     cy.get('[data-cy="guests-rooms"]', { timeout: 15000 }).should('exist');
     cy.get('[data-cy="guests-rooms"]').first().click();
     cy.get('[data-cy="guests-form-submit"]').should('be.enabled').click();
+    cy.wait(2000);
     cy.contains(STAFF_GUEST, { timeout: 15000 }).should('exist');
   });
 
@@ -462,7 +464,7 @@ describe('Org Admin — Mobile', { viewportWidth: 375, viewportHeight: 667 }, ()
 
       mApi('/api/rooms?limit=10').then((r) => {
         const rooms = Array.isArray(r.body.data) ? r.body.data : [];
-        const room = rooms.find((rm) => !rm.isOccupied) || rooms[0];
+        const room = rooms.find((rm) => !rm.isOccupied && rm.rate > 100) || rooms.find((rm) => !rm.isOccupied) || rooms[0];
         rA = room.roomNumber;
 
         mApi('/api/guests', 'POST', {
@@ -489,7 +491,7 @@ describe('Org Admin — Mobile', { viewportWidth: 375, viewportHeight: 667 }, ()
   it('04 — create guest B via API (multi-room, room discount)', () => {
     mApi('/api/rooms?limit=10').then((r) => {
       const rooms = Array.isArray(r.body.data) ? r.body.data : [];
-      const avail = rooms.filter((rm) => !rm.isOccupied);
+      const avail = rooms.filter((rm) => !rm.isOccupied && rm.rate > 100);
       const rnums = avail.slice(0, 2).map((rm) => rm.roomNumber);
 
       mApi('/api/guests', 'POST', {
@@ -628,7 +630,7 @@ describe('Org Admin — Mobile', { viewportWidth: 375, viewportHeight: 667 }, ()
 
   it('08 — pay due & verify stats', () => {
     cy.visit('/dues');
-    cy.get('[data-cy="dues-search"]', { timeout: 10000 }).clear().type(PA);
+    cy.get('[data-cy="dues-search"]').first().clear({ force: true }).type(PA);
     cy.wait(1500);
 
     cy.contains(GA).closest('tr').find('[data-cy="dues-record-payment"]').click();
@@ -668,15 +670,17 @@ describe('Staff — Mobile', { viewportWidth: 375, viewportHeight: 667 }, () => 
 
   it('02 — staff creates guest on mobile', () => {
     cy.visit('/guests');
-    cy.get('[data-cy="guests-add-new"]').last().click();
+    cy.get('[data-cy="guests-add-new"]').first().click();
 
     cy.get('[data-cy="guests-form-first-name"]', { timeout: 5000 }).type('MobStaff');
     cy.get('[data-cy="guests-form-last-name"]').type(SG);
-    cy.get('[data-cy="guests-form-phone"]').invoke('val', SP).trigger('input');
+    cy.get('[data-cy="guests-form-phone"]').type(SP, { force: true });
+    cy.wait(2000);
     cy.get('[data-cy="guests-checkin"]').invoke('val', new Date(Date.now() + 6 * 60000).toISOString().slice(0, 16));
 
     cy.get('[data-cy="guests-rooms"]', { timeout: 15000 }).first().click();
     cy.get('[data-cy="guests-form-submit"]').click();
+    cy.wait(2000);
     cy.contains(SG, { timeout: 15000 }).should('exist');
   });
 

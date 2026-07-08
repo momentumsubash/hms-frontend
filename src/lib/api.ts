@@ -345,6 +345,23 @@ export async function updateRoomMaintenance(roomNumber: string, maintenanceStatu
   return res.json();
 }
 
+export async function getRoomQR(roomNumber: string) {
+  const res = await fetch(`${API_URL}/rooms/${roomNumber}/qr`, {
+    headers: mergeHeaders({}, getAuthHeaders()),
+  });
+  if (!res.ok) throw new Error("Failed to fetch QR code");
+  return res.json();
+}
+
+export async function generateRoomQR(roomNumber: string) {
+  const res = await fetch(`${API_URL}/rooms/${roomNumber}/generate-qr`, {
+    method: "POST",
+    headers: mergeHeaders({ "Content-Type": "application/json" }, getAuthHeaders()),
+  });
+  if (!res.ok) throw new Error("Failed to generate QR code");
+  return res.json();
+}
+
 export async function deleteRoom(roomNumber: string) {
   const res = await fetch(`${API_URL}/rooms/${roomNumber}`, {
     method: "DELETE",
