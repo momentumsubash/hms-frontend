@@ -299,13 +299,13 @@ export default function QROrderPage() {
       </div>
 
       {/* Tabs */}
-      <div className="sticky top-[105px] z-10 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 overflow-x-auto hide-scrollbar" data-cy="qr-category-tabs">
-        <div className="flex gap-1 px-4 py-2 max-w-2xl mx-auto">
+      <div className="sticky top-[105px] z-10 bg-gray-900/80 backdrop-blur-sm border-b border-gray-800" data-cy="qr-category-tabs">
+        <div className="flex gap-1.5 px-3 py-2 max-w-2xl mx-auto overflow-x-auto hide-scrollbar snap-x snap-mandatory">
           {tabs.map((tab) => (
             <button
               key={tab._id}
               onClick={() => handleTabChange(tab._id)}
-              className={`shrink-0 px-3.5 py-2 text-xs font-medium rounded-lg whitespace-nowrap min-h-[36px] transition-colors ${
+              className={`snap-start shrink-0 px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap transition-colors ${
                 activeTab === tab._id
                   ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
                   : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
@@ -340,48 +340,48 @@ export default function QROrderPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3">
             {groupedItems.flatMap((group) =>
               group.items.map((item) => {
                 const qty = getItemQuantity(item._id);
                 return (
                   <div
                     key={item._id}
-                    className={`flex flex-col bg-gray-900 border rounded-xl p-3.5 transition-all ${
+                    className={`flex flex-col bg-gray-900 border rounded-xl p-3 transition-all ${
                       qty > 0 ? 'border-amber-500/40 shadow-sm shadow-amber-500/10' : 'border-gray-800'
                     }`}
                     data-cy={`qr-item-${item._id}`}
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white leading-snug line-clamp-2">{item.name}</p>
+                      <p className="text-xs sm:text-sm font-medium text-white leading-snug line-clamp-2">{item.name}</p>
                       {item.description && (
-                        <p className="text-xs text-gray-500 line-clamp-1 mt-1">{item.description}</p>
+                        <p className="text-[10px] sm:text-xs text-gray-500 line-clamp-1 mt-0.5">{item.description}</p>
                       )}
-                      <p className="text-sm font-bold text-amber-400 mt-2">Rs {item.price}</p>
+                      <p className="text-xs sm:text-sm font-bold text-amber-400 mt-1.5">Rs {item.price}</p>
                     </div>
-                    <div className="mt-3">
+                    <div className="mt-2.5">
                       {qty > 0 ? (
-                        <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center justify-center gap-0.5">
                           <button
                             onClick={() => removeFromCart(item._id)}
-                            className="w-9 h-9 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center active:scale-90 transition-all min-h-[36px] min-w-[36px]"
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center active:scale-90 transition-all"
                             data-cy={`qr-item-dec-${item._id}`}
                           >
-                            <Minus className="w-3.5 h-3.5 text-white" />
+                            <Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                           </button>
-                          <span className="text-sm font-bold text-white min-w-[20px] text-center" data-cy={`qr-item-qty-${item._id}`}>{qty}</span>
+                          <span className="text-xs sm:text-sm font-bold text-white w-5 text-center" data-cy={`qr-item-qty-${item._id}`}>{qty}</span>
                           <button
                             onClick={() => addToCart(item._id)}
-                            className="w-9 h-9 rounded-lg bg-amber-500 hover:bg-amber-600 flex items-center justify-center active:scale-90 transition-all min-h-[36px] min-w-[36px]"
+                            className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-amber-500 hover:bg-amber-600 flex items-center justify-center active:scale-90 transition-all"
                             data-cy={`qr-item-inc-${item._id}`}
                           >
-                            <Plus className="w-3.5 h-3.5 text-black" />
+                            <Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-black" />
                           </button>
                         </div>
                       ) : (
                         <button
                           onClick={() => addToCart(item._id)}
-                          className="w-full py-2 text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-black active:scale-95 transition-all min-h-[36px]"
+                          className="w-full py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-lg bg-amber-500 hover:bg-amber-600 text-black active:scale-95 transition-all"
                           data-cy={`qr-item-add-${item._id}`}
                         >
                           Add
@@ -415,28 +415,28 @@ export default function QROrderPage() {
               </div>
             </div>
             {/* Actions */}
-            <div className="px-4 py-3 flex items-center justify-between gap-3">
+            <div className="px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
               <button
                 onClick={clearCart}
-                className="text-xs text-gray-500 hover:text-red-400 transition-colors min-h-[36px] px-2"
+                className="text-[11px] sm:text-xs text-gray-500 hover:text-red-400 transition-colors px-1.5 sm:px-2 min-h-[36px]"
                 data-cy="qr-cart-clear"
               >
                 Clear
               </button>
-              <p className="text-base sm:text-lg font-bold text-white whitespace-nowrap">Rs {cartTotal.toLocaleString()}</p>
+              <p className="text-sm sm:text-base md:text-lg font-bold text-white whitespace-nowrap">Rs {cartTotal.toLocaleString()}</p>
               <button
                 onClick={placeOrder}
                 disabled={submitting}
-                className="px-6 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-xl transition-colors flex items-center gap-2 active:scale-95 min-h-[48px] text-sm sm:text-base"
+                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold rounded-xl transition-colors flex items-center gap-1.5 active:scale-95 min-h-[44px] text-xs sm:text-sm"
                 data-cy="qr-place-order-btn"
               >
                 {submitting ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                 ) : (
-                  <ShoppingCart className="w-5 h-5" />
+                  <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
                 )}
-                <span className="hidden sm:inline">{submitting ? 'Placing...' : 'Place Order'}</span>
-                <span className="sm:hidden">{submitting ? 'Placing...' : 'Order'}</span>
+                <span className="hidden xs:inline">{submitting ? 'Placing...' : 'Place Order'}</span>
+                <span className="xs:hidden">{submitting ? '...' : 'Order'}</span>
               </button>
             </div>
           </div>
