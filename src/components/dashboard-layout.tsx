@@ -30,6 +30,9 @@ import {
   Bell,
   Search,
   Building2,
+  Briefcase,
+  Calendar,
+  CreditCard,
 } from "lucide-react";
 
 interface NavLink {
@@ -71,6 +74,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { label: "Users", href: "/users", icon: <UserCog className="w-5 h-5" />, roles: ["manager", "super_admin"] },
     { label: "RecordBook", href: "/recordbook", icon: <BookOpen className="w-5 h-5" />, roles: ["manager", "super_admin"] },
     { label: "Kitchen", href: "/kitchen", icon: <ChefHat className="w-5 h-5" />, roles: ["kitchen_staff", "manager", "super_admin"] },
+    { label: "HR Staff", href: "/staff", icon: <Briefcase className="w-5 h-5" />, roles: ["manager", "super_admin"] },
+    { label: "Departments", href: "/departments", icon: <Building2 className="w-5 h-5" />, roles: ["manager", "super_admin"] },
+    { label: "Salary", href: "/salary", icon: <CreditCard className="w-5 h-5" />, roles: ["manager", "super_admin"] },
+    { label: "Leaves", href: "/leaves", icon: <Calendar className="w-5 h-5" />, roles: ["manager", "super_admin"] },
   ];
 
   const links = allLinks.filter((link) => {

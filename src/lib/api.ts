@@ -86,8 +86,15 @@ export async function deleteUser(id: string) {
   return res.json();
 }
 // List all users
-export async function getUsers() {
-  const res = await fetch(`${API_URL}/users`, {
+export async function getUsers(params?: Record<string, any>) {
+  const query = new URLSearchParams();
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.append(k, String(v));
+    });
+  }
+  const qs = query.toString();
+  const res = await fetch(`${API_URL}/users${qs ? `?${qs}` : ''}`, {
     headers: mergeHeaders({}, getAuthHeaders()),
   });
   if (res.status === 401) {

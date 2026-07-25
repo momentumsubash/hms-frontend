@@ -15,7 +15,7 @@ import {
   getItemSales,
   getRoomSales
 } from "@/lib/expenditure";
-import { getItems } from "@/lib/api";
+import { getItems, getUsers } from "@/lib/api";
 
 // Date filter options
 const DATE_FILTERS = [
@@ -171,8 +171,10 @@ const [currentDateParams, setCurrentDateParams] = useState({ filter: 'month' });
     description: "",
     category: "supplies",
     date: new Date().toISOString().split('T')[0],
-    notes: ""
+    notes: "",
+    staff: ""
   });
+  const [expenditureStaffList, setExpenditureStaffList] = useState([]);
   const [formLoading, setFormLoading] = useState(false);
   
   // Approval states
@@ -575,6 +577,7 @@ const handleApplyDateFilter = () => {
         category: expenditureForm.category,
         date: expenditureForm.date,
         notes: expenditureForm.notes,
+        staff: expenditureForm.staff || undefined,
         isInventoryAddition: selectedInventoryItems.length > 0,
         inventoryItems: selectedInventoryItems.map(item => ({ item: item.itemId, quantity: item.quantity }))
       });
@@ -587,7 +590,8 @@ const handleApplyDateFilter = () => {
         description: "",
         category: "supplies",
         date: new Date().toISOString().split('T')[0],
-        notes: ""
+        notes: "",
+        staff: ""
       });
       
       // Refresh expenditure tab data
@@ -1119,7 +1123,10 @@ const handleApplyDateFilter = () => {
                   <h3 className="text-lg font-semibold">Expenditure Management</h3>
                   <Button 
                     data-cy="stats-create-expenditure"
-                    onClick={() => setShowExpenditureForm(true)}
+                    onClick={() => {
+                      setShowExpenditureForm(true);
+                      getUsers({ limit: 200 }).then(res => setExpenditureStaffList(res?.data || [])).catch(() => {});
+                    }}
                     className="bg-primary hover:bg-primary/90"
                   >
                     Create New Expenditure
@@ -1572,6 +1579,22 @@ const handleApplyDateFilter = () => {
                     ))}
                   </select>
                 </div>
+                
+                {expenditureForm.category === 'salary' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Staff Member</label>
+                    <select
+                      value={expenditureForm.staff}
+                      onChange={e => setExpenditureForm({ ...expenditureForm, staff: e.target.value })}
+                      className="w-full border border-input rounded px-3 py-2"
+                    >
+                      <option value="">Select staff member</option>
+                      {expenditureStaffList.map(s => (
+                        <option key={s._id} value={s._id}>{s.firstName} {s.lastName} ({s.staffId || 'No ID'})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 
                 <div>
                   <label className="block text-sm font-medium mb-1">Date *</label>

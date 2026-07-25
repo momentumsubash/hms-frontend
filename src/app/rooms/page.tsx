@@ -40,7 +40,6 @@ export default function RoomsPage() {
   
   const [filters, setFilters] = useState({
     type: "",
-    isOccupied: "",
     roomNumber: ""
   });
 
@@ -136,8 +135,8 @@ export default function RoomsPage() {
       const queryParams = new URLSearchParams();
       queryParams.append('page', currentPage.toString());
       queryParams.append('limit', limit.toString());
+      queryParams.append('isOccupied', 'false');
       if (currentFilters.type) queryParams.append('type', currentFilters.type);
-      if (currentFilters.isOccupied !== "") queryParams.append('isOccupied', currentFilters.isOccupied);
       if (currentFilters.roomNumber) queryParams.append('roomNumber', currentFilters.roomNumber);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/rooms?${queryParams.toString()}`, {
@@ -303,7 +302,7 @@ export default function RoomsPage() {
   };
 
   const clearFilters = () => {
-    const clearedFilters = { type: "", isOccupied: "", roomNumber: "" };
+    const clearedFilters = { type: "", roomNumber: "" };
     setFilters(clearedFilters);
     loadData(true, clearedFilters);
   };
@@ -394,17 +393,7 @@ export default function RoomsPage() {
               <option value="suite">Suite</option>
               <option value="deluxe">Deluxe</option>
             </select>
-            <select
-              value={filters.isOccupied}
-              onChange={(e) => handleFilterChange('isOccupied', e.target.value)}
-              className="h-9 px-3 bg-muted/50 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-all min-w-[120px]"
-              data-cy="rooms-occupied-filter"
-            >
-              <option value="">All Rooms</option>
-              <option value="true">Occupied</option>
-              <option value="false">Available</option>
-            </select>
-            {(filters.roomNumber || filters.type || filters.isOccupied) && (
+            {(filters.roomNumber || filters.type) && (
               <button onClick={clearFilters} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors shrink-0" data-cy="rooms-clear-filters">
                 Clear
               </button>

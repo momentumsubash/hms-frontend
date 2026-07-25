@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { 
-  getHotels, addHotel, updateHotel, updateHotelBalance,
+import { getHotels, addHotel, updateHotel, updateHotelBalance,
   uploadHotelLogo, uploadHotelImages, uploadHotelGallery, uploadHotelVideos,
   getHotelLicense, updateHotelLicense,
   getNotificationSettings, updateNotificationSettings,
@@ -11,7 +10,7 @@ import {
   toggleNotificationRecipient, testNotification,
   getEmailServiceStatus, updateHotelWebsite, 
   addHotelDomain, removeHotelDomain,
-  getItems
+  getItems, getUsers
 } from "@/lib/api";
 import { getHotel } from "@/lib/api";
 import { createExpenditure, getExpenditures, approveExpenditure, rejectExpenditure } from "@/lib/expenditure";
@@ -921,7 +920,8 @@ export default function HotelsPage() {
     description: "",
     date: new Date().toISOString(),
     notes: ""
-  });
+  } as any);
+  const [expenditureStaffList, setExpenditureStaffList] = useState<any[]>([]);
   const [selectedExpenditure, setSelectedExpenditure] = useState<Expenditure | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -1140,6 +1140,7 @@ export default function HotelsPage() {
       await createExpenditure({
         ...newExpenditure,
         hotel: selectedHotel?._id || "",
+        staff: (newExpenditure as any)?.staff || undefined,
         isInventoryAddition: selectedInventoryItems.length > 0,
         inventoryItems: selectedInventoryItems.map(item => ({ item: item.itemId, quantity: item.quantity }))
       } as any);
@@ -2664,7 +2665,10 @@ export default function HotelsPage() {
           <div className="mt-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Expenditures</h2>
-              {selectedHotel && <Button onClick={() => setShowExpenditureModal(true)} className="bg-green-600 hover:bg-green-700 text-white">Add Expenditure</Button>}
+              {selectedHotel && <Button onClick={() => {
+                setShowExpenditureModal(true);
+                getUsers({ limit: 200 }).then(res => setExpenditureStaffList(res?.data || [])).catch(() => {});
+              }} className="bg-green-600 hover:bg-green-700 text-white">Add Expenditure</Button>}
             </div>
 
             <div className="bg-white p-4 rounded-lg shadow mb-6">
@@ -2781,6 +2785,27 @@ export default function HotelsPage() {
           </SelectContent>
         </Select>
       </div>
+
+      {(newExpenditure as any)?.category === 'salary' && (
+        <div>
+          <Label htmlFor="expenditure-staff">Staff Member</Label>
+          <Select
+            value={(newExpenditure as any)?.staff || ''}
+            onValueChange={(value) => setNewExpenditure(prev => ({ ...prev, staff: value } as any))}
+          >
+            <SelectTrigger id="expenditure-staff" className="w-full">
+              <SelectValue placeholder="Select staff member" />
+            </SelectTrigger>
+            <SelectContent>
+              {expenditureStaffList.map((s: any) => (
+                <SelectItem key={s._id} value={s._id}>
+                  {s.firstName} {s.lastName} ({s.staffId || 'No ID'})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div>
         <Label htmlFor="expenditure-description">Description</Label>

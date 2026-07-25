@@ -12,7 +12,17 @@
     "test:production:all": "cypress run --baseUrl http://digitalhms-momentum.vercel.app --env apiUrl=https://hms-api-eight.vercel.app --spec 'cypress/e2e/*.cy.js'",
     "test:production:documents": "cypress run --baseUrl http://digitalhms-momentum.vercel.app --env apiUrl=https://hms-api-eight.vercel.app --spec 'cypress/e2e/document-upload.cy.js'",
     "test:production:smoke": "cypress run --baseUrl http://digitalhms-momentum.vercel.app --env apiUrl=https://hms-api-eight.vercel.app --spec 'cypress/e2e/smoke.cy.js'",
-    "test:reports": "open mochawesome-report/mochawesome.html"
+    "test:reports": "open mochawesome-report/mochawesome.html",
+    "test:hr": "cypress run --spec 'cypress/e2e/{departments,salary,leaves,staff-directory}.cy.js'",
+    "test:hr:open": "cypress open --baseUrl http://localhost:30006 --spec 'cypress/e2e/{departments,salary,leaves,staff-directory}.cy.js'",
+    "test:flow": "cypress run --spec 'cypress/e2e/fullHotelFlow.cy.js'",
+    "test:flow:open": "cypress open --baseUrl http://localhost:30006 --spec 'cypress/e2e/fullHotelFlow.cy.js'",
+    "test:mobile": "cypress run --spec 'cypress/e2e/mobileFlows.cy.js'",
+    "test:mobile:open": "cypress open --baseUrl http://localhost:30006 --spec 'cypress/e2e/mobileFlows.cy.js'",
+    "test:stock": "cypress run --spec 'cypress/e2e/stockManagement.cy.js'",
+    "test:stock:open": "cypress open --baseUrl http://localhost:30006 --spec 'cypress/e2e/stockManagement.cy.js'",
+    "test:momentum": "cypress run --spec 'cypress/e2e/{fullHotelFlow,mobileFlows,stockManagement}.cy.js'",
+    "test:all": "cypress run --spec 'cypress/e2e/{departments,salary,leaves,staff-directory,fullHotelFlow,mobileFlows,stockManagement,navigation}.cy.js'"
   },
   "keywords": [],
   "author": "",

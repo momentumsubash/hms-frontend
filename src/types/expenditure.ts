@@ -2,7 +2,7 @@
 export interface Expenditure {
   _id: string;
   amount: number;
-  category: "supplies" | "maintenance" | "utilities" | "salaries" | "marketing" | "other";
+  category: "supplies" | "maintenance" | "utilities" | "salary" | "marketing" | "other";
   description: string;
   date: string;
   hotel: string;
@@ -11,6 +11,14 @@ export interface Expenditure {
     email: string;
     firstName: string;
     lastName: string;
+  };
+  staff?: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    staffId?: string;
+    department?: { _id: string; name: string };
+    designation?: string;
   };
   receipt?: string;
   notes?: string;

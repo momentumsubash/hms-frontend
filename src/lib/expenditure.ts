@@ -23,9 +23,10 @@ const buildQueryString = (params?: Record<string, any>): string => {
 };
 
 // Create a new expenditure
-export type CreateExpenditurePayload = Omit<Expenditure, '_id' | 'createdAt' | 'updatedAt' | 'status' | 'approvedBy' | 'approvedAt' | 'createdBy' | 'hotel' | 'receipt'> & {
+export type CreateExpenditurePayload = Omit<Expenditure, '_id' | 'createdAt' | 'updatedAt' | 'status' | 'approvedBy' | 'approvedAt' | 'createdBy' | 'hotel' | 'receipt' | 'staff'> & {
   isInventoryAddition?: boolean;
   inventoryItems?: Array<{ item: string; quantity: number }>;
+  staff?: string;
 };
 
 export const createExpenditure = async (data: CreateExpenditurePayload) => {
@@ -39,6 +40,7 @@ export const createExpenditure = async (data: CreateExpenditurePayload) => {
         category: data.category,
         date: data.date,
         notes: data.notes,
+        staff: data.staff,
         isInventoryAddition: data.isInventoryAddition,
         ...(data.isInventoryAddition && data.inventoryItems?.length ? { inventoryItems: data.inventoryItems } : {}),
       }),
