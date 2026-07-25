@@ -42,15 +42,9 @@ export function HotelDashboard({ nepaliFlag = false }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [currentFoodIndex, setCurrentFoodIndex] = useState(0);
 
-  const [currentDateStr, setCurrentDateStr] = useState("");
   const [hotel, setHotel] = useState(null);
-  const [notesToken, setNotesToken] = useState(null);
   const hotelId = hotel?._id;
-
-  useEffect(() => {
-    setCurrentDateStr(new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
-    setNotesToken(localStorage.getItem('token'));
-  }, []);
+  const notesToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   const hotelImages = [
     "/luxury-hotel-lobby.png",
@@ -211,7 +205,7 @@ export function HotelDashboard({ nepaliFlag = false }) {
         </div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 px-4 py-2 rounded-lg border border-border">
           <Clock className="w-4 h-4" />
-          {currentDateStr}
+          {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
         </div>
       </div>
 

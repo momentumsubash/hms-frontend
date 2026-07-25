@@ -975,12 +975,13 @@ export default function HotelsPage() {
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
   const [showNepali, setShowNepali] = useState(false);
   
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) setUser(JSON.parse(stored));
-  }, []);
+  const [user, setUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
