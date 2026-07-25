@@ -140,7 +140,7 @@ export default function KitchenPage() {
     avgServeTime: 0
   });
   const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [hotel, setHotel] = useState<any>(null);
   const [showPrintWarnings, setShowPrintWarnings] = useState(true);
@@ -569,7 +569,7 @@ export default function KitchenPage() {
         <div className="bg-card rounded-xl border border-border p-3 mb-5">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="text-xs text-muted-foreground">
-              {hotel?.name}{hotel?.name && ' • '}Last updated: {format(lastUpdated, 'HH:mm:ss')}
+              {hotel?.name}{hotel?.name && ' • '}Last updated: {lastUpdated ? format(lastUpdated, 'HH:mm:ss') : '--:--:--'}
             </div>
             <div className="ml-auto flex items-center gap-2">
               <Button

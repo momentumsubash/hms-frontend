@@ -1548,7 +1548,7 @@ export default function CheckoutsPage() {
                   <div className="text-center border-b border-gray-300 pb-4 sm:pb-5 mb-4 sm:mb-5">
                     <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-1 sm:mb-2">{hotelName.toUpperCase()}</h1>
                     <h2 className="text-base sm:text-lg md:text-xl font-semibold mb-1 sm:mb-2">HOTEL BILL</h2>
-                    <p className="text-xs sm:text-sm text-gray-500">Date: {new Date().toLocaleDateString()}</p>
+                    <p className="text-xs sm:text-sm text-gray-500">Date: {detailsCheckout?.checkOutDate ? new Date(detailsCheckout.checkOutDate).toLocaleDateString() : new Date().toLocaleDateString()}</p>
                     <p className="text-xs sm:text-sm text-gray-500">Invoice #: {detailsCheckout?._id?.slice(-8)}</p>
                   </div>
 

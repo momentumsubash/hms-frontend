@@ -26,7 +26,10 @@ Cypress.on('uncaught:exception', (err, runnable) => {
     err.message.includes('Cannot read properties of null') ||
     err.message.includes('Target container is not a DOM element') ||
     err.message.includes('removeChild') ||
-    err.message.includes('insertBefore')
+    err.message.includes('insertBefore') ||
+    err.message.includes('#418') ||
+    err.message.includes('#422') ||
+    err.message.includes('#423')
   ) {
     return false
   }

@@ -67,10 +67,14 @@ const RecordBook = () => {
   const [roomPage, setRoomPage] = useState(0);
   const [roomRowsPerPage, setRoomRowsPerPage] = useState(10);
 
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedDate, setSelectedDate] = useState('');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+  }, []);
   
   const fetchDailyDetails = async (date) => {
     setLoading(true);

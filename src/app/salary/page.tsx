@@ -10,9 +10,14 @@ import { Search, X, DollarSign, CheckCircle, Clock, AlertCircle, Edit, Trash2, C
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 export default function SalaryPage() {
-  const now = new Date();
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
+  const [month, setMonth] = useState(1);
+  const [year, setYear] = useState(2026);
+
+  useEffect(() => {
+    const now = new Date();
+    setMonth(now.getMonth() + 1);
+    setYear(now.getFullYear());
+  }, []);
   const [salaries, setSalaries] = useState<any[]>([]);
   const [summary, setSummary] = useState<any>({});
   const [loading, setLoading] = useState(true);

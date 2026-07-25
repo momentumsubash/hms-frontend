@@ -54,9 +54,13 @@ export default function DuesManagementPage() {
   const [transactionPayload, setTransactionPayload] = useState({
     amount: "",
     paymentMethod: "cash",
-    date: getCurrentDateTimeLocal(),
+    date: "",
     description: ""
   });
+
+  useEffect(() => {
+    setTransactionPayload(prev => ({ ...prev, date: getCurrentDateTimeLocal() }));
+  }, []);
 
   const [filters, setFilters] = useState({ search: "", hasDue: "" });
   const [showMobileFilters, setShowMobileFilters] = useState(false);
