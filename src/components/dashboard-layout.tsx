@@ -94,7 +94,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   if (!mounted) {
-    return <div suppressHydrationWarning className="min-h-screen bg-background">{children}</div>;
+    return <div className="min-h-screen bg-background">{children}</div>;
   }
 
   if (!user) return <>{children}</>;
